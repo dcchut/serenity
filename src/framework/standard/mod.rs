@@ -28,6 +28,7 @@ use crate::model::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use threadpool::ThreadPool;
 use uwl::{UnicodeStream, StrExt};
 
@@ -177,6 +178,7 @@ impl StandardFramework {
     /// a 2 second delay inbetween invocations:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # use serenity::prelude::*;
     /// # struct Handler;
     /// #
@@ -191,7 +193,7 @@ impl StandardFramework {
     /// #[command]
     /// // Registers the bucket `basic` to this command.
     /// #[bucket = "basic"]
-    /// fn nothing() -> CommandResult {
+    /// async fn nothing() -> CommandResult {
     ///     Ok(())
     /// }
     ///
@@ -332,6 +334,7 @@ impl StandardFramework {
     /// Add a group with ping and pong commands:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # use serenity::prelude::*;
     /// # use std::error::Error as StdError;
     /// # struct Handler;
@@ -643,8 +646,9 @@ impl StandardFramework {
     }
 }
 
+#[async_trait(?Send)]
 impl Framework for StandardFramework {
-    fn dispatch(&mut self, mut ctx: Context, msg: Message, threadpool: &ThreadPool) {
+    async fn dispatch(&mut self, mut ctx: Context, msg: Message, threadpool: &ThreadPool) {
         let mut stream = UnicodeStream::new(&msg.content);
 
         stream.take_while(|s| s.is_whitespace());
@@ -800,7 +804,7 @@ impl Framework for StandardFramework {
                 let after = self.after.clone();
                 let msg = msg.clone();
                 let name = &command.options.names[0];
-                threadpool.execute(move || {
+                threadpool.execute( move || {
                     if let Some(before) = before {
                         if !before(&mut ctx, &msg, name) {
                             return;

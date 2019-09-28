@@ -74,7 +74,6 @@ impl<T: fmt::Display> From<T> for CommandError {
 }
 
 pub type CommandResult = ::std::result::Result<(), CommandError>;
-
 pub type CommandFn = fn(&mut Context, &Message, Args) -> CommandResult;
 
 pub struct Command {

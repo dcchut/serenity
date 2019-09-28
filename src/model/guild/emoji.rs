@@ -66,6 +66,7 @@ impl Emoji {
     /// Delete a given emoji:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # extern crate serde_json;
     /// # extern crate serenity;
     /// #

@@ -345,6 +345,7 @@ impl From<char> for ReactionType {
     /// Reacting to a message with an apple:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # #[cfg(feature = "client")]
     /// # use serenity::client::Context;
     /// # #[cfg(feature = "framework")]

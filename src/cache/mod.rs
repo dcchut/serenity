@@ -785,11 +785,12 @@ impl Cache {
     /// Retrieve a user from the cache and print their name:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # use serenity::client::Context;
     /// # use serenity::framework::standard::{CommandResult, macros::command};
     /// #
     /// # #[command]
-    /// # fn test(context: &mut Context) -> CommandResult {
+    /// # async fn test(context: &mut Context) -> CommandResult {
     /// if let Some(user) = context.cache.read().user(7) {
     ///     println!("User with Id 7 is currently named {}", user.read().name);
     /// }

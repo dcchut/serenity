@@ -6,6 +6,7 @@
 //! embeds:
 //!
 //! ```rust,no_run
+//! #![feature(async_closure)]
 //! use serenity::framework::standard::{
 //!     StandardFramework,
 //!     help_commands,
@@ -1180,6 +1181,7 @@ async fn send_error_embed(
 /// Use the command with `exec_help`:
 ///
 /// ```rust,no_run
+/// # #![feature(async_closure)]
 /// # use serenity::prelude::*;
 /// # struct Handler;
 /// #
@@ -1380,6 +1382,7 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 /// Use the command with `exec_help`:
 ///
 /// ```rust,no_run
+/// # #![feature(async_closure)]
 /// # use serenity::prelude::*;
 /// # struct Handler;
 /// #

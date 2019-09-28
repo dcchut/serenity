@@ -481,6 +481,7 @@ impl Client {
     /// Create a simple framework that responds to a `~ping` command:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # use serenity::prelude::EventHandler;
     /// # use std::error::Error;
     /// #
@@ -508,7 +509,8 @@ impl Client {
     /// #
     /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     ///
-    /// let mut client = Client::new(&env::var("DISCORD_TOKEN")?, Handler).await?;
+    /// let token = env::var("DISCORD_TOKEN")?;
+    /// let mut client = Client::new(&token, Handler).await?;
     /// client.with_framework(StandardFramework::new()
     ///     .configure(|c| c.prefix("~"))
     ///     // The macros generate instances of command and group structs, which reside as `static` variables.

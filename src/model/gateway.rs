@@ -75,6 +75,7 @@ impl Activity {
     /// Create a command that sets the current activity:
     ///
     /// ```rust,no_run
+    /// #![feature(async_closure)]
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]
@@ -84,7 +85,7 @@ impl Activity {
     ///
     /// # #[cfg(feature = "framework")]
     /// #[command]
-    /// fn activity(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
+    /// async fn activity(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
     ///     let name = args.message();
     ///     ctx.set_activity(Activity::playing(&name));
     ///
@@ -121,6 +122,7 @@ impl Activity {
     /// Create a command that sets the current streaming status:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]
@@ -130,7 +132,7 @@ impl Activity {
     ///
     /// # #[cfg(feature = "framework")]
     /// #[command]
-    /// fn stream(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
+    /// async fn stream(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
     ///     const STREAM_URL: &str = "...";
     ///
     ///     let name = args.message();
@@ -168,6 +170,7 @@ impl Activity {
     /// Create a command that sets the current listening status:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]
@@ -177,7 +180,7 @@ impl Activity {
     ///
     /// # #[cfg(feature = "framework")]
     /// #[command]
-    /// fn listen(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
+    /// async fn listen(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
     ///     let name = args.message();
     ///     ctx.set_activity(Activity::listening(&name));
     ///

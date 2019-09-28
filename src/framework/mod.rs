@@ -32,6 +32,7 @@
 //! ping and about command:
 //!
 //! ```rust,no_run
+//! #![feature(async_closure)]
 //! use serenity::client::{Client, Context, EventHandler};
 //! use serenity::model::channel::Message;
 //! use serenity::framework::standard::macros::{command, group};
@@ -62,7 +63,8 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() {
-//! let mut client = Client::new(&env::var("DISCORD_TOKEN").unwrap(), Handler).await.unwrap();
+//! let token = env::var("DISCORD_TOKEN").unwrap();
+//! let mut client = Client::new(&token, Handler).await.unwrap();
 //!
 //! client.with_framework(StandardFramework::new()
 //!     .configure(|c| c.prefix("~"))
@@ -84,6 +86,7 @@ pub use self::standard::StandardFramework;
 
 use crate::client::Context;
 use crate::model::channel::Message;
+use async_trait::async_trait;
 use threadpool::ThreadPool;
 
 /// A trait for defining your own framework for serenity to use.
@@ -92,20 +95,33 @@ use threadpool::ThreadPool;
 /// However, using this will benefit you by abstracting the `EventHandler` away,
 /// and providing a reference to serenity's threadpool,
 /// so that you may run your commands in separate threads.
+#[async_trait(?Send)]
 pub trait Framework {
-    fn dispatch(&mut self, _: Context, _: Message, _: &ThreadPool);
+    async fn dispatch(&mut self, _: Context, _: Message, _: &ThreadPool);
 }
 
+#[async_trait(?Send)]
 impl<F: Framework + ?Sized> Framework for Box<F> {
     #[inline]
-    fn dispatch(&mut self, ctx: Context, msg: Message, threadpool: &ThreadPool) {
-        (**self).dispatch(ctx, msg, threadpool);
+    async fn dispatch(&mut self, ctx: Context, msg: Message, threadpool: &ThreadPool) {
+        (**self).dispatch(ctx, msg, threadpool).await;
     }
 }
 
-impl<'a, F: Framework + ?Sized> Framework for &'a mut F {
+#[async_trait(?Send)]
+impl<T: Framework + ?Sized> Framework for Arc<T> {
     #[inline]
-    fn dispatch(&mut self, ctx: Context, msg: Message, threadpool: &ThreadPool) {
-        (**self).dispatch(ctx, msg, threadpool);
+    async fn dispatch(&mut self, ctx: Context, msg: Message, threadpool: &threadpool::ThreadPool) {
+        if let Some(s) = Arc::get_mut(self) {
+            (*s).dispatch(ctx, msg, threadpool).await;
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl<'a, F: Framework + ?Sized> Framework for &'a mut F {
+     #[inline]
+    async fn dispatch(&mut self, ctx: Context, msg: Message, threadpool: &ThreadPool) {
+        (**self).dispatch(ctx, msg, threadpool).await;
     }
 }

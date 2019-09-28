@@ -120,6 +120,8 @@ impl Parse for CommandFun {
 
         let visibility = input.parse()?;
 
+        // ASYNC
+        input.parse::<Token![async]>()?;
         input.parse::<Token![fn]>()?;
         let name = input.parse()?;
 
@@ -171,7 +173,11 @@ impl ToTokens for CommandFun {
         stream.extend(quote! {
             #(#cooked)*
             #visibility fn #name (#(#args),*) -> #ret {
-                #(#body)*
+                let _inner = async move || {
+                    #(#body)*
+                };
+
+                futures::executor::block_on(_inner())
             }
         });
     }

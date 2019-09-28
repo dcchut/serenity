@@ -79,10 +79,10 @@ impl Role {
     /// [Manage Roles]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_ROLES
     #[cfg(all(feature = "cache", feature = "http"))]
     #[inline]
-    pub fn delete<T>(&mut self, cache_and_http: T) -> Result<()>
+    pub async fn delete<T>(&mut self, cache_and_http: T) -> Result<()>
     where T: AsRef<CacheRwLock> + AsRef<Http> {
         AsRef::<Http>::as_ref(&cache_and_http)
-            .delete_role(self.find_guild(&cache_and_http)?.0, self.id.0)
+            .delete_role(self.find_guild(&cache_and_http)?.0, self.id.0).await
     }
 
     /// Edits a [`Role`], optionally setting its new fields.
@@ -108,10 +108,14 @@ impl Role {
     /// [`Role`]: struct.Role.html
     /// [Manage Roles]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_ROLES
     #[cfg(all(feature = "builder", feature = "cache", feature = "http"))]
-    pub fn edit<F: FnOnce(&mut EditRole) -> &mut EditRole, T>(&self, cache_and_http: T, f: F) -> Result<Role>
+    pub async fn edit<F: FnOnce(&mut EditRole) -> &mut EditRole, T>(&self, cache_and_http: T, f: F) -> Result<Role>
     where T: AsRef<CacheRwLock> + AsRef<Http> {
-        self.find_guild(&cache_and_http)
-            .and_then(|guild_id| guild_id.edit_role(&cache_and_http, self.id, f))
+        match self.find_guild(&cache_and_http) {
+            Ok(guild_id) => {
+                guild_id.edit_role(&cache_and_http, self.id, f).await
+            },
+            Err(e) => Err(e),
+        }
     }
     /// Searches the cache for the guild that owns the role.
     ///

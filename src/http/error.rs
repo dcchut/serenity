@@ -4,8 +4,9 @@ use reqwest::{
     Response,
     StatusCode,
     Url,
-    UrlError,
 };
+use url::ParseError;
+
 use std::{
     error::Error as StdError,
     fmt::{
@@ -41,7 +42,8 @@ impl From<Response> for ErrorResponse {
         ErrorResponse {
             status_code: r.status(),
             url: r.url().clone(),
-            error: r.json().unwrap_or_else(|_| DiscordJsonError {
+            // TODO: block_on
+            error: futures::executor::block_on(r.json()).unwrap_or_else(|_| DiscordJsonError {
                 code: -1,
                 message: "[Serenity] No correct json was received!".to_string(),
                 non_exhaustive: (),
@@ -62,7 +64,7 @@ pub enum Error {
     /// from UTF-8.
     RateLimitUtf8,
     /// When parsing an URL failed due to invalid input.
-    Url(UrlError),
+    Url(ParseError),
     /// Header value contains invalid input.
     InvalidHeader(InvalidHeaderValue),
     /// Reqwest's Error contain information on why sending a request failed.
@@ -77,8 +79,8 @@ impl From<ReqwestError> for Error {
     }
 }
 
-impl From<UrlError> for Error {
-    fn from(error: UrlError) -> Error {
+impl From<ParseError> for Error {
+    fn from(error: ParseError) -> Error {
         Error::Url(error)
     }
 }

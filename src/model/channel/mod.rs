@@ -242,19 +242,23 @@ impl Channel {
     ///
     /// [`Group`]: struct.Group.html
     #[cfg(all(feature = "model", feature = "http"))]
-    pub fn delete(&self, cache_http: impl CacheHttp) -> Result<()> {
+    pub async fn delete(&self, cache_http: impl CacheHttp) -> Result<()> {
         match *self {
             Channel::Group(ref group) => {
-                let _ = group.read().leave(cache_http.http())?;
+                let g = group.read();
+                let _ = g.leave(cache_http.http()).await?;
             },
             Channel::Guild(ref public_channel) => {
-                let _ = public_channel.read().delete(cache_http)?;
+                let g = public_channel.read();
+                let _ = g.delete(cache_http).await?;
             },
             Channel::Private(ref private_channel) => {
-                let _ = private_channel.read().delete(cache_http.http())?;
+                let g = private_channel.read();
+                let _ = g.delete(cache_http.http()).await?;
             },
             Channel::Category(ref category) => {
-                category.read().delete(cache_http)?;
+                let g = category.read();
+                g.delete(cache_http).await?;
             },
             Channel::__Nonexhaustive => unreachable!(),
         }

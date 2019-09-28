@@ -135,7 +135,7 @@ impl Ratelimiter {
         Arc::clone(&self.routes)
     }
 
-    pub fn perform(&self, req: RatelimitedRequest<'_>) -> Result<Response> {
+    pub async fn perform(&self, req: RatelimitedRequest<'_>) -> Result<Response> {
         let RatelimitedRequest { req } = req;
 
         loop {
@@ -169,7 +169,7 @@ impl Ratelimiter {
             bucket.lock().pre_hook(&route);
 
             let request = req.build(&self.client, &self.token)?;
-            let response = request.send()?;
+            let response = request.send().await?;
 
             // Check if the request got ratelimited by checking for status 429,
             // and if so, sleep for the value of the header 'retry-after' -

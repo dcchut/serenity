@@ -1020,7 +1020,7 @@ fn flatten_group_to_plain_string(
 
 /// Sends an embed listing all groups with their commands.
 #[cfg(all(feature = "cache", feature = "http"))]
-fn send_grouped_commands_embed(
+async fn send_grouped_commands_embed(
     http: impl AsRef<Http>,
     help_options: &HelpOptions,
     channel_id: ChannelId,
@@ -1049,12 +1049,12 @@ fn send_grouped_commands_embed(
             embed
         });
         m
-    })
+    }).await
 }
 
 /// Sends embed showcasing information about a single command.
 #[cfg(all(feature = "cache", feature = "http"))]
-fn send_single_command_embed(
+async fn send_single_command_embed(
     http: impl AsRef<Http>,
     help_options: &HelpOptions,
     channel_id: ChannelId,
@@ -1125,12 +1125,12 @@ fn send_single_command_embed(
             embed
         });
         m
-    })
+    }).await
 }
 
 /// Sends embed listing commands that are similar to the sent one.
 #[cfg(all(feature = "cache", feature = "http"))]
-fn send_suggestion_embed(
+async fn send_suggestion_embed(
     http: impl AsRef<Http>,
     channel_id: ChannelId,
     help_description: &str,
@@ -1148,12 +1148,12 @@ fn send_suggestion_embed(
             e
         });
         m
-    })
+    }).await
 }
 
 /// Sends an embed explaining fetching commands failed.
 #[cfg(all(feature = "cache", feature = "http"))]
-fn send_error_embed(
+async fn send_error_embed(
     http: impl AsRef<Http>,
     channel_id: ChannelId,
     input: &str,
@@ -1166,7 +1166,7 @@ fn send_error_embed(
             e
         });
         m
-    })
+    }).await
 }
 
 /// Posts an embed showing each individual command group and its commands.
@@ -1205,7 +1205,7 @@ fn send_error_embed(
 /// ```
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::implicit_hasher)]
-pub fn with_embeds(
+pub async fn with_embeds(
     context: &mut Context,
     msg: &Message,
     args: Args,
@@ -1226,7 +1226,7 @@ pub fn with_embeds(
             &help_description,
             &suggestions,
             help_options.embed_error_colour,
-        ),
+        ).await,
         CustomisedHelpData::NoCommandFound {
             ref help_error_message,
         } => send_error_embed(
@@ -1234,7 +1234,7 @@ pub fn with_embeds(
             msg.channel_id,
             help_error_message,
             help_options.embed_error_colour,
-        ),
+        ).await,
         CustomisedHelpData::GroupedCommands {
             ref help_description,
             ref groups,
@@ -1245,14 +1245,14 @@ pub fn with_embeds(
             &help_description,
             &groups,
             help_options.embed_success_colour,
-        ),
+        ).await,
         CustomisedHelpData::SingleCommand { ref command } => send_single_command_embed(
             &context.http,
             &help_options,
             msg.channel_id,
             &command,
             help_options.embed_success_colour,
-        ),
+        ).await,
         CustomisedHelpData::__Nonexhaustive => unreachable!(),
     } {
         warn_about_failed_send!(&formatted_help, why);
@@ -1402,7 +1402,7 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 /// ```
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::implicit_hasher)]
-pub fn plain(
+pub async fn plain(
     context: &mut Context,
     msg: &Message,
     args: Args,
@@ -1431,7 +1431,7 @@ pub fn plain(
         CustomisedHelpData::__Nonexhaustive => unreachable!(),
     };
 
-    if let Err(why) = msg.channel_id.say(&context.http, result) {
+    if let Err(why) = msg.channel_id.say(&context.http, result).await {
         warn_about_failed_send!(&formatted_help, why);
     };
 

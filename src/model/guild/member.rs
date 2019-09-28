@@ -92,17 +92,17 @@ impl Member {
     /// [Manage Roles]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_ROLES
     #[cfg(all(feature = "cache", feature = "http"))]
     #[inline]
-    pub fn add_role<R: Into<RoleId>>(&mut self, http: impl AsRef<Http>, role_id: R) -> Result<()> {
-        self._add_role(&http, role_id.into())
+    pub async fn add_role<R: Into<RoleId>>(&mut self, http: impl AsRef<Http>, role_id: R) -> Result<()> {
+        self._add_role(&http, role_id.into()).await
     }
 
     #[cfg(all(feature = "cache", feature = "http"))]
-    fn _add_role(&mut self, http: impl AsRef<Http>, role_id: RoleId) -> Result<()> {
+    async fn _add_role(&mut self, http: impl AsRef<Http>, role_id: RoleId) -> Result<()> {
         if self.roles.contains(&role_id) {
             return Ok(());
         }
 
-        match http.as_ref().add_member_role(self.guild_id.0, self.user.read().id.0, role_id.0) {
+        match http.as_ref().add_member_role(self.guild_id.0, self.user.read().id.0, role_id.0).await {
             Ok(()) => {
                 self.roles.push(role_id);
 
@@ -120,14 +120,14 @@ impl Member {
     /// [`Role`]: struct.Role.html
     /// [Manage Roles]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_ROLES
     #[cfg(all(feature = "cache", feature = "http"))]
-    pub fn add_roles(&mut self, http: impl AsRef<Http>, role_ids: &[RoleId]) -> Result<()> {
+    pub async fn add_roles(&mut self, http: impl AsRef<Http>, role_ids: &[RoleId]) -> Result<()> {
         self.roles.extend_from_slice(role_ids);
 
         let mut builder = EditMember::default();
         builder.roles(&self.roles);
         let map = utils::hashmap_to_json_map(builder.0);
 
-        match http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map) {
+        match http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await {
             Ok(()) => Ok(()),
             Err(why) => {
                 self.roles.retain(|r| !role_ids.contains(r));
@@ -151,12 +151,12 @@ impl Member {
     /// [Ban Members]: ../permissions/struct.Permissions.html#associatedconstant.BAN_MEMBERS
     #[cfg(all(feature = "cache", feature = "http"))]
     #[inline]
-    pub fn ban<BO: BanOptions>(&self, http: impl AsRef<Http>, ban_options: &BO) -> Result<()> {
-        self._ban(&http, ban_options.dmd(), ban_options.reason())
+    pub async fn ban<BO: BanOptions>(&self, http: impl AsRef<Http>, ban_options: &BO) -> Result<()> {
+        self._ban(&http, ban_options.dmd(), ban_options.reason()).await
     }
 
     #[cfg(all(feature = "cache", feature = "http"))]
-    fn _ban(&self, http: impl AsRef<Http>, dmd: u8, reason: &str) -> Result<()> {
+    async fn _ban(&self, http: impl AsRef<Http>, dmd: u8, reason: &str) -> Result<()> {
         if dmd > 7 {
             return Err(Error::Model(ModelError::DeleteMessageDaysAmount(dmd)));
         }
@@ -170,7 +170,7 @@ impl Member {
             self.user.read().id.0,
             dmd,
             &*reason,
-        )
+        ).await
     }
 
     /// Determines the member's colour.
@@ -244,12 +244,12 @@ impl Member {
     /// [`Guild::edit_member`]: struct.Guild.html#method.edit_member
     /// [`EditMember`]: ../../builder/struct.EditMember.html
     #[cfg(feature = "cache")]
-    pub fn edit<F: FnOnce(&mut EditMember) -> &mut EditMember>(&self, http: impl AsRef<Http>, f: F) -> Result<()> {
+    pub async fn edit<F: FnOnce(&mut EditMember) -> &mut EditMember>(&self, http: impl AsRef<Http>, f: F) -> Result<()> {
         let mut edit_member = EditMember::default();
         f(&mut edit_member);
         let map = utils::hashmap_to_json_map(edit_member.0);
 
-        http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map)
+        http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await
     }
 
     /// Retrieves the ID and position of the member's highest role in the
@@ -324,7 +324,7 @@ impl Member {
     /// [`ModelError::InvalidPermissions`]: ../error/enum.Error.html#variant.InvalidPermissions
     /// [Kick Members]: ../permissions/struct.Permissions.html#associatedconstant.KICK_MEMBERS
     #[cfg(feature = "http")]
-    pub fn kick(&self, cache_http: impl CacheHttp) -> Result<()> {
+    pub async fn kick(&self, cache_http: impl CacheHttp) -> Result<()> {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
@@ -343,7 +343,7 @@ impl Member {
             }
         }
 
-        self.guild_id.kick(cache_http.http(), self.user.read().id)
+        self.guild_id.kick(cache_http.http(), self.user.read().id).await
     }
 
     /// Returns the guild-level permissions for the member.
@@ -387,17 +387,17 @@ impl Member {
     /// [Manage Roles]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_ROLES
     #[cfg(all(feature = "cache", feature = "http"))]
     #[inline]
-    pub fn remove_role<R: Into<RoleId>>(&mut self, http: impl AsRef<Http>, role_id: R) -> Result<()> {
-        self._remove_role(&http, role_id.into())
+    pub async fn remove_role<R: Into<RoleId>>(&mut self, http: impl AsRef<Http>, role_id: R) -> Result<()> {
+        self._remove_role(&http, role_id.into()).await
     }
 
     #[cfg(all(feature = "cache", feature = "http"))]
-    fn _remove_role(&mut self, http: impl AsRef<Http>, role_id: RoleId) -> Result<()> {
+    async fn _remove_role(&mut self, http: impl AsRef<Http>, role_id: RoleId) -> Result<()> {
         if !self.roles.contains(&role_id) {
             return Ok(());
         }
 
-        match http.as_ref().remove_member_role(self.guild_id.0, self.user.read().id.0, role_id.0) {
+        match http.as_ref().remove_member_role(self.guild_id.0, self.user.read().id.0, role_id.0).await {
             Ok(()) => {
                 self.roles.retain(|r| r.0 != role_id.0);
 
@@ -414,14 +414,14 @@ impl Member {
     /// [`Role`]: struct.Role.html
     /// [Manage Roles]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_ROLES
     #[cfg(all(feature = "cache", feature = "http"))]
-    pub fn remove_roles(&mut self, http: impl AsRef<Http>, role_ids: &[RoleId]) -> Result<()> {
+    pub async fn remove_roles(&mut self, http: impl AsRef<Http>, role_ids: &[RoleId]) -> Result<()> {
         self.roles.retain(|r| !role_ids.contains(r));
 
         let mut builder = EditMember::default();
         builder.roles(&self.roles);
         let map = utils::hashmap_to_json_map(builder.0);
 
-        match http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map) {
+        match http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await {
             Ok(()) => Ok(()),
             Err(why) => {
                 self.roles.extend_from_slice(role_ids);
@@ -463,8 +463,8 @@ impl Member {
     /// [`User`]: ../user/struct.User.html
     /// [Ban Members]: ../permissions/struct.Permissions.html#associatedconstant.BAN_MEMBERS
     #[cfg(all(feature = "cache", feature = "http"))]
-    pub fn unban(&self, http: impl AsRef<Http>) -> Result<()> {
-        http.as_ref().remove_ban(self.guild_id.0, self.user.read().id.0)
+    pub async fn unban(&self, http: impl AsRef<Http>) -> Result<()> {
+        http.as_ref().remove_ban(self.guild_id.0, self.user.read().id.0).await
     }
 
     /// Retrieves the member's user ID.

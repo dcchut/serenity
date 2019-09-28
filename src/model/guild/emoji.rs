@@ -96,11 +96,11 @@ impl Emoji {
     /// # fn main() { }
     /// ```
     #[cfg(all(feature = "cache", feature = "http"))]
-    pub fn delete<T>(&self, cache_and_http: T) -> Result<()>
+    pub async fn delete<T>(&self, cache_and_http: T) -> Result<()>
     where T: AsRef<CacheRwLock> + AsRef<Http> {
         match self.find_guild_id(&cache_and_http) {
             Some(guild_id) => AsRef::<Http>::as_ref(&cache_and_http)
-                .delete_emoji(guild_id.0, self.id.0),
+                .delete_emoji(guild_id.0, self.id.0).await,
             None => Err(Error::Model(ModelError::ItemMissing)),
         }
     }
@@ -113,7 +113,7 @@ impl Emoji {
     ///
     /// [Manage Emojis]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_EMOJIS
     #[cfg(all(feature = "cache", feature = "http"))]
-    pub fn edit<T>(&mut self, cache_and_http: T, name: &str) -> Result<()>
+    pub async fn edit<T>(&mut self, cache_and_http: T, name: &str) -> Result<()>
     where T: AsRef<CacheRwLock> + AsRef<Http> {
         match self.find_guild_id(&cache_and_http) {
             Some(guild_id) => {
@@ -122,7 +122,7 @@ impl Emoji {
                 });
 
                 match AsRef::<Http>::as_ref(&cache_and_http)
-                    .edit_emoji(guild_id.0, self.id.0, &map) {
+                    .edit_emoji(guild_id.0, self.id.0, &map).await {
                     Ok(emoji) => {
                         mem::replace(self, emoji);
 

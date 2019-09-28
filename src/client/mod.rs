@@ -334,14 +334,14 @@ impl Client {
     /// #    try_main().unwrap();
     /// # }
     /// ```
-    pub fn new<H: EventHandler + 'static>(token: impl AsRef<str>, handler: H) -> Result<Self> {
-        Self::new_with_extras(token, |e| e.event_handler(handler))
+    pub async fn new<H: EventHandler + 'static>(token: impl AsRef<str>, handler: H) -> Result<Self> {
+        Self::new_with_extras(token, |e| e.event_handler(handler)).await
     }
 
     /// Creates a client with an optional Handler. If you pass `None`, events are never parsed, but
     /// they can be received by registering a RawHandler.
     #[deprecated(since = "0.8.0", note = "Replaced by `new_with_extras`.")]
-    pub fn new_with_handlers<H, RH>(token: impl AsRef<str>, handler: Option<H>, raw_handler: Option<RH>) -> Result<Self>
+    pub async fn new_with_handlers<H, RH>(token: impl AsRef<str>, handler: Option<H>, raw_handler: Option<RH>) -> Result<Self>
         where H: EventHandler + 'static, RH: RawEventHandler + 'static
     {
         Self::new_with_extras(token, |e| {
@@ -354,7 +354,7 @@ impl Client {
             }
 
             e
-        })
+        }).await
     }
 
     /// Creates a Client for a bot user and sets a cache update timeout.
@@ -365,7 +365,7 @@ impl Client {
     /// a write-lock until success and potentially deadlock.
     #[cfg(feature = "cache")]
     #[deprecated(since = "0.8.0", note = "Replaced by `new_with_extras`.")]
-    pub fn new_with_cache_update_timeout<H>(token: impl AsRef<str>, handler: H, duration: Option<Duration>) -> Result<Self>
+    pub async fn new_with_cache_update_timeout<H>(token: impl AsRef<str>, handler: H, duration: Option<Duration>) -> Result<Self>
         where H: EventHandler + 'static
     {
         Self::new_with_extras(token, |e| {
@@ -376,11 +376,11 @@ impl Client {
             }
 
             e
-        })
+        }).await
     }
 
     /// Creates a client with extra configuration.
-    pub fn new_with_extras(token: impl AsRef<str>, f: impl FnOnce(&mut Extras) -> &mut Extras) -> Result<Self>
+    pub async fn new_with_extras(token: impl AsRef<str>, f: impl FnOnce(&mut Extras) -> &mut Extras) -> Result<Self>
     {
         let token = token.as_ref().trim();
 
@@ -406,7 +406,7 @@ impl Client {
 
         let name = "serenity client".to_owned();
         let threadpool = ThreadPool::with_name(name, 5);
-        let url = Arc::new(Mutex::new(http.get_gateway()?.url));
+        let url = Arc::new(Mutex::new(http.get_gateway().await?.url));
         let data = Arc::new(RwLock::new(ShareMap::custom()));
 
         #[cfg(feature = "framework")]
@@ -673,9 +673,9 @@ impl Client {
     ///
     /// [`ClientError::Shutdown`]: enum.ClientError.html#variant.Shutdown
     /// [gateway docs]: ../gateway/index.html#sharding
-    pub fn start_autosharded(&mut self) -> Result<()> {
+    pub async fn start_autosharded(&mut self) -> Result<()> {
         let (x, y) = {
-            let res = self.cache_and_http.http.get_bot_gateway()?;
+            let res = self.cache_and_http.http.get_bot_gateway().await?;
 
             (res.shards as u64 - 1, res.shards as u64)
         };

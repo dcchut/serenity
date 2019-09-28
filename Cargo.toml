@@ -16,6 +16,8 @@ bitflags = "1"
 log = "0.4"
 parking_lot = "0.9"
 serde_json = "1"
+mime_guess = "2.0"
+futures-preview = { version = "=0.3.0-alpha.19", features = ["async-await"] }
 
 [dependencies.audiopus]
 optional = true
@@ -51,9 +53,9 @@ optional = true
 version = "1"
 
 [dependencies.reqwest]
-default-features = false
+git = "https://github.com/seanmonstar/reqwest"
+features = ["json"]
 optional = true
-version = "0.9"
 
 [dependencies.rand]
 optional = true
@@ -112,7 +114,7 @@ default = [
     "http",
     "standard_framework",
     "utils",
-    "rustls_backend",
+    "native_tls_backend",
 ]
 default_native_tls = [
     "builder",
@@ -144,7 +146,7 @@ gateway = [
 ]
 http = []
 absolute_ratelimits = ["http"]
-rustls_backend = ["reqwest/rustls-tls", "tungstenite", "rustls", "webpki", "webpki-roots"]
+rustls_backend = ["tungstenite", "rustls", "webpki", "webpki-roots"]
 native_tls_backend = ["reqwest/default-tls", "tungstenite/tls"]
 model = ["builder", "http"]
 standard_framework = ["framework", "uwl", "command_attr"]

@@ -116,13 +116,12 @@ impl Attachment {
     /// [`Error::Http`]: ../../enum.Error.html#variant.Http
     /// [`Error::Io`]: ../../enum.Error.html#variant.Io
     /// [`Message`]: struct.Message.html
-    pub fn download(&self) -> Result<Vec<u8>> {
+    pub async fn download(&self) -> Result<Vec<u8>> {
         let reqwest = ReqwestClient::new();
-        let mut response = reqwest.get(&self.url).send()?;
+        let response = reqwest.get(&self.url).send().await?
+            .bytes()
+            .await?;
 
-        let mut bytes = vec![];
-        response.read_to_end(&mut bytes)?;
-
-        Ok(bytes)
+        Ok(response.into_iter().collect())
     }
 }

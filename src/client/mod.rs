@@ -81,20 +81,25 @@ use crate::http::Http;
 /// use serenity::prelude::*;
 /// use serenity::model::prelude::*;
 /// use serenity::Client;
+/// use async_trait::async_trait;
 ///
 /// struct Handler;
 ///
+/// #[async_trait(?Send)]
 /// impl EventHandler for Handler {
-///     fn message(&self, context: Context, msg: Message) {
+///     async fn message(&self, context: Context, msg: Message) {
 ///         if msg.content == "!ping" {
-///             let _ = msg.channel_id.say(&context, "Pong!");
+///             let _ = msg.channel_id.say(&context, "Pong!").await;
 ///         }
 ///     }
 /// }
 ///
-/// let mut client = Client::new("my token here", Handler).expect("Could not create new client.");
+/// # #[tokio::main]
+/// # async fn main() {
+/// let mut client = Client::new("my token here", Handler).await.expect("Could not create new client.");
 ///
-/// client.start().expect("Could not start client.");
+/// client.start().await.expect("Could not start client.");
+/// # }
 /// ```
 ///
 /// [`Shard`]: ../gateway/struct.Shard.html
@@ -214,13 +219,14 @@ pub struct Client {
     /// # use std::time::Duration;
     /// # use std::{env, thread};
     ///
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     ///
     /// struct Handler;
     ///
     /// impl EventHandler for Handler { }
     ///
-    /// let mut client = Client::new(&env::var("DISCORD_TOKEN")?, Handler)?;
+    /// let token = env::var("DISCORD_TOKEN")?;
+    /// let mut client = Client::new(&token, Handler).await?;
     ///
     /// let shard_manager = client.shard_manager.clone();
     ///
@@ -235,8 +241,9 @@ pub struct Client {
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -245,7 +252,7 @@ pub struct Client {
     /// ```rust,no_run
     /// # use std::error::Error;
     /// #
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// use serenity::client::{Client, EventHandler};
     /// use std::time::Duration;
     /// use std::{env, thread};
@@ -254,7 +261,8 @@ pub struct Client {
     ///
     /// impl EventHandler for Handler { }
     ///
-    /// let mut client = Client::new(&env::var("DISCORD_TOKEN")?, Handler)?;
+    /// let token = env::var("DISCORD_TOKEN")?;
+    /// let mut client = Client::new(&token, Handler).await?;
     ///
     /// // Create a clone of the `Arc` containing the shard manager.
     /// let shard_manager = client.shard_manager.clone();
@@ -269,12 +277,13 @@ pub struct Client {
     ///     println!("Shutdown shard manager!");
     /// });
     ///
-    /// println!("Client shutdown: {:?}", client.start());
+    /// println!("Client shutdown: {:?}", client.start().await);
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -321,17 +330,18 @@ impl Client {
     /// impl EventHandler for Handler {}
     /// # use std::error::Error;
     /// #
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// use serenity::Client;
     /// use std::env;
     ///
     /// let token = env::var("DISCORD_TOKEN")?;
-    /// let client = Client::new(&token, Handler)?;
+    /// let client = Client::new(&token, Handler).await?;
     /// # Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #    try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #    try_main().await.unwrap();
     /// # }
     /// ```
     pub async fn new<H: EventHandler + 'static>(token: impl AsRef<str>, handler: H) -> Result<Self> {
@@ -486,8 +496,8 @@ impl Client {
     /// use serenity::framework::standard::{CommandResult, macros::{group, command}};
     ///
     /// #[command]
-    /// fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
-    ///     msg.channel_id.say(&ctx.http, "Pong!")?;
+    /// async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
+    ///     msg.channel_id.say(&ctx.http, "Pong!").await?;
     ///     Ok(())
     /// }
     ///
@@ -496,9 +506,9 @@ impl Client {
     /// #[commands(ping)]
     /// struct PingPong;
     /// #
-    /// # fn try_main() -> Result<(), Box<dyn Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     ///
-    /// let mut client = Client::new(&env::var("DISCORD_TOKEN")?, Handler)?;
+    /// let mut client = Client::new(&env::var("DISCORD_TOKEN")?, Handler).await?;
     /// client.with_framework(StandardFramework::new()
     ///     .configure(|c| c.prefix("~"))
     ///     // The macros generate instances of command and group structs, which reside as `static` variables.
@@ -507,8 +517,9 @@ impl Client {
     /// # Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -602,27 +613,28 @@ impl Client {
     /// struct Handler;
     ///
     /// impl EventHandler for Handler {}
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// use serenity::client::Client;
     /// use std::env;
     ///
     /// let token = env::var("DISCORD_TOKEN")?;
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
-    /// if let Err(why) = client.start() {
+    /// if let Err(why) = client.start().await {
     ///     println!("Err with client: {:?}", why);
     /// }
     /// # Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
     /// [gateway docs]: ../gateway/index.html#sharding
-    pub fn start(&mut self) -> Result<()> {
-        self.start_connection([0, 0, 1])
+    pub async fn start(&mut self) -> Result<()> {
+        self.start_connection([0, 0, 1]).await
     }
 
     /// Establish the connection(s) and start listening for events.
@@ -648,21 +660,22 @@ impl Client {
     /// struct Handler;
     ///
     /// impl EventHandler for Handler {}
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// use serenity::client::Client;
     /// use std::env;
     ///
     /// let token = env::var("DISCORD_TOKEN")?;
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
-    /// if let Err(why) = client.start_autosharded() {
+    /// if let Err(why) = client.start_autosharded().await {
     ///     println!("Err with client: {:?}", why);
     /// }
     /// # Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -680,7 +693,7 @@ impl Client {
             (res.shards as u64 - 1, res.shards as u64)
         };
 
-        self.start_connection([0, x, y])
+        self.start_connection([0, x, y]).await
     }
 
     /// Establish a sharded connection and start listening for events.
@@ -706,21 +719,22 @@ impl Client {
     /// struct Handler;
     ///
     /// impl EventHandler for Handler {}
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// use serenity::client::Client;
     /// use std::env;
     ///
     /// let token = env::var("DISCORD_TOKEN")?;
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
-    /// if let Err(why) = client.start_shard(3, 5) {
+    /// if let Err(why) = client.start_shard(3, 5).await {
     ///     println!("Err with client: {:?}", why);
     /// }
     /// # Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -734,20 +748,22 @@ impl Client {
     /// struct Handler;
     ///
     /// impl EventHandler for Handler {}
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// use serenity::client::Client;
     /// use std::env;
     ///
-    /// let mut client = Client::new(&env::var("DISCORD_TOKEN")?, Handler)?;
+    /// let token = env::var("DISCORD_TOKEN")?;
+    /// let mut client = Client::new(&token, Handler).await?;
     ///
-    /// if let Err(why) = client.start_shard(0, 1) {
+    /// if let Err(why) = client.start_shard(0, 1).await {
     ///     println!("Err with client: {:?}", why);
     /// }
     /// # Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -760,8 +776,8 @@ impl Client {
     /// [`start`]: #method.start
     /// [`start_autosharded`]: #method.start_autosharded
     /// [gateway docs]: ../gateway/index.html#sharding
-    pub fn start_shard(&mut self, shard: u64, shards: u64) -> Result<()> {
-        self.start_connection([shard, shard, shards])
+    pub async fn start_shard(&mut self, shard: u64, shards: u64) -> Result<()> {
+        self.start_connection([shard, shard, shards]).await
     }
 
     /// Establish sharded connections and start listening for events.
@@ -787,21 +803,22 @@ impl Client {
     /// struct Handler;
     ///
     /// impl EventHandler for Handler {}
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// use serenity::client::Client;
     /// use std::env;
     ///
     /// let token = env::var("DISCORD_TOKEN")?;
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
-    /// if let Err(why) = client.start_shards(8) {
+    /// if let Err(why) = client.start_shards(8).await {
     ///     println!("Err with client: {:?}", why);
     /// }
     /// # Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -814,8 +831,8 @@ impl Client {
     /// [`start_shard`]: #method.start_shard
     /// [`start_shard_range`]: #method.start_shard_range
     /// [Gateway docs]: ../gateway/index.html#sharding
-    pub fn start_shards(&mut self, total_shards: u64) -> Result<()> {
-        self.start_connection([0, total_shards - 1, total_shards])
+    pub async fn start_shards(&mut self, total_shards: u64) -> Result<()> {
+        self.start_connection([0, total_shards - 1, total_shards]).await
     }
 
     /// Establish a range of sharded connections and start listening for events.
@@ -843,10 +860,12 @@ impl Client {
     /// use serenity::Client;
     /// use std::env;
     ///
+    /// # async fn try_main() {
     /// let token = env::var("DISCORD_TOKEN").unwrap();
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
-    /// let _ = client.start_shard_range([4, 7], 10);
+    /// let _ = client.start_shard_range([4, 7], 10).await;
+    /// # }
     /// ```
     ///
     /// ```rust,no_run
@@ -856,21 +875,22 @@ impl Client {
     /// struct Handler;
     ///
     /// impl EventHandler for Handler {}
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// use serenity::client::Client;
     /// use std::env;
     ///
     /// let token = env::var("DISCORD_TOKEN")?;
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
-    /// if let Err(why) = client.start_shard_range([4, 7], 10) {
+    /// if let Err(why) = client.start_shard_range([4, 7], 10).await {
     ///     println!("Err with client: {:?}", why);
     /// }
     /// # Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -884,8 +904,8 @@ impl Client {
     /// [`start_shard`]: #method.start_shard
     /// [`start_shards`]: #method.start_shards
     /// [Gateway docs]: ../gateway/index.html#sharding
-    pub fn start_shard_range(&mut self, range: [u64; 2], total_shards: u64) -> Result<()> {
-        self.start_connection([range[0], range[1], total_shards])
+    pub async fn start_shard_range(&mut self, range: [u64; 2], total_shards: u64) -> Result<()> {
+        self.start_connection([range[0], range[1], total_shards]).await
     }
 
     // Shard data layout is:
@@ -901,13 +921,13 @@ impl Client {
     // an error.
     //
     // [`ClientError::Shutdown`]: enum.ClientError.html#variant.Shutdown
-    fn start_connection(&mut self, shard_data: [u64; 3]) -> Result<()> {
+    async fn start_connection(&mut self, shard_data: [u64; 3]) -> Result<()> {
         #[cfg(feature = "voice")]
         self.voice_manager.lock().set_shard_count(shard_data[2]);
 
         #[cfg(feature = "voice")]
         {
-            let user = self.cache_and_http.http.get_current_user()?;
+            let user = self.cache_and_http.http.get_current_user().await?;
 
             self.voice_manager.lock().set_user_id(user.id);
         }

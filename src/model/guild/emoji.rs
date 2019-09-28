@@ -75,7 +75,7 @@ impl Emoji {
     /// # use serenity::model::prelude::{EmojiId, Emoji, Role};
     /// #
     /// # #[command]
-    /// # fn example(ctx: &mut Context) -> CommandResult {
+    /// # async fn example(ctx: &mut Context) -> CommandResult {
     /// #     let mut emoji = serde_json::from_value::<Emoji>(json!({
     /// #         "animated": false,
     /// #         "id": EmojiId(7),
@@ -86,7 +86,7 @@ impl Emoji {
     /// #     })).unwrap();
     /// #
     /// // assuming emoji has been set already
-    /// match emoji.delete(&ctx) {
+    /// match emoji.delete(&ctx).await {
     ///     Ok(()) => println!("Emoji deleted."),
     ///     Err(_) => println!("Could not delete emoji.")
     /// }

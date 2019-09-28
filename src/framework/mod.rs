@@ -39,15 +39,15 @@
 //! use std::env;
 //!
 //! #[command]
-//! fn about(ctx: &mut Context, msg: &Message) -> CommandResult {
-//!     msg.channel_id.say(&ctx.http, "A simple test bot")?;
+//! async fn about(ctx: &mut Context, msg: &Message) -> CommandResult {
+//!     msg.channel_id.say(&ctx.http, "A simple test bot").await?;
 //!
 //!     Ok(())
 //! }
 //!
 //! #[command]
-//! fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
-//!     msg.channel_id.say(&ctx.http, "pong!")?;
+//! async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
+//!     msg.channel_id.say(&ctx.http, "pong!").await?;
 //!
 //!     Ok(())
 //! }
@@ -60,8 +60,9 @@
 //!
 //! impl EventHandler for Handler {}
 //!
-//! # fn main() {
-//! let mut client = Client::new(&env::var("DISCORD_TOKEN").unwrap(), Handler).unwrap();
+//! # #[tokio::main]
+//! # async fn main() {
+//! let mut client = Client::new(&env::var("DISCORD_TOKEN").unwrap(), Handler).await.unwrap();
 //!
 //! client.with_framework(StandardFramework::new()
 //!     .configure(|c| c.prefix("~"))

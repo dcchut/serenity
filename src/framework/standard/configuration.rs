@@ -81,11 +81,13 @@ impl From<(bool, bool, bool)> for WithWhiteSpace {
 /// use serenity::framework::StandardFramework;
 /// use serenity::model::id::UserId;
 ///
+/// # async fn try_main() {
 /// let token = env::var("DISCORD_BOT_TOKEN").unwrap();
-/// let mut client = Client::new(&token, Handler).unwrap();
+/// let mut client = Client::new(&token, Handler).await.unwrap();
 ///
 /// client.with_framework(StandardFramework::new()
 ///     .configure(|c| c.on_mention(Some(UserId(5))).prefix("~")));
+/// # }
 /// ```
 ///
 /// [`Client`]: ../../client/struct.Client.html
@@ -187,12 +189,16 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// #
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// use serenity::model::id::ChannelId;
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c
     ///     .allowed_channels(vec![ChannelId(7), ChannelId(77)].into_iter().collect())));
+    /// # }
     /// ```
     pub fn allowed_channels(&mut self, channels: HashSet<ChannelId>) -> &mut Self {
         self.allowed_channels = channels;
@@ -213,12 +219,15 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// use serenity::model::id::GuildId;
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c
     ///     .blocked_guilds(vec![GuildId(7), GuildId(77)].into_iter().collect())));
+    /// # }
     /// ```
     pub fn blocked_guilds(&mut self, guilds: HashSet<GuildId>) -> &mut Self {
         self.blocked_guilds = guilds;
@@ -241,12 +250,15 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// use serenity::model::id::UserId;
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c
     ///     .blocked_users(vec![UserId(7), UserId(77)].into_iter().collect())));
+    /// # }
     /// ```
     pub fn blocked_users(&mut self, users: HashSet<UserId>) -> &mut Self {
         self.blocked_users = users;
@@ -269,8 +281,8 @@ impl Configuration {
     /// use serenity::framework::standard::{CommandResult, macros::{group, command}};
     ///
     /// #[command]
-    /// fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
-    ///     msg.channel_id.say(&ctx.http, "Pong!")?;
+    /// async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
+    ///     msg.channel_id.say(&ctx.http, "Pong!").await?;
     ///     Ok(())
     /// }
     ///
@@ -278,12 +290,13 @@ impl Configuration {
     /// #[commands(ping)]
     /// struct Peng;
     ///
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::prelude::*;
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// let disabled = vec!["ping"].into_iter().map(|x| x.to_string()).collect();
     ///
     /// client.with_framework(StandardFramework::new()
@@ -314,7 +327,9 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new()
@@ -325,6 +340,7 @@ impl Configuration {
     ///             "~"
     ///         }.to_string())
     ///     })));
+    /// # }
     /// ```
     pub fn dynamic_prefix<F>(&mut self, dynamic_prefix: F) -> &mut Self
     where
@@ -410,12 +426,15 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// use serenity::model::id::UserId;
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c
     ///     .owners(vec![UserId(7), UserId(77)].into_iter().collect())));
+    /// # }
     /// ```
     ///
     /// Create a HashSet beforehand:
@@ -425,7 +444,9 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// use serenity::model::id::UserId;
     /// use std::collections::HashSet;
     /// use serenity::framework::StandardFramework;
@@ -435,6 +456,7 @@ impl Configuration {
     /// set.insert(UserId(77));
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c.owners(set)));
+    /// # }
     /// ```
     #[allow(clippy::implicit_hasher)]
     pub fn owners(&mut self, user_ids: HashSet<UserId>) -> &mut Self {
@@ -457,12 +479,15 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c
     ///     .prefix("!")));
+    /// # }
     /// ```
     pub fn prefix(&mut self, prefix: &str) -> &mut Self {
         self.prefixes = vec![prefix.to_string()];
@@ -484,12 +509,15 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c
     ///     .prefixes(vec!["!", ">", "+"])));
+    /// # }
     /// ```
     ///
     /// [`prefix`]: #method.prefix
@@ -530,12 +558,15 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c
     ///     .delimiter(", ")));
+    /// # }
     /// ```
     pub fn delimiter<I: Into<Delimiter>>(&mut self, delimiter: I) -> &mut Self {
         self.delimiters.clear();
@@ -558,12 +589,15 @@ impl Configuration {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new().configure(|c| c
     ///     .delimiters(vec![", ", " "])));
+    /// # }
     /// ```
     ///
     /// [`delimiter`]: #method.delimiter

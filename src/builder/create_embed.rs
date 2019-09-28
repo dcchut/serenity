@@ -220,14 +220,16 @@ impl CreateEmbed {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "client")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// use serenity::prelude::*;
     /// use serenity::model::channel::Message;
-    ///
+    /// use async_trait::async_trait;
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, mut msg: Message) {
+    ///     async fn message(&self, context: Context, mut msg: Message) {
     ///         if msg.content == "~embed" {
     ///             let _ = msg.channel_id.send_message(&context.http, |m| {
     ///                 m.embed(|e| {
@@ -235,14 +237,14 @@ impl CreateEmbed {
     ///                 });
     ///
     ///                 m
-    ///             });
+    ///             }).await;
     ///         }
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(not(feature = "client"))]
@@ -255,20 +257,22 @@ impl CreateEmbed {
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "cache", feature = "client"))]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// use serenity::prelude::*;
     /// use serenity::model::guild::Member;
     /// use serenity::model::id::GuildId;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn guild_member_addition(&self, context: Context, guild_id: GuildId, member: Member) {
+    ///     async fn guild_member_addition(&self, context: Context, guild_id: GuildId, member: Member) {
     ///         let cache = context.cache.read();
     ///
-    ///         if let Ok(guild) = guild_id.to_partial_guild(&context) {
-    ///             let channels = guild.channels(&context)
-    ///                 .unwrap();
+    ///         if let Ok(guild) = guild_id.to_partial_guild(&context).await {
+    ///             let channels = guild.channels(&context).await.unwrap();
     ///
     ///             let channel_search = channels.values()
     ///                 .find(|c| c.name == "join-log");
@@ -295,9 +299,9 @@ impl CreateEmbed {
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(not(all(feature = "cache", feature = "client")))]

@@ -505,15 +505,18 @@ impl PartialGuild {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "client")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// use serenity::model::prelude::*;
     /// use serenity::prelude::*;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, msg: Message) {
-    ///         let guild = msg.guild_id.unwrap().to_partial_guild(&context.http).unwrap();
+    ///     async fn message(&self, context: Context, msg: Message) {
+    ///         let guild = msg.guild_id.unwrap().to_partial_guild(&context.http).await.unwrap();
     ///         let possible_role = guild.role_by_name("role_name");
     ///
     ///         if let Some(role) = possible_role {
@@ -522,9 +525,9 @@ impl PartialGuild {
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(not(feature = "client"))]

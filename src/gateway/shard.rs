@@ -118,11 +118,11 @@ impl Shard {
     /// # use serenity::http::Http;
     /// # use std::{error::Error};
     /// #
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// #     let http = Arc::new(Http::default());
     /// let token = env::var("DISCORD_BOT_TOKEN")?;
     /// // retrieve the gateway response, which contains the URL to connect to
-    /// let gateway = Arc::new(Mutex::new(http.get_gateway()?.url));
+    /// let gateway = Arc::new(Mutex::new(http.get_gateway().await?.url));
     /// let shard = Shard::new(gateway, &token, [0, 1], true)?;
     ///
     /// // at this point, you can create a `loop`, and receive events and match
@@ -130,8 +130,9 @@ impl Shard {
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     pub fn new(

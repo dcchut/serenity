@@ -62,9 +62,9 @@ impl EditGuild {
     /// # use serenity::{http::Http, model::id::GuildId};
     /// # use std::{error::Error, sync::Arc};
     /// #
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// #     let http = Arc::new(Http::default());
-    /// #     let mut guild = GuildId(0).to_partial_guild(&http)?;
+    /// #     let mut guild = GuildId(0).to_partial_guild(&http).await?;
     /// use serenity::utils;
     ///
     /// // assuming a `guild` has already been bound
@@ -73,12 +73,13 @@ impl EditGuild {
     ///
     /// guild.edit(&http, |mut g| {
     ///     g.icon(Some(&base64_icon))
-    /// })?;
+    /// }).await?;
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///
@@ -123,21 +124,22 @@ impl EditGuild {
     /// # use serenity::{http::Http, model::id::GuildId};
     /// # use std::{error::Error, sync::Arc};
     /// #
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// #     let http = Arc::new(Http::default());
-    /// #     let mut guild = GuildId(0).to_partial_guild(&http)?;
+    /// #     let mut guild = GuildId(0).to_partial_guild(&http).await?;
     /// use serenity::model::guild::Region;
     ///
     /// // assuming a `guild` has already been bound
     ///
     /// guild.edit(&http, |g| {
     ///     g.region(Region::UsWest)
-    /// })?;
+    /// }).await?;
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #     try_main().await.unwrap();
     /// # }
     /// ```
     ///

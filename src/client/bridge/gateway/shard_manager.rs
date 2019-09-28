@@ -53,7 +53,7 @@ use crate::client::bridge::voice::ClientVoiceManager;
 /// # use serenity::cache::Cache;
 /// #
 /// # #[cfg(feature = "framework")]
-/// # fn try_main() -> Result<(), Box<Error>> {
+/// # async fn try_main() -> Result<(), Box<dyn Error>> {
 /// #
 /// use parking_lot::{Mutex, RwLock};
 /// use serenity::client::bridge::gateway::{ShardManager, ShardManagerOptions};
@@ -75,7 +75,7 @@ use crate::client::bridge::voice::ClientVoiceManager;
 ///
 /// # let cache_and_http = Arc::new(CacheAndHttp::default());
 /// # let http = &cache_and_http.http;
-/// let gateway_url = Arc::new(Mutex::new(http.get_gateway()?.url));
+/// let gateway_url = Arc::new(Mutex::new(http.get_gateway().await?.url));
 /// let data = Arc::new(RwLock::new(ShareMap::custom()));
 /// let event_handler = Arc::new(Handler) as Arc<dyn EventHandler>;
 /// let framework = Arc::new(Mutex::new(None));
@@ -103,12 +103,13 @@ use crate::client::bridge::voice::ClientVoiceManager;
 /// # }
 /// #
 /// # #[cfg(not(feature = "framework"))]
-/// # fn try_main() -> Result<(), Box<Error>> {
+/// # async fn try_main() -> Result<(), Box<Error>> {
 /// #     Ok(())
 /// # }
 /// #
-/// # fn main() {
-/// #     try_main().unwrap();
+/// # #[tokio::main]
+/// # async fn main() {
+/// #     try_main().await.unwrap();
 /// # }
 /// ```
 ///
@@ -248,11 +249,13 @@ impl ShardManager {
     ///
     /// impl EventHandler for Handler { }
     ///
+    /// # async fn try_main() {
     /// let token = env::var("DISCORD_TOKEN").unwrap();
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
     /// // restart shard ID 7
     /// client.shard_manager.lock().restart(ShardId(7));
+    /// # }
     /// ```
     ///
     /// [`ShardQueuer`]: struct.ShardQueuer.html

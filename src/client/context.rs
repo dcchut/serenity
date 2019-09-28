@@ -90,19 +90,25 @@ impl Context {
     /// # use serenity::prelude::*;
     /// # use serenity::model::channel::Message;
     /// #
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if msg.content == "!online" {
     ///             ctx.online();
     ///         }
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// [`Online`]: ../model/user/enum.OnlineStatus.html#variant.Online
@@ -122,18 +128,25 @@ impl Context {
     /// # use serenity::prelude::*;
     /// # use serenity::model::channel::Message;
     /// #
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if msg.content == "!idle" {
     ///             ctx.idle();
     ///         }
     ///     }
     /// }
-    /// let mut client = Client::new("token", Handler).unwrap();
     ///
-    /// client.start().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
+    ///
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// [`Idle`]: ../model/user/enum.OnlineStatus.html#variant.Idle
@@ -153,18 +166,25 @@ impl Context {
     /// # use serenity::prelude::*;
     /// # use serenity::model::channel::Message;
     /// #
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if msg.content == "!dnd" {
     ///             ctx.dnd();
     ///         }
     ///     }
     /// }
-    /// let mut client = Client::new("token", Handler).unwrap();
     ///
-    /// client.start().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
+    ///
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// [`DoNotDisturb`]: ../model/user/enum.OnlineStatus.html#variant.DoNotDisturb
@@ -185,17 +205,23 @@ impl Context {
     /// # use serenity::prelude::*;
     /// # use serenity::model::gateway::Ready;
     /// #
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn ready(&self, ctx: Context, _: Ready) {
+    ///     async fn ready(&self, ctx: Context, _: Ready) {
     ///         ctx.invisible();
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// [`Event::Ready`]: ../model/event/enum.Event.html#variant.Ready
@@ -218,17 +244,23 @@ impl Context {
     /// # use serenity::prelude::*;
     /// # use serenity::model::event::ResumedEvent;
     /// #
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn resume(&self, ctx: Context, _: ResumedEvent) {
+    ///     async fn resume(&self, ctx: Context, _: ResumedEvent) {
     ///         ctx.reset_presence();
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// [`Event::Resumed`]: ../model/event/enum.Event.html#variant.Resumed
@@ -248,16 +280,19 @@ impl Context {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "model")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::prelude::*;
     /// # use serenity::model::channel::Message;
     /// #
     /// use serenity::model::gateway::Activity;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         let args = msg.content.splitn(2, ' ').collect::<Vec<&str>>();
     ///
     ///         if args.len() < 2 || *unsafe { args.get_unchecked(0) } != "~setgame" {
@@ -268,9 +303,9 @@ impl Context {
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     ///
     /// # #[cfg(not(feature = "model"))]
@@ -293,18 +328,25 @@ impl Context {
     /// # use serenity::prelude::*;
     /// # use serenity::model::gateway::Ready;
     /// #
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn ready(&self, ctx: Context, _: Ready) {
+    ///     async fn ready(&self, ctx: Context, _: Ready) {
     ///         use serenity::model::user::OnlineStatus;
     ///
     ///         ctx.set_presence(None, OnlineStatus::Idle);
     ///     }
     /// }
-    /// let mut client = Client::new("token", Handler).unwrap();
     ///
-    /// client.start().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
+    ///
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// Setting the current user as playing `"Heroes of the Storm"`, while being

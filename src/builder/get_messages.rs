@@ -28,7 +28,7 @@ use std::collections::HashMap;
 /// # use serenity::http::Http;
 /// # use std::{error::Error, sync::Arc};
 /// #
-/// # fn try_main() -> Result<(), Box<Error>> {
+/// # async fn try_main() -> Result<(), Box<dyn Error>> {
 /// # let http = Arc::new(Http::default());
 /// use serenity::model::id::{ChannelId, MessageId};
 ///
@@ -37,12 +37,13 @@ use std::collections::HashMap;
 ///
 /// let _messages = channel_id.messages(&http, |retriever| {
 ///     retriever.after(MessageId(158339864557912064)).limit(25)
-/// })?;
+/// }).await?;
 /// #     Ok(())
 /// # }
 /// #
-/// # fn main() {
-/// #     try_main().unwrap();
+/// # #[tokio::main]
+/// # async fn main() {
+/// #     try_main().await.unwrap();
 /// # }
 /// ```
 ///

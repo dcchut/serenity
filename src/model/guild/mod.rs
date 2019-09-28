@@ -1671,14 +1671,17 @@ impl Guild {
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "cache", feature = "client"))]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// use serenity::model::prelude::*;
     /// use serenity::prelude::*;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if let Some(arc) = msg.guild_id.unwrap().to_guild_cached(&ctx.cache) {
     ///             if let Some(role) = arc.read().role_by_name("role_name") {
     ///                 println!("{:?}", role);
@@ -1687,9 +1690,9 @@ impl Guild {
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(not(all(feature = "cache", feature = "client")))]

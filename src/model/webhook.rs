@@ -86,16 +86,19 @@ impl Webhook {
     /// ```rust,no_run
     /// # use serenity::http::Http;
     /// # use std::sync::Arc;
-    /// #
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # let http = Arc::new(Http::default());
     ///
     /// let id = 245037420704169985;
     /// let token = "ig5AO-wdVWpCBtUUMxmgsWryqgsW3DChbKYOINftJ4DCrUbnkedoYZD0VOH1QLr-S3sV";
     ///
     /// let mut webhook = http.as_ref().get_webhook_with_token(id, token)
+    ///     .await
     ///     .expect("valid webhook");
     ///
-    /// let _ = webhook.edit(&http, Some("new name"), None).expect("Error editing");
+    /// let _ = webhook.edit(&http, Some("new name"), None).await.expect("Error editing");
+    /// # }
     /// ```
     ///
     /// Setting a webhook's avatar:
@@ -103,18 +106,21 @@ impl Webhook {
     /// ```rust,no_run
     /// # use serenity::http::Http;
     /// # use std::sync::Arc;
-    /// #
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # let http = Arc::new(Http::default());
     /// let id = 245037420704169985;
     /// let token = "ig5AO-wdVWpCBtUUMxmgsWryqgsW3DChbKYOINftJ4DCrUbnkedoYZD0VOH1QLr-S3sV";
     ///
     /// let mut webhook = http.as_ref().get_webhook_with_token(id, token)
+    ///     .await
     ///     .expect("valid webhook");
     ///
     /// let image = serenity::utils::read_image("./webhook_img.png")
     ///     .expect("Error reading image");
     ///
-    /// let _ = webhook.edit(&http, None, Some(&image)).expect("Error editing");
+    /// let _ = webhook.edit(&http, None, Some(&image)).await.expect("Error editing");
+    /// # }
     /// ```
     ///
     /// [`http::edit_webhook`]: ../../http/fn.edit_webhook.html
@@ -163,19 +169,22 @@ impl Webhook {
     /// ```rust,no_run
     /// use serenity::http::Http;
     /// # use std::sync::Arc;
-    /// #
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # let http = Arc::new(Http::default());
     /// let id = 245037420704169985;
     /// let token = "ig5AO-wdVWpCBtUUMxmgsWryqgsW3DChbKYOINftJ4DCrUbnkedoYZD0VOH1QLr-S3sV";
     ///
     /// let mut webhook = http.as_ref().get_webhook_with_token(id, token)
+    ///     .await
     ///     .expect("valid webhook");
     ///
     /// let _ = webhook.execute(&http, false, |mut w| {
     ///     w.content("test");
     ///
     ///     w
-    /// });
+    /// }).await;
+    /// # }
     /// ```
     ///
     /// Execute a webhook with message content of `test`, overriding the
@@ -184,7 +193,8 @@ impl Webhook {
     /// ```rust,no_run
     /// # use serenity::http::Http;
     /// # use std::sync::Arc;
-    /// #
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # let http = Arc::new(Http::default());
     /// use serenity::model::channel::Embed;
     ///
@@ -192,6 +202,7 @@ impl Webhook {
     /// let token = "ig5AO-wdVWpCBtUUMxmgsWryqgsW3DChbKYOINftJ4DCrUbnkedoYZD0VOH1QLr-S3sV";
     ///
     /// let mut webhook = http.as_ref().get_webhook_with_token(id, token)
+    ///     .await
     ///     .expect("valid webhook");
     ///
     /// let embed = Embed::fake(|mut e| {
@@ -210,7 +221,8 @@ impl Webhook {
     ///     w.embeds(vec![embed]);
     ///
     ///     w
-    /// });
+    /// }).await;
+    /// # }
     /// ```
     #[inline]
     pub async fn execute<F>(&self, http: impl AsRef<Http>, wait: bool, f: F) -> Result<Option<Message>>

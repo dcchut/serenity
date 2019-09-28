@@ -92,7 +92,7 @@ impl CreateChannel {
     ///
     /// # Example
     ///
-    /// Inheriting permissions from an exisiting channel:
+    /// Inheriting permissions from an existing channel:
     ///
     /// ```rust,ignore
     /// // Assuming a channel and a guild have already been bound.

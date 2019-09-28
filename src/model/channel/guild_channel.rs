@@ -174,7 +174,8 @@ impl GuildChannel {
     /// # use std::error::Error;
     /// #
     /// # #[cfg(feature = "cache")]
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn Error>> {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::id::{ChannelId, UserId}};
     /// # use parking_lot::RwLock;
     /// # use std::sync::Arc;
@@ -201,12 +202,13 @@ impl GuildChannel {
     ///     .guild_channel(channel_id)
     ///     .ok_or(ModelError::ItemMissing)?;
     ///
-    /// channel.read().create_permission(&http, &overwrite)?;
+    /// let read = channel.read();
+    /// read.create_permission(&http, &overwrite).await?;
     /// # Ok(())
     /// # }
     /// #
     /// # #[cfg(not(feature = "cache"))]
-    /// # fn main() -> Result<(), Box<Error>> { Ok(()) }
+    /// # fn main() -> Result<(), Box<dyn Error>> { Ok(()) }
     /// ```
     ///
     /// Creating a permission overwrite for a role by specifying the
@@ -218,7 +220,8 @@ impl GuildChannel {
     /// # use std::error::Error;
     /// #
     /// # #[cfg(feature = "cache")]
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn Error>> {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::id::{ChannelId, UserId}};
     /// # use parking_lot::RwLock;
     /// # use std::sync::Arc;
@@ -246,12 +249,13 @@ impl GuildChannel {
     ///     .guild_channel(channel_id)
     ///     .ok_or(ModelError::ItemMissing)?;
     ///
-    /// channel.read().create_permission(&http, &overwrite)?;
+    /// let read = channel.read();
+    /// read.create_permission(&http, &overwrite).await?;
     /// #     Ok(())
     /// # }
     /// #
     /// # #[cfg(not(feature = "cache"))]
-    /// # fn main() -> Result<(), Box<Error>> { Ok(()) }
+    /// # fn main() -> Result<(), Box<dyn Error>> { Ok(()) }
     /// ```
     ///
     /// [`Channel`]: enum.Channel.html
@@ -485,10 +489,13 @@ impl GuildChannel {
     /// ```rust,no_run
     /// use serenity::prelude::*;
     /// use serenity::model::prelude::*;
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, msg: Message) {
+    ///     async fn message(&self, context: Context, msg: Message) {
     ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
     ///             Some(channel) => channel,
     ///             None => return,
@@ -499,9 +506,12 @@ impl GuildChannel {
     ///         println!("The user's permissions: {:?}", permissions);
     ///     }
     /// }
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// Check if the current user has the [Attach Files] and [Send Messages]
@@ -513,11 +523,13 @@ impl GuildChannel {
     /// use serenity::model::prelude::*;
     /// use serenity::model::channel::Channel;
     /// use std::fs::File;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, mut msg: Message) {
+    ///     async fn message(&self, context: Context, mut msg: Message) {
     ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
     ///             Some(channel) => channel,
     ///             None => return,
@@ -544,13 +556,16 @@ impl GuildChannel {
     ///             m.content("here's a cat");
     ///
     ///             m
-    ///         });
+    ///         }).await;
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// # Errors
@@ -617,10 +632,13 @@ impl GuildChannel {
     /// ```rust,no_run
     /// use serenity::prelude::*;
     /// use serenity::model::prelude::*;
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, msg: Message) {
+    ///     async fn message(&self, context: Context, msg: Message) {
     ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
     ///             Some(channel) => channel,
     ///             None => return,
@@ -631,9 +649,13 @@ impl GuildChannel {
     ///         println!("The user's permissions: {:?}", permissions);
     ///     }
     /// }
-    /// let mut client = Client::new("token", Handler).unwrap();
     ///
-    /// client.start().unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
+    ///
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// Check if the current user has the [Attach Files] and [Send Messages]
@@ -645,11 +667,13 @@ impl GuildChannel {
     /// use serenity::model::prelude::*;
     /// use serenity::model::channel::Channel;
     /// use std::fs::File;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, mut msg: Message) {
+    ///     async fn message(&self, context: Context, mut msg: Message) {
     ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
     ///             Some(channel) => channel,
     ///             None => return,
@@ -676,13 +700,16 @@ impl GuildChannel {
     ///             m.content("here's a cat");
     ///
     ///             m
-    ///         });
+    ///         }).await;
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
+    /// # }
     /// ```
     ///
     /// # Errors

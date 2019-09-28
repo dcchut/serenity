@@ -158,7 +158,8 @@ impl CurrentUser {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "cache")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::prelude::*, prelude::*};
     /// # use parking_lot::RwLock;
     /// # use std::sync::Arc;
@@ -169,7 +170,7 @@ impl CurrentUser {
     /// // assuming the cache has been unlocked
     /// let user = &cache.user;
     ///
-    /// if let Ok(guilds) = user.guilds(&http) {
+    /// if let Ok(guilds) = user.guilds(&http).await {
     ///     for (index, guild) in guilds.into_iter().enumerate() {
     ///         println!("{}: {}", index, guild.name);
     ///     }
@@ -196,7 +197,8 @@ impl CurrentUser {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "cache")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::prelude::*, prelude::*};
     /// # use parking_lot::RwLock;
     /// # use std::sync::Arc;
@@ -208,7 +210,7 @@ impl CurrentUser {
     /// use serenity::model::Permissions;
     ///
     /// // assuming the cache has been unlocked
-    /// let url = match cache.user.invite_url(&http, Permissions::empty()) {
+    /// let url = match cache.user.invite_url(&http, Permissions::empty()).await {
     ///     Ok(v) => v,
     ///     Err(why) => {
     ///         println!("Error getting invite url: {:?}", why);
@@ -229,7 +231,8 @@ impl CurrentUser {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "cache")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::prelude::*, prelude::*};
     /// # use parking_lot::RwLock;
     /// # use std::sync::Arc;
@@ -240,7 +243,7 @@ impl CurrentUser {
     /// use serenity::model::Permissions;
     ///
     /// // assuming the cache has been unlocked
-    /// let url = match cache.user.invite_url(&http, Permissions::READ_MESSAGES | Permissions::SEND_MESSAGES | Permissions::EMBED_LINKS) {
+    /// let url = match cache.user.invite_url(&http, Permissions::READ_MESSAGES | Permissions::SEND_MESSAGES | Permissions::EMBED_LINKS).await {
     ///     Ok(v) => v,
     ///     Err(why) => {
     ///         println!("Error getting invite url: {:?}", why);
@@ -497,14 +500,17 @@ impl User {
     /// # use serenity::model::prelude::*;
     /// #
     /// use serenity::model::Permissions;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
     /// #   #[cfg(feature = "cache")]
-    ///     fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if msg.content == "~help" {
-    ///             let url = match ctx.cache.read().user.invite_url(&ctx, Permissions::empty()) {
+    ///             let read = ctx.cache.read();
+    ///             let url = match read.user.invite_url(&ctx, Permissions::empty()).await {
     ///                 Ok(v) => v,
     ///                 Err(why) => {
     ///                     println!("Error creating invite url: {:?}", why);
@@ -520,23 +526,26 @@ impl User {
     ///
     ///             let dm = msg.author.direct_message(&ctx, |m| {
     ///                 m.content(&help)
-    ///             });
+    ///             }).await;
     ///
     ///             match dm {
     ///                 Ok(_) => {
-    ///                     let _ = msg.react(&ctx, '👌');
+    ///                     let _ = msg.react(&ctx, '👌').await;
     ///                 },
     ///                 Err(why) => {
     ///                     println!("Err sending help: {:?}", why);
     ///
-    ///                     let _ = msg.reply(&ctx, "There was an error DMing you help.");
+    ///                     let _ = msg.reply(&ctx, "There was an error DMing you help.").await;
     ///                 },
     ///             };
     ///         }
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler);
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let mut client = Client::new("token", Handler).await;
+    /// # }
     /// # }
     /// ```
     ///
@@ -743,30 +752,33 @@ impl User {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "client")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::prelude::*;
     /// # use serenity::model::prelude::*;
     /// #
     /// use serenity::utils::MessageBuilder;
     /// use serenity::utils::ContentModifier::Bold;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, msg: Message) {
+    ///     async fn message(&self, context: Context, msg: Message) {
     ///         if msg.content == "!mytag" {
     ///             let content = MessageBuilder::new()
     ///                 .push("Your tag is ")
     ///                 .push(Bold + msg.author.tag())
     ///                 .build();
     ///
-    ///             let _ = msg.channel_id.say(&context.http, &content);
+    ///             let _ = msg.channel_id.say(&context.http, &content).await;
     ///         }
     ///     }
     /// }
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(not(feature = "client"))]

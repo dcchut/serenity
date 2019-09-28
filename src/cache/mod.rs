@@ -241,14 +241,17 @@ impl Cache {
     /// # use serenity::prelude::*;
     /// #
     /// # #[cfg(feature = "client")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// use std::thread;
     /// use std::time::Duration;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn ready(&self, ctx: Context, _: Ready) {
+    ///     async fn ready(&self, ctx: Context, _: Ready) {
     ///          // Wait some time for guilds to be received.
     ///         //
     ///         // You should keep track of this in a better fashion by tracking how
@@ -264,9 +267,9 @@ impl Cache {
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(not(feature = "client"))]
@@ -334,14 +337,17 @@ impl Cache {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "client")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::model::prelude::*;
     /// # use serenity::prelude::*;
-    /// #
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn ready(&self, context: Context, _: Ready) {
+    ///     async fn ready(&self, context: Context, _: Ready) {
     ///         let guilds = context.cache.read().guilds.len();
     ///
     ///         println!("Guilds in the Cache: {}", guilds);
@@ -452,21 +458,25 @@ impl Cache {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "client")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::model::prelude::*;
     /// # use serenity::prelude::*;
     /// #
+    /// use async_trait::async_trait;
+    ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, message: Message) {
+    ///     async fn message(&self, context: Context, message: Message) {
     ///         let cache = context.cache.read();
     ///
     ///         let channel = match cache.guild_channel(message.channel_id) {
     ///             Some(channel) => channel,
     ///             None => {
     /// if let Err(why) = message.channel_id.say(&context.http, "Could not find guild's
-    /// channel data") {
+    /// channel data").await {
     ///                     println!("Error sending message: {:?}", why);
     ///                 }
     ///
@@ -476,9 +486,9 @@ impl Cache {
     ///     }
     /// }
     ///
-    /// let mut client = Client::new("token", Handler).unwrap();
+    /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(not(feature = "client"))]
@@ -609,8 +619,10 @@ impl Cache {
     /// # use parking_lot::RwLock;
     /// # use std::sync::Arc;
     /// #
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # let http = Arc::new(Http::new_with_token("DISCORD_TOKEN"));
-    /// # let message = ChannelId(0).message(&http, MessageId(1)).unwrap();
+    /// # let message = ChannelId(0).message(&http, MessageId(1)).await.unwrap();
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
     /// #
     /// let cache = cache.read();
@@ -624,6 +636,7 @@ impl Cache {
     ///         println!("No message found in cache.");
     ///     },
     /// }
+    /// # }
     /// ```
     ///
     /// [`EventHandler::message`]: ../client/trait.EventHandler.html#method.message

@@ -38,7 +38,7 @@ pub struct ErrorResponse {
 }
 
 impl From<Response> for ErrorResponse {
-    fn from(mut r: Response) -> Self {
+    fn from(r: Response) -> Self {
         ErrorResponse {
             status_code: r.status(),
             url: r.url().clone(),
@@ -113,7 +113,6 @@ impl StdError for Error {
 mod test {
     use super::*;
     use http_crate::response::Builder;
-    use reqwest::r#async::ResponseBuilderExt;
 
     #[test]
     fn test_error_response_into() {
@@ -125,16 +124,15 @@ mod test {
 
         let mut builder = Builder::new();
         builder.status(403);
-        builder.url(String::from("https://ferris.crab").parse().unwrap());
-        let body_string = serde_json::to_string(&error).unwrap();
-        let response = builder.body(body_string.into_bytes()).unwrap();
+        let body = serde_json::to_string(&error).unwrap();
+        let response = builder.body(body.into_bytes()).unwrap();
 
         let reqwest_response: reqwest::Response = response.into();
         let error_response: ErrorResponse = reqwest_response.into();
 
         let known = ErrorResponse {
             status_code: reqwest::StatusCode::from_u16(403).unwrap(),
-            url: String::from("https://ferris.crab").parse().unwrap(),
+            url: String::from("http://no.url.provided.local/").parse().unwrap(),
             error,
         };
 

@@ -25,7 +25,7 @@
 //! impl EventHandler for Handler {}
 //!
 //! #[help]
-//! fn my_help(
+//! async fn my_help(
 //!    context: &mut Context,
 //!    msg: &Message,
 //!    args: Args,
@@ -35,17 +35,21 @@
 //! ) -> CommandResult {
 //! #  #[cfg(all(feature = "cache", feature = "http"))]
 //! # {
-//!    help_commands::with_embeds(context, msg, args, help_options, groups, owners)
+//!    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await
 //! # }
 //! #
 //! # #[cfg(not(all(feature = "cache", feature = "http")))]
 //! # Ok(())
 //! }
 //!
-//! let mut client = Client::new(&env::var("DISCORD_TOKEN").unwrap(), Handler).unwrap();
+//! # #[tokio::main]
+//! # async fn main() {
+//! let token = env::var("DISCORD_TOKEN").unwrap();
+//! let mut client = Client::new(&token, Handler).await.unwrap();
 //!
 //! client.with_framework(StandardFramework::new()
 //!     .help(&MY_HELP));
+//! # }
 //! ```
 //!
 //! The same can be accomplished with no embeds by substituting `with_embeds`
@@ -1180,7 +1184,9 @@ async fn send_error_embed(
 /// # struct Handler;
 /// #
 /// # impl EventHandler for Handler {}
-/// # let mut client = Client::new("token", Handler).unwrap();
+/// # #[tokio::main]
+/// # async fn main() {
+/// # let mut client = Client::new("token", Handler).await.unwrap();
 /// #
 /// use std::{collections::HashSet, hash::BuildHasher};
 /// use serenity::{framework::standard::{Args, CommandGroup, CommandResult,
@@ -1189,7 +1195,7 @@ async fn send_error_embed(
 /// };
 ///
 /// #[help]
-/// fn my_help(
+/// async fn my_help(
 ///     context: &mut Context,
 ///     msg: &Message,
 ///     args: Args,
@@ -1197,11 +1203,12 @@ async fn send_error_embed(
 ///     groups: &[&'static CommandGroup],
 ///     owners: HashSet<UserId>
 /// ) -> CommandResult {
-///     with_embeds(context, msg, args, &help_options, groups, owners)
+///     with_embeds(context, msg, args, &help_options, groups, owners).await
 /// }
 ///
 /// client.with_framework(StandardFramework::new()
 ///     .help(&MY_HELP));
+/// # }
 /// ```
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::implicit_hasher)]
@@ -1377,7 +1384,9 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 /// # struct Handler;
 /// #
 /// # impl EventHandler for Handler {}
-/// # let mut client = Client::new("token", Handler).unwrap();
+/// # #[tokio::main]
+/// # async fn main() {
+/// # let mut client = Client::new("token", Handler).await.unwrap();
 /// #
 /// use std::{collections::HashSet, hash::BuildHasher};
 /// use serenity::{framework::standard::{Args, CommandGroup, CommandResult,
@@ -1386,7 +1395,7 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 /// };
 ///
 /// #[help]
-/// fn my_help(
+/// async fn my_help(
 ///     context: &mut Context,
 ///     msg: &Message,
 ///     args: Args,
@@ -1394,11 +1403,12 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 ///     groups: &[&'static CommandGroup],
 ///     owners: HashSet<UserId>
 /// ) -> CommandResult {
-///     plain(context, msg, args, &help_options, groups, owners)
+///     plain(context, msg, args, &help_options, groups, owners).await
 /// }
 ///
 /// client.with_framework(StandardFramework::new()
 ///     .help(&MY_HELP));
+/// # }
 /// ```
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::implicit_hasher)]

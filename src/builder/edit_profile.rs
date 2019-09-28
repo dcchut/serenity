@@ -21,14 +21,16 @@ impl EditProfile {
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "client", feature = "cache"))]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::prelude::*;
     /// # use serenity::model::prelude::*;
-    /// #
+    /// # use async_trait::async_trait;
     /// # struct Handler;
     ///
+    /// # #[async_trait(?Send)]
     /// # impl EventHandler for Handler {
-    ///    # fn message(&self, context: Context, _: Message) {
+    ///    # async fn message(&self, context: Context, _: Message) {
     ///         use serenity::utils;
     ///
     ///         // assuming a `context` has been bound
@@ -41,9 +43,9 @@ impl EditProfile {
     ///    # }
     /// # }
     /// #
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
-    /// # client.start().unwrap();
+    /// # client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(any(not(feature = "client"), not(feature = "cache")))]

@@ -4,8 +4,8 @@ use super::super::id::AttachmentId;
 use reqwest::Client as ReqwestClient;
 #[cfg(feature = "model")]
 use crate::internal::prelude::*;
-#[cfg(feature = "model")]
-use std::io::Read;
+//#[cfg(feature = "model")]
+//use std::io::Read;
 
 /// A file uploaded with a message. Not to be confused with [`Embed`]s.
 ///
@@ -48,24 +48,27 @@ impl Attachment {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "client")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// use serenity::model::prelude::*;
     /// use serenity::prelude::*;
     /// use std::env;
     /// use std::fs::File;
     /// use std::io::Write;
     /// use std::path::Path;
+    /// use async_trait::async_trait;
     ///
     /// struct Handler;
     ///
+    /// #[async_trait(?Send)]
     /// impl EventHandler for Handler {
-    ///     fn message(&self, context: Context, mut message: Message) {
+    ///     async fn message(&self, context: Context, mut message: Message) {
     ///         for attachment in message.attachments {
-    ///             let content = match attachment.download() {
+    ///             let content = match attachment.download().await {
     ///                 Ok(content) => content,
     ///                 Err(why) => {
     ///                     println!("Error downloading attachment: {:?}", why);
-    ///                     let _ = message.channel_id.say(&context.http, "Error downloading attachment");
+    ///                     let _ = message.channel_id.say(&context.http, "Error downloading attachment").await;
     ///
     ///                     return;
     ///                 },
@@ -87,18 +90,19 @@ impl Attachment {
     ///                 return;
     ///             }
     ///
-    ///             let _ = message.channel_id.say(&context.http, &format!("Saved {:?}", attachment.filename));
+    ///             let msg = format!("Saved {:?}", attachment.filename);
+    ///             let _ = message.channel_id.say(&context.http, &msg).await;
     ///         }
     ///     }
     ///
-    ///     fn ready(&self, _: Context, ready: Ready) {
+    ///     async fn ready(&self, _: Context, ready: Ready) {
     ///         println!("{} is connected!", ready.user.name);
     ///     }
     /// }
     /// let token = env::var("DISCORD_TOKEN").expect("token in environment");
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
-    /// client.start().unwrap();
+    /// client.start().await.unwrap();
     /// # }
     /// #
     /// # #[cfg(not(feature = "client"))]

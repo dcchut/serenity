@@ -19,11 +19,11 @@ use std::collections::HashMap;
 /// #
 /// # #[cfg(all(feature = "http", feature = "framework"))]
 /// # #[command]
-/// # fn example(ctx: &mut Context) -> CommandResult {
-/// # let mut message = ChannelId(7).message(&ctx.http, MessageId(8)).unwrap();
+/// # async fn example(ctx: &mut Context) -> CommandResult {
+/// # let mut message = ChannelId(7).message(&ctx.http, MessageId(8)).await.unwrap();
 /// let _ = message.edit(ctx, |m| {
 ///     m.content("hello")
-/// });
+/// }).await;
 /// # Ok(())
 /// # }
 /// #

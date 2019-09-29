@@ -42,11 +42,10 @@ pub use crate::cache::{Cache, CacheRwLock};
 use std::time::Duration;
 
 use crate::internal::prelude::*;
-use parking_lot::Mutex;
+use futures::lock::Mutex;
 use parking_lot::RwLock;
 use self::bridge::gateway::{ShardManager, ShardManagerMonitor, ShardManagerOptions};
 use std::sync::Arc;
-use threadpool::ThreadPool;
 use typemap::ShareMap;
 use log::{error, debug, info};
 
@@ -85,7 +84,7 @@ use crate::http::Http;
 ///
 /// struct Handler;
 ///
-/// #[async_trait(?Send)]
+/// #[async_trait]
 /// impl EventHandler for Handler {
 ///     async fn message(&self, context: Context, msg: Message) {
 ///         if msg.content == "!ping" {
@@ -291,11 +290,6 @@ pub struct Client {
     /// [`Client::start_shards`]: #method.start_shards
     pub shard_manager: Arc<Mutex<ShardManager>>,
     shard_manager_worker: ShardManagerMonitor,
-    /// The threadpool shared by all shards.
-    ///
-    /// Defaults to 5 threads, which should suffice small bots. Consider
-    /// increasing this number as your bot grows.
-    pub threadpool: ThreadPool,
     /// The voice manager for the client.
     ///
     /// This is an ergonomic structure for interfacing over shards' voice
@@ -414,8 +408,6 @@ impl Client {
 
         let http = Http::new_with_token(&token);
 
-        let name = "serenity client".to_owned();
-        let threadpool = ThreadPool::with_name(name, 5);
         let url = Arc::new(Mutex::new(http.get_gateway().await?.url));
         let data = Arc::new(RwLock::new(ShareMap::custom()));
 
@@ -446,13 +438,12 @@ impl Client {
                 shard_index: 0,
                 shard_init: 0,
                 shard_total: 0,
-                threadpool: threadpool.clone(),
                 #[cfg(feature = "voice")]
                 voice_manager: &voice_manager,
                 ws_url: &url,
                 cache_and_http: &cache_and_http,
                 guild_subscriptions,
-            })
+            }).await
         };
 
         Ok(Client {
@@ -462,7 +453,6 @@ impl Client {
             data,
             shard_manager,
             shard_manager_worker,
-            threadpool,
             #[cfg(feature = "voice")]
             voice_manager,
             cache_and_http,
@@ -588,8 +578,8 @@ impl Client {
     /// [`message`]: trait.EventHandler.html#method.message
     /// [framework docs]: ../framework/index.html
     #[cfg(feature = "framework")]
-    pub fn with_framework<F: Framework + Send + 'static>(&mut self, f: F) {
-        *self.framework.lock() = Some(Box::new(f));
+    pub async fn with_framework<F: Framework + Send + 'static>(&mut self, f: F) {
+        *self.framework.lock().await = Some(Box::new(f));
     }
 
     /// Establish the connection and start listening for events.
@@ -935,11 +925,11 @@ impl Client {
         }
 
         {
-            let mut manager = self.shard_manager.lock();
+            let mut manager = self.shard_manager.lock().await;
 
             let init = shard_data[1] - shard_data[0] + 1;
 
-            manager.set_shards(shard_data[0], init, shard_data[2]);
+            manager.set_shards(shard_data[0], init, shard_data[2]).await;
 
             debug!(
                 "Initializing shard info: {} - {}/{}",
@@ -948,18 +938,18 @@ impl Client {
                 shard_data[2],
             );
 
-            if let Err(why) = manager.initialize() {
+            if let Err(why) = manager.initialize().await {
                 error!("Failed to boot a shard: {:?}", why);
                 info!("Shutting down all shards");
 
-                manager.shutdown_all();
+                manager.shutdown_all().await;
 
                 return Err(Error::Client(ClientError::ShardBootFailure));
             }
         }
-
-        self.shard_manager_worker.run();
-
+        
+        self.shard_manager_worker.run().await;
+        
         Ok(())
     }
 }

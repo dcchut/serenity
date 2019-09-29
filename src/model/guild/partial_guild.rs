@@ -513,7 +513,7 @@ impl PartialGuild {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, msg: Message) {
     ///         let guild = msg.guild_id.unwrap().to_partial_guild(&context.http).await.unwrap();

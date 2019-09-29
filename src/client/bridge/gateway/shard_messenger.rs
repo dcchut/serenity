@@ -1,8 +1,9 @@
 use crate::gateway::InterMessage;
 use crate::model::prelude::*;
 use super::{ShardClientMessage, ShardRunnerMessage};
-use std::sync::mpsc::{SendError, Sender};
 use tungstenite::Message;
+use futures::channel::mpsc::{UnboundedSender, SendError};
+use futures::sink::SinkExt;
 
 /// A lightweight wrapper around an mpsc sender.
 ///
@@ -15,7 +16,7 @@ use tungstenite::Message;
 /// [`shutdown`]: #method.shutdown
 #[derive(Clone, Debug)]
 pub struct ShardMessenger {
-    tx: Sender<InterMessage>,
+    tx: UnboundedSender<InterMessage>,
 }
 
 impl ShardMessenger {
@@ -25,7 +26,7 @@ impl ShardMessenger {
     ///
     /// [`Client`]: ../../struct.Client.html
     #[inline]
-    pub fn new(tx: Sender<InterMessage>) -> Self {
+    pub fn new(tx: UnboundedSender<InterMessage>) -> Self {
         Self {
             tx,
         }
@@ -103,8 +104,8 @@ impl ShardMessenger {
     /// [`Event::GuildMembersChunk`]: ../../../model/event/enum.Event.html#variant.GuildMembersChunk
     /// [`Guild`]: ../../../model/guild/struct.Guild.html
     /// [`Member`]: ../../../model/guild/struct.Member.html
-    pub fn chunk_guilds<It>(
-        &self,
+    pub async fn chunk_guilds<It>(
+        &mut self,
         guild_ids: It,
         limit: Option<u16>,
         query: Option<String>,
@@ -115,7 +116,7 @@ impl ShardMessenger {
             guild_ids: guilds,
             limit,
             query,
-        });
+        }).await;
     }
 
     /// Sets the user's current activity, if any.
@@ -146,8 +147,8 @@ impl ShardMessenger {
     /// #     try_main().unwrap();
     /// # }
     /// ```
-    pub fn set_activity(&self, activity: Option<Activity>) {
-        let _ = self.send(ShardRunnerMessage::SetActivity(activity));
+    pub async fn set_activity(&mut self, activity: Option<Activity>) {
+        let _ = self.send(ShardRunnerMessage::SetActivity(activity)).await;
     }
 
     /// Sets the user's full presence information.
@@ -181,12 +182,12 @@ impl ShardMessenger {
     /// #     try_main().unwrap();
     /// # }
     /// ```
-    pub fn set_presence(&self, activity: Option<Activity>, mut status: OnlineStatus) {
+    pub async fn set_presence(&mut self, activity: Option<Activity>, mut status: OnlineStatus) {
         if status == OnlineStatus::Offline {
             status = OnlineStatus::Invisible;
         }
 
-        let _ = self.send(ShardRunnerMessage::SetPresence(status, activity));
+        let _ = self.send(ShardRunnerMessage::SetPresence(status, activity)).await;
     }
 
     /// Sets the user's current online status.
@@ -225,18 +226,18 @@ impl ShardMessenger {
     /// [`DoNotDisturb`]: ../../../model/user/enum.OnlineStatus.html#variant.DoNotDisturb
     /// [`Invisible`]: ../../../model/user/enum.OnlineStatus.html#variant.Invisible
     /// [`Offline`]: ../../../model/user/enum.OnlineStatus.html#variant.Offline
-    pub fn set_status(&self, mut online_status: OnlineStatus) {
+    pub async fn set_status(&mut self, mut online_status: OnlineStatus) {
         if online_status == OnlineStatus::Offline {
             online_status = OnlineStatus::Invisible;
         }
 
-        let _ = self.send(ShardRunnerMessage::SetStatus(online_status));
+        let _ = self.send(ShardRunnerMessage::SetStatus(online_status)).await;
     }
 
     /// Shuts down the websocket by attempting to cleanly close the
     /// connection.
-    pub fn shutdown_clean(&self) {
-        let _ = self.send(ShardRunnerMessage::Close(1000, None));
+    pub async fn shutdown_clean(&mut self) {
+        let _ = self.send(ShardRunnerMessage::Close(1000, None)).await;
     }
 
     /// Sends a raw message over the WebSocket.
@@ -248,13 +249,13 @@ impl ShardMessenger {
     /// the [`set_presence`] method.
     ///
     /// [`set_presence`]: #method.set_presence
-    pub fn websocket_message(&self, message: Message) {
-        let _ = self.send(ShardRunnerMessage::Message(message));
+    pub async fn websocket_message(&mut self, message: Message) {
+        let _ = self.send(ShardRunnerMessage::Message(message)).await;
     }
 
     #[inline]
-    fn send(&self, msg: ShardRunnerMessage)
-        -> Result<(), SendError<InterMessage>> {
-        self.tx.send(InterMessage::Client(Box::new(ShardClientMessage::Runner(msg))))
+    async fn send(&mut self, msg: ShardRunnerMessage)
+        -> Result<(), SendError> {
+        self.tx.send(InterMessage::Client(Box::new(ShardClientMessage::Runner(msg)))).await
     }
 }

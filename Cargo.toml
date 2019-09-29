@@ -75,10 +75,6 @@ features = ["std"]
 optional = true
 version = "0.2"
 
-[dependencies.threadpool]
-optional = true
-version = "1"
-
 [dependencies.tungstenite]
 default-features = false
 optional = true
@@ -137,7 +133,6 @@ cache = []
 client = [
     "gateway",
     "http",
-    "threadpool",
     "typemap",
 ]
 extras = []

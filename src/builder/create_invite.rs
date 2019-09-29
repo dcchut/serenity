@@ -22,7 +22,7 @@ use serde_json::Value;
 ///
 /// struct Handler;
 ///
-/// #[async_trait(?Send)]
+/// #[async_trait]
 /// impl EventHandler for Handler {
 ///     async fn message(&self, context: Context, msg: Message) {
 ///         if msg.content == "!createinvite" {

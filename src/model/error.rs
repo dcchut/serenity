@@ -35,7 +35,7 @@ use super::Permissions;
 ///
 /// struct Handler;
 ///
-/// #[async_trait(?Send)]
+/// #[async_trait]
 /// impl EventHandler for Handler {
 ///     async fn guild_ban_removal(&self, context: Context, guild_id: GuildId, user: User) {
 ///         // If the user has an even discriminator, don't re-ban them.

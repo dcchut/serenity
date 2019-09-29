@@ -227,7 +227,7 @@ impl CreateEmbed {
     /// use async_trait::async_trait;
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, mut msg: Message) {
     ///         if msg.content == "~embed" {
@@ -266,7 +266,7 @@ impl CreateEmbed {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn guild_member_addition(&self, context: Context, guild_id: GuildId, member: Member) {
     ///         let cache = context.cache.read();

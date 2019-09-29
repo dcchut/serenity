@@ -493,7 +493,7 @@ impl GuildChannel {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, msg: Message) {
     ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
@@ -527,7 +527,7 @@ impl GuildChannel {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, mut msg: Message) {
     ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
@@ -636,7 +636,7 @@ impl GuildChannel {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, msg: Message) {
     ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
@@ -671,7 +671,7 @@ impl GuildChannel {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, mut msg: Message) {
     ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {

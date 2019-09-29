@@ -29,7 +29,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use threadpool::ThreadPool;
 use uwl::{UnicodeStream, StrExt};
 
 #[cfg(feature = "cache")]
@@ -646,9 +645,9 @@ impl StandardFramework {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Framework for StandardFramework {
-    async fn dispatch(&mut self, mut ctx: Context, msg: Message, threadpool: &ThreadPool) {
+    async fn dispatch(&mut self, mut ctx: Context, msg: Message) {
         let mut stream = UnicodeStream::new(&msg.content);
 
         stream.take_while(|s| s.is_whitespace());
@@ -661,7 +660,7 @@ impl Framework for StandardFramework {
                 let prefix_only = Arc::clone(&prefix_only);
                 let msg = msg.clone();
 
-                threadpool.execute(move || {
+                tokio::spawn(async move {
                     prefix_only(&mut ctx, &msg);
                 });
             }
@@ -675,7 +674,7 @@ impl Framework for StandardFramework {
                 let normal = Arc::clone(&normal);
                 let msg = msg.clone();
 
-                threadpool.execute(move || {
+                tokio::spawn(async move {
                     normal(&mut ctx, &msg);
                 });
             }
@@ -709,7 +708,7 @@ impl Framework for StandardFramework {
                         let unrecognised_command = Arc::clone(&unrecognised_command);
                         let mut ctx = ctx.clone();
                         let msg = msg.clone();
-                        threadpool.execute(move || {
+                        tokio::spawn(async move {
                             unrecognised_command(&mut ctx, &msg, &unreg);
                         });
                     }
@@ -719,7 +718,7 @@ impl Framework for StandardFramework {
                     let normal = Arc::clone(&normal);
                     let msg = msg.clone();
 
-                    threadpool.execute(move || {
+                    tokio::spawn(async move {
                         normal(&mut ctx, &msg);
                     });
                 }
@@ -750,7 +749,7 @@ impl Framework for StandardFramework {
                 // `parse_command` promises to never return a help invocation if `StandardFramework::help` is `None`.
                 let help = self.help.unwrap();
 
-                threadpool.execute(move || {
+                tokio::spawn(async move {
                     if let Some(before) = before {
                         if !before(&mut ctx, &msg, name) {
                             return;
@@ -804,7 +803,7 @@ impl Framework for StandardFramework {
                 let after = self.after.clone();
                 let msg = msg.clone();
                 let name = &command.options.names[0];
-                threadpool.execute( move || {
+                tokio::spawn(async move {
                     if let Some(before) = before {
                         if !before(&mut ctx, &msg, name) {
                             return;

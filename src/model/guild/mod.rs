@@ -1679,7 +1679,7 @@ impl Guild {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if let Some(arc) = msg.guild_id.unwrap().to_guild_cached(&ctx.cache) {

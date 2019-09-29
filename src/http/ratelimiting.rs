@@ -49,6 +49,7 @@ use reqwest::{
 };
 use crate::internal::prelude::*;
 use parking_lot::{Mutex, RwLock};
+
 use std::{
     collections::HashMap,
     sync::Arc,
@@ -57,12 +58,14 @@ use std::{
         FromStr,
     },
     time::Duration,
-    thread,
+    str,
     i64,
     u64,
 };
 use super::{HttpError, Request};
 use log::debug;
+use tokio::timer::delay_for;
+use futures::lock::Mutex;
 
 /// Ratelimiter for requests to the Discord API.
 ///
@@ -239,7 +242,6 @@ impl Ratelimit {
     #[cfg(feature = "absolute_ratelimits")]
     fn get_delay(&self) -> i64 {
         use chrono::Utc;
-
         let now = Utc::now().timestamp_millis();
         self.reset - now
     }
@@ -272,7 +274,7 @@ impl Ratelimit {
                 delay,
             );
 
-            thread::sleep(Duration::from_millis(delay));
+            delay_for(Duration::from_millis(delay)).await;
 
             return;
         }
@@ -280,7 +282,7 @@ impl Ratelimit {
         self.remaining -= 1;
     }
 
-    pub fn post_hook(&mut self, response: &Response, route: &Route) -> Result<bool> {
+    pub async fn post_hook(&mut self, response: &Response, route: &Route) -> Result<bool> {
         if let Some(limit) = parse_header(&response.headers(), "x-ratelimit-limit")? {
             self.limit = limit;
         }
@@ -301,7 +303,8 @@ impl Ratelimit {
             false
         } else if let Some(retry_after) = parse_header::<u64>(&response.headers(), "retry-after")? {
             debug!("Ratelimited on route {:?} for {:?}ms", route, retry_after);
-            thread::sleep(Duration::from_millis(retry_after));
+
+            delay_for(Duration::from_millis(retry_after as u64)).await;
 
             true
         } else {

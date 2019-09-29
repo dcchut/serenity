@@ -28,7 +28,7 @@ impl EditProfile {
     /// # use async_trait::async_trait;
     /// # struct Handler;
     ///
-    /// # #[async_trait(?Send)]
+    /// # #[async_trait]
     /// # impl EventHandler for Handler {
     ///    # async fn message(&self, context: Context, _: Message) {
     ///         use serenity::utils;

@@ -2,16 +2,15 @@ use crate::client::bridge::gateway::ShardMessenger;
 use crate::gateway::InterMessage;
 use crate::model::prelude::*;
 use parking_lot::RwLock;
-use std::sync::{
-    Arc,
-    mpsc::Sender,
-};
+use std::sync::Arc;
 use typemap::ShareMap;
 
 use crate::http::Http;
 
 #[cfg(feature = "cache")]
 pub use crate::cache::{Cache, CacheRwLock};
+
+use futures::channel::mpsc::UnboundedSender;
 
 /// The context is a general utility struct provided on event dispatches, which
 /// helps with dealing with the current "context" of the event dispatch.
@@ -49,7 +48,7 @@ impl Context {
     #[cfg(feature = "cache")]
     pub(crate) fn new(
         data: Arc<RwLock<ShareMap>>,
-        runner_tx: Sender<InterMessage>,
+        runner_tx: UnboundedSender<InterMessage>,
         shard_id: u64,
         http: Arc<Http>,
         cache: Arc<RwLock<Cache>>,
@@ -67,7 +66,7 @@ impl Context {
     #[cfg(not(feature = "cache"))]
     pub(crate) fn new(
         data: Arc<RwLock<ShareMap>>,
-        runner_tx: Sender<InterMessage>,
+        runner_tx: UnboundedSender<InterMessage>,
         shard_id: u64,
         http: Arc<Http>,
     ) -> Context {
@@ -94,7 +93,7 @@ impl Context {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if msg.content == "!online" {
@@ -113,8 +112,8 @@ impl Context {
     ///
     /// [`Online`]: ../model/user/enum.OnlineStatus.html#variant.Online
     #[inline]
-    pub fn online(&self) {
-        self.shard.set_status(OnlineStatus::Online);
+    pub async fn online(&mut self) {
+        self.shard.set_status(OnlineStatus::Online).await;
     }
 
     /// Sets the current user as being [`Idle`]. This maintains the current
@@ -132,7 +131,7 @@ impl Context {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if msg.content == "!idle" {
@@ -151,8 +150,8 @@ impl Context {
     ///
     /// [`Idle`]: ../model/user/enum.OnlineStatus.html#variant.Idle
     #[inline]
-    pub fn idle(&self) {
-        self.shard.set_status(OnlineStatus::Idle);
+    pub async fn idle(&mut self) {
+        self.shard.set_status(OnlineStatus::Idle).await;
     }
 
     /// Sets the current user as being [`DoNotDisturb`]. This maintains the
@@ -170,7 +169,7 @@ impl Context {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if msg.content == "!dnd" {
@@ -189,8 +188,8 @@ impl Context {
     ///
     /// [`DoNotDisturb`]: ../model/user/enum.OnlineStatus.html#variant.DoNotDisturb
     #[inline]
-    pub fn dnd(&self) {
-        self.shard.set_status(OnlineStatus::DoNotDisturb);
+    pub async fn dnd(&mut self) {
+        self.shard.set_status(OnlineStatus::DoNotDisturb).await;
     }
 
     /// Sets the current user as being [`Invisible`]. This maintains the current
@@ -209,7 +208,7 @@ impl Context {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn ready(&self, ctx: Context, _: Ready) {
     ///         ctx.invisible();
@@ -227,8 +226,8 @@ impl Context {
     /// [`Event::Ready`]: ../model/event/enum.Event.html#variant.Ready
     /// [`Invisible`]: ../model/user/enum.OnlineStatus.html#variant.Invisible
     #[inline]
-    pub fn invisible(&self) {
-        self.shard.set_status(OnlineStatus::Invisible);
+    pub async fn invisible(&mut self) {
+        self.shard.set_status(OnlineStatus::Invisible).await;
     }
 
     /// "Resets" the current user's presence, by setting the activity to `None`
@@ -248,7 +247,7 @@ impl Context {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn resume(&self, ctx: Context, _: ResumedEvent) {
     ///         ctx.reset_presence();
@@ -267,8 +266,8 @@ impl Context {
     /// [`Online`]: ../model/user/enum.OnlineStatus.html#variant.Online
     /// [`set_presence`]: #method.set_presence
     #[inline]
-    pub fn reset_presence(&self) {
-        self.shard.set_presence(None::<Activity>, OnlineStatus::Online);
+    pub async fn reset_presence(&mut self) {
+        self.shard.set_presence(None::<Activity>, OnlineStatus::Online).await;
     }
 
     /// Sets the current activity, defaulting to an online status of [`Online`].
@@ -290,7 +289,7 @@ impl Context {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         let args = msg.content.splitn(2, ' ').collect::<Vec<&str>>();
@@ -314,8 +313,8 @@ impl Context {
     ///
     /// [`Online`]: ../model/user/enum.OnlineStatus.html#variant.Online
     #[inline]
-    pub fn set_activity(&self, activity: Activity) {
-        self.shard.set_presence(Some(activity), OnlineStatus::Online);
+    pub async fn set_activity(&mut self, activity: Activity) {
+        self.shard.set_presence(Some(activity), OnlineStatus::Online).await;
     }
 
     /// Sets the current user's presence, providing all fields to be passed.
@@ -332,7 +331,7 @@ impl Context {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn ready(&self, ctx: Context, _: Ready) {
     ///         use serenity::model::user::OnlineStatus;
@@ -378,8 +377,8 @@ impl Context {
     /// [`DoNotDisturb`]: ../model/user/enum.OnlineStatus.html#variant.DoNotDisturb
     /// [`Idle`]: ../model/user/enum.OnlineStatus.html#variant.Idle
     #[inline]
-    pub fn set_presence(&self, activity: Option<Activity>, status: OnlineStatus) {
-        self.shard.set_presence(activity, status);
+    pub async fn set_presence(&mut self, activity: Option<Activity>, status: OnlineStatus) {
+        self.shard.set_presence(activity, status).await;
     }
 }
 

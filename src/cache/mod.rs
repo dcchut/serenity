@@ -249,7 +249,7 @@ impl Cache {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn ready(&self, ctx: Context, _: Ready) {
     ///          // Wait some time for guilds to be received.
@@ -345,7 +345,7 @@ impl Cache {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn ready(&self, context: Context, _: Ready) {
     ///         let guilds = context.cache.read().guilds.len();
@@ -467,7 +467,7 @@ impl Cache {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, message: Message) {
     ///         let cache = context.cache.read();

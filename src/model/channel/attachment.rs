@@ -60,7 +60,7 @@ impl Attachment {
     ///
     /// struct Handler;
     ///
-    /// #[async_trait(?Send)]
+    /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, mut message: Message) {
     ///         for attachment in message.attachments {

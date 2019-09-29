@@ -6,7 +6,7 @@ use crate::model::{
     id::GuildId,
     user::OnlineStatus
 };
-use parking_lot::Mutex;
+use futures::lock::Mutex;
 use std::{
     sync::Arc,
     time::{Duration as StdDuration, Instant}
@@ -135,13 +135,13 @@ impl Shard {
     /// #     try_main().await.unwrap();
     /// # }
     /// ```
-    pub fn new(
+    pub async fn new(
         ws_url: Arc<Mutex<String>>,
         token: &str,
         shard_info: [u64; 2],
         guild_subscriptions: bool,
     ) -> Result<Shard> {
-        let mut client = connect(&*ws_url.lock())?;
+        let mut client = connect(&*ws_url.lock().await)?;
 
         // Configure timeout and buffer sizes. See the respective
         // methods for the reasoning behind changing the defaults.
@@ -769,7 +769,7 @@ impl Shard {
     ///
     /// This will set the stage of the shard before and after instantiation of
     /// the client.
-    pub fn initialize(&mut self) -> Result<WsClient> {
+    pub async fn initialize(&mut self) -> Result<WsClient> {
         debug!("[Shard {:?}] Initializing", self.shard_info);
 
         // We need to do two, sort of three things here:
@@ -782,7 +782,7 @@ impl Shard {
         // accurate when a Hello is received.
         self.stage = ConnectionStage::Connecting;
         self.started = Instant::now();
-        let mut client = connect(&self.ws_url.lock())?;
+        let mut client = connect(&self.ws_url.lock().await)?;
         self.stage = ConnectionStage::Handshake;
 
         let _ = set_client_timeout(&mut client);
@@ -799,10 +799,10 @@ impl Shard {
         self.seq = 0;
     }
 
-    pub fn resume(&mut self) -> Result<()> {
+    pub async fn resume(&mut self) -> Result<()> {
         debug!("Shard {:?}] Attempting to resume", self.shard_info);
 
-        self.client = self.initialize()?;
+        self.client = self.initialize().await?;
         self.stage = ConnectionStage::Resuming;
 
         match self.session_id.as_ref() {
@@ -818,11 +818,11 @@ impl Shard {
         }
     }
 
-    pub fn reconnect(&mut self) -> Result<()> {
+    pub async fn reconnect(&mut self) -> Result<()> {
         info!("[Shard {:?}] Attempting to reconnect", self.shard_info());
 
         self.reset();
-        self.client = self.initialize()?;
+        self.client = self.initialize().await?;
 
         Ok(())
     }

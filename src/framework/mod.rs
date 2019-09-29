@@ -87,7 +87,7 @@ pub use self::standard::StandardFramework;
 use crate::client::Context;
 use crate::model::channel::Message;
 use async_trait::async_trait;
-use threadpool::ThreadPool;
+use std::sync::Arc;
 
 /// A trait for defining your own framework for serenity to use.
 ///
@@ -95,33 +95,33 @@ use threadpool::ThreadPool;
 /// However, using this will benefit you by abstracting the `EventHandler` away,
 /// and providing a reference to serenity's threadpool,
 /// so that you may run your commands in separate threads.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Framework {
-    async fn dispatch(&mut self, _: Context, _: Message, _: &ThreadPool);
+    async fn dispatch(&mut self, _: Context, _: Message);
 }
 
-#[async_trait(?Send)]
-impl<F: Framework + ?Sized> Framework for Box<F> {
-    #[inline]
-    async fn dispatch(&mut self, ctx: Context, msg: Message, threadpool: &ThreadPool) {
-        (**self).dispatch(ctx, msg, threadpool).await;
+#[async_trait]
+impl<F: Framework + ?Sized + Send> Framework for Box<F> {
+     #[inline]
+    async fn dispatch(&mut self, ctx: Context, msg: Message) {
+        (**self).dispatch(ctx, msg).await;
     }
 }
 
-#[async_trait(?Send)]
-impl<T: Framework + ?Sized> Framework for Arc<T> {
+#[async_trait]
+impl<T: Framework + ?Sized + Send + Sync> Framework for Arc<T> {
     #[inline]
-    async fn dispatch(&mut self, ctx: Context, msg: Message, threadpool: &threadpool::ThreadPool) {
+    async fn dispatch(&mut self, ctx: Context, msg: Message) {
         if let Some(s) = Arc::get_mut(self) {
-            (*s).dispatch(ctx, msg, threadpool).await;
+            (*s).dispatch(ctx, msg).await;
         }
     }
 }
 
-#[async_trait(?Send)]
-impl<'a, F: Framework + ?Sized> Framework for &'a mut F {
+#[async_trait]
+impl<'a, F: Framework + ?Sized + Send> Framework for &'a mut F {
      #[inline]
-    async fn dispatch(&mut self, ctx: Context, msg: Message, threadpool: &ThreadPool) {
-        (**self).dispatch(ctx, msg, threadpool).await;
+    async fn dispatch(&mut self, ctx: Context, msg: Message) {
+        (**self).dispatch(ctx, msg).await;
     }
 }

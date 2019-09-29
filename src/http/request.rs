@@ -76,7 +76,10 @@ impl<'a> Request<'a> {
             Url::parse(&path)?,
         );
 
+        let mut content_length = 0;
+
         if let Some(ref bytes) = body {
+            content_length = bytes.len();
             builder = builder.body(Vec::from(*bytes));
         }
 
@@ -85,7 +88,7 @@ impl<'a> Request<'a> {
         headers.insert(AUTHORIZATION,
             HeaderValue::from_str(&token).map_err(HttpError::InvalidHeader)?);
         headers.insert(CONTENT_TYPE, HeaderValue::from_static(&"application/json"));
-        headers.insert(CONTENT_LENGTH, HeaderValue::from_static(&"0"));
+        headers.insert(CONTENT_LENGTH, HeaderValue::from_str(&content_length.to_string())?);
         headers.insert("X-Ratelimit-Precision", HeaderValue::from_static("millisecond"));
 
         if let Some(ref request_headers) = request_headers {

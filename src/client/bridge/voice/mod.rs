@@ -1,9 +1,9 @@
 use crate::gateway::InterMessage;
 use std::collections::HashMap;
-use std::sync::mpsc::Sender as MpscSender;
 use crate::model::id::{ChannelId, GuildId, UserId};
 use crate::voice::{Handler, Manager};
 use crate::utils;
+use futures::channel::mpsc::UnboundedSender;
 
 pub struct ClientVoiceManager {
     managers: HashMap<u64, Manager>,
@@ -73,7 +73,7 @@ impl ClientVoiceManager {
         self.managers.get_mut(&sid).map(|manager| manager.leave(gid))
     }
 
-    pub fn set(&mut self, shard_id: u64, sender: MpscSender<InterMessage>) {
+    pub fn set(&mut self, shard_id: u64, sender: UnboundedSender<InterMessage>) {
         self.managers.insert(shard_id, Manager::new(sender, self.user_id));
     }
 

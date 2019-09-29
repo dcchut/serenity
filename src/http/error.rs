@@ -39,11 +39,12 @@ pub struct ErrorResponse {
 
 impl From<Response> for ErrorResponse {
     fn from(r: Response) -> Self {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
         ErrorResponse {
             status_code: r.status(),
             url: r.url().clone(),
-            // TODO: block_on
-            error: futures::executor::block_on(r.json()).unwrap_or_else(|_| DiscordJsonError {
+            error: rt.block_on(r.json()).unwrap_or_else(|_| DiscordJsonError {
                 code: -1,
                 message: "[Serenity] No correct json was received!".to_string(),
                 non_exhaustive: (),

@@ -358,8 +358,9 @@ impl Drop for ShardManager {
     /// [`ShardQueuer`]: struct.ShardQueuer.html
     /// [`ShardRunner`]: struct.ShardRunner.html
     fn drop(&mut self) {
-        // TODO: block_on
-        futures::executor::block_on(async {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+        rt.block_on(async {
             self.shutdown_all().await;
 
             if let Err(why) = self.shard_queuer.send(ShardQueuerMessage::Shutdown).await {

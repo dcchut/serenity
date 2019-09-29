@@ -845,8 +845,10 @@ impl<H: AsRef<Http>> Iterator for MembersIter<H> {
 
     fn next(&mut self) -> Option<Result<Member>> {
         if self.buffer.is_empty() && self.after.is_some() || !self.tried_fetch {
-            // TODO: replace this with a stream so we don't need to use futures::.::block_on
-            if let Err(e) = futures::executor::block_on(self.refresh()) {
+            // TODO: replace this with a stream
+            let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+            if let Err(e) = rt.block_on(self.refresh()) {
                 return Some(Err(e))
             }
         }

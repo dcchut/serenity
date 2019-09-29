@@ -177,7 +177,7 @@ impl ToTokens for CommandFun {
                     #(#body)*
                 };
 
-                futures::executor::block_on(_inner())
+                tokio::runtime::current_thread::Runtime::new().unwrap().block_on(_inner())
             }
         });
     }

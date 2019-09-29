@@ -263,9 +263,7 @@ impl WebhookId {
     /// [Manage Webhooks]: ../../model/permissions/struct.Permissions.html#associatedconstant.MANAGE_WEBHOOKS
     #[inline]
     pub fn to_webhook(self, http: impl AsRef<Http>) -> Result<Webhook> {
-        // TODO: block_on
-        futures::executor::block_on(
-        http.as_ref().get_webhook(self.0)
-        )
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        rt.block_on(http.as_ref().get_webhook(self.0))
     }
 }

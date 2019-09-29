@@ -55,6 +55,8 @@
 #![doc(html_root_url = "https://docs.rs/serenity/*")]
 #![deny(rust_2018_idioms)]
 
+#![feature(async_closure)]
+
 #[macro_use]
 extern crate serde;
 
@@ -91,6 +93,8 @@ pub use crate::client::Client;
 
 #[cfg(feature = "cache")]
 use crate::cache::CacheRwLock;
+#[cfg(feature = "cache")]
+use async_std::sync::RwLock;
 #[cfg(feature = "cache")]
 use std::time::Duration;
 #[cfg(feature = "client")]

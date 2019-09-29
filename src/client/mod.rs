@@ -43,7 +43,7 @@ use std::time::Duration;
 
 use crate::internal::prelude::*;
 use futures::lock::Mutex;
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 use self::bridge::gateway::{ShardManager, ShardManagerMonitor, ShardManagerOptions};
 use std::sync::Arc;
 use typemap::ShareMap;

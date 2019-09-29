@@ -1,7 +1,7 @@
 use crate::client::bridge::gateway::ShardMessenger;
 use crate::gateway::InterMessage;
 use crate::model::prelude::*;
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 use std::sync::Arc;
 use typemap::ShareMap;
 

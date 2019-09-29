@@ -4,7 +4,7 @@ use crate::internal::ws_impl::{ReceiverExt, SenderExt};
 use crate::model::event::{Event, GatewayEvent};
 use crate::CacheAndHttp;
 use futures::lock::Mutex;
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 use serde::Deserialize;
 use std::{
     borrow::Cow,

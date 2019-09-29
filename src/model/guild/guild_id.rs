@@ -441,7 +441,11 @@ impl GuildId {
     /// [`Guild`]: ../guild/struct.Guild.html
     #[cfg(feature = "cache")]
     #[inline]
-    pub fn to_guild_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> {cache.as_ref().read().guild(self) }
+    pub async fn to_guild_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> {
+        let guard = cache.as_ref().read().await;
+        let res = guard.guild(self);
+        res
+    }
 
     /// Requests [`PartialGuild`] over REST API.
     ///
@@ -505,8 +509,8 @@ impl GuildId {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-
-                if let Some(member) = cache.read().member(self.0, user_id) {
+                let guard = cache.read().await;
+                if let Some(member) = guard.member(self.0, user_id).await {
                     return Ok(member);
                 }
             }
@@ -641,8 +645,11 @@ impl GuildId {
     /// [`utils::shard_id`]: ../../utils/fn.shard_id.html
     #[cfg(all(feature = "cache", feature = "utils"))]
     #[inline]
-    pub fn shard_id(self, cache: impl AsRef<CacheRwLock>) -> u64 {
-        crate::utils::shard_id(self.0, cache.as_ref().read().shard_count)
+    pub async fn shard_id(self, cache: impl AsRef<CacheRwLock>) -> u64 {
+        let guard = cache.as_ref().read().await;
+        let res = crate::utils::shard_id(self.0, guard.shard_count);
+
+        res
     }
 
     /// Returns the Id of the shard associated with the guild.
@@ -827,8 +834,10 @@ impl<H: AsRef<Http>> MembersIter<H> {
             ._members(self.http.as_ref(), Some(grab_size), self.after).await?;
 
          //Get the last member.  If shorter than 1000, there are no more results anyway
-        self.after = self.buffer.get(grab_size as usize - 1)
-            .map(|member| member.user_id());
+        self.after = match self.buffer.get(grab_size as usize - 1) {
+            Some(member) => Some(member.user_id().await),
+            None => None,
+        };
 
         // Reverse to optimize pop()
         self.buffer.reverse();

@@ -40,7 +40,7 @@ use std::{
     path::Path,
 };
 #[cfg(feature = "cache")]
-use crate::prelude::RwLock;
+use async_std::sync::RwLock;
 #[cfg(feature = "cache")]
 use crate::model::channel::Channel;
 #[cfg(feature = "cache")]
@@ -466,9 +466,9 @@ pub fn shard_id(guild_id: u64, shard_count: u64) -> u64 { (guild_id >> 22) % sha
 /// assert_eq!(1234, utils::with_cache(|cache|cache.as_ref().user.id));
 /// ```
 #[cfg(feature = "cache")]
-pub fn with_cache<T, F>(cache: impl AsRef<CacheRwLock>, f: F) -> T
+pub async fn with_cache<T, F>(cache: impl AsRef<CacheRwLock>, f: F) -> T
     where F: Fn(&Cache) -> T {
-    let cache = cache.as_ref().read();
+    let cache = cache.as_ref().read().await;
     f(&cache)
 }
 
@@ -487,9 +487,9 @@ pub fn with_cache<T, F>(cache: impl AsRef<CacheRwLock>, f: F) -> T
 ///
 /// [`with_cache`]: #fn.with_cache
 #[cfg(feature = "cache")]
-pub fn with_cache_mut<T, F>(cache: impl AsRef<CacheRwLock>, mut f: F) -> T
+pub async fn with_cache_mut<T, F>(cache: impl AsRef<CacheRwLock>, mut f: F) -> T
     where F: FnMut(&mut Cache) -> T {
-    let mut cache = cache.as_ref().write();
+    let mut cache = cache.as_ref().write().await;
     f(&mut cache)
 }
 
@@ -608,7 +608,7 @@ impl Default for ContentSafeOptions {
 
 #[cfg(feature = "cache")]
 #[inline]
-fn clean_roles(cache: impl AsRef<CacheRwLock>, s: &mut String) {
+async fn clean_roles(cache: impl AsRef<CacheRwLock>, s: &mut String) {
     let mut progress = 0;
 
     while let Some(mut mention_start) = s[progress..].find("<@&") {
@@ -621,7 +621,7 @@ fn clean_roles(cache: impl AsRef<CacheRwLock>, s: &mut String) {
             if let Ok(id) = RoleId::from_str(&s[mention_start..mention_end]) {
                 let to_replace = format!("<@&{}>", &s[mention_start..mention_end]);
 
-                *s = if let Some(role) = id._to_role_cached(&cache) {
+                *s = if let Some(role) = id._to_role_cached(&cache).await {
                     s.replace(&to_replace, &format!("@{}", &role.name))
                 } else {
                     s.replace(&to_replace, &"@deleted-role")
@@ -646,7 +646,7 @@ fn clean_roles(cache: impl AsRef<CacheRwLock>, s: &mut String) {
 
 #[cfg(feature = "cache")]
 #[inline]
-fn clean_channels(cache: &RwLock<Cache>, s: &mut String) {
+async fn clean_channels(cache: &RwLock<Cache>, s: &mut String) {
     let mut progress = 0;
 
     while let Some(mut mention_start) = s[progress..].find("<#") {
@@ -659,8 +659,8 @@ fn clean_channels(cache: &RwLock<Cache>, s: &mut String) {
             if let Ok(id) = ChannelId::from_str(&s[mention_start..mention_end]) {
                 let to_replace = format!("<#{}>", &s[mention_start..mention_end]);
 
-                *s = if let Some(Channel::Guild(channel)) = id._to_channel_cached(&cache) {
-                    let replacement = format!("#{}", &channel.read().name);
+                *s = if let Some(Channel::Guild(channel)) = id._to_channel_cached(&cache).await {
+                    let replacement = format!("#{}", &channel.read().await.name);
                     s.replace(&to_replace, &replacement)
                 } else {
                     s.replace(&to_replace, &"#deleted-channel")
@@ -685,7 +685,7 @@ fn clean_channels(cache: &RwLock<Cache>, s: &mut String) {
 
 #[cfg(feature = "cache")]
 #[inline]
-fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: bool, guild: Option<GuildId>) {
+async fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: bool, guild: Option<GuildId>) {
     let mut progress = 0;
 
     while let Some(mut mention_start) = s[progress..].find("<@") {
@@ -706,14 +706,14 @@ fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: bool, 
             if let Ok(id) = UserId::from_str(&s[mention_start..mention_end]) {
                 let replacement = if let Some(guild) = guild {
 
-                    if let Some(guild) = cache.read().guild(&guild) {
+                    if let Some(guild) = cache.read().await.guild(&guild) {
 
-                        if let Some(member) = guild.read().members.get(&id) {
+                        if let Some(member) = guild.read().await.members.get(&id) {
 
                             if show_discriminator {
-                                format!("@{}", member.distinct())
+                                format!("@{}", member.distinct().await)
                             } else {
-                                format!("@{}", member.display_name())
+                                format!("@{}", member.display_name().await)
                             }
                         } else {
                             "@invalid-user".to_string()
@@ -722,10 +722,10 @@ fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: bool, 
                         "@invalid-user".to_string()
                     }
                 } else {
-                    let user = cache.read().users.get(&id).cloned();
+                    let user = cache.read().await.users.get(&id).cloned();
 
                     if let Some(user) = user {
-                        let user = user.read();
+                        let user = user.read().await;
 
                         if show_discriminator {
                             format!("@{}#{:04}", user.name, user.discriminator)
@@ -772,7 +772,7 @@ fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: bool, 
 /// ```rust
 /// # use std::sync::Arc;
 /// # use serenity::client::{Cache, CacheRwLock};
-/// # use parking_lot::RwLock;
+/// # use async_std::sync::RwLock;
 /// #
 /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
 /// use serenity::utils::{
@@ -788,20 +788,20 @@ fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: bool, 
 /// [`ContentSafeOptions`]: struct.ContentSafeOptions.html
 /// [`Cache`]: ../cache/struct.Cache.html
 #[cfg(feature = "cache")]
-pub fn content_safe(cache: impl AsRef<CacheRwLock>, s: impl AsRef<str>, options: &ContentSafeOptions) -> String {
+pub async fn content_safe(cache: impl AsRef<CacheRwLock>, s: impl AsRef<str>, options: &ContentSafeOptions) -> String {
     let mut s = s.as_ref().to_string();
     let cache = cache.as_ref();
 
     if options.clean_role {
-        clean_roles(&cache, &mut s);
+        clean_roles(&cache, &mut s).await;
     }
 
     if options.clean_channel {
-        clean_channels(&cache, &mut s);
+        clean_channels(&cache, &mut s).await;
     }
 
     if options.clean_user {
-        clean_users(&cache, &mut s, options.show_discriminator, options.guild_reference);
+        clean_users(&cache, &mut s, options.show_discriminator, options.guild_reference).await;
     }
 
     if options.clean_here {

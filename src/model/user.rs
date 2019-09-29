@@ -13,7 +13,7 @@ use crate::builder::{CreateMessage, EditProfile};
 #[cfg(feature = "model")]
 use crate::http::GuildPagination;
 #[cfg(all(feature = "cache", feature = "model"))]
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 #[cfg(feature = "model")]
 use std::fmt::Write;
 #[cfg(feature = "model")]
@@ -64,7 +64,7 @@ impl CurrentUser {
     /// # #[cfg(feature = "cache")]
     /// # fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::prelude::*, prelude::*};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -161,7 +161,7 @@ impl CurrentUser {
     /// # #[tokio::main]
     /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::prelude::*, prelude::*};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -200,7 +200,7 @@ impl CurrentUser {
     /// # #[tokio::main]
     /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::prelude::*, prelude::*};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -234,7 +234,7 @@ impl CurrentUser {
     /// # #[tokio::main]
     /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::prelude::*, prelude::*};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -300,7 +300,7 @@ impl CurrentUser {
     /// # #[cfg(feature = "cache")]
     /// # fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::prelude::*, prelude::*};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -332,7 +332,7 @@ impl CurrentUser {
     /// # #[cfg(feature = "cache")]
     /// # fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::prelude::*, prelude::*};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -584,11 +584,15 @@ impl User {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-                private_channel_id = cache.read().private_channels
-                    .values()
-                    .map(|ch| ch.read())
-                    .find(|ch| ch.recipient.read().id == self.id)
-                    .map(|ch| ch.id);
+                let guard = &cache.read().await.private_channels;
+
+                for channel in guard.values() {
+                    let guard = channel.read().await;
+                    if guard.recipient.read().await.id == self.id {
+                        private_channel_id = Some(guard.id);
+                        break;
+                    }
+                }
             }
         }
 
@@ -670,22 +674,62 @@ impl User {
     #[cfg(feature = "client")]
     pub async fn has_role<G, R>(&self, cache_http: impl CacheHttp, guild: G, role: R) -> Result<bool>
         where G: Into<GuildContainer>, R: Into<RoleId> {
-        self._has_role(cache_http, guild.into(), role.into())
+        self._has_role(cache_http, guild.into(), role.into()).await
     }
 
     #[cfg(feature = "client")]
-    fn _has_role(
+    async fn _has_role(
         &self,
         cache_http: impl CacheHttp,
         guild: GuildContainer,
         role: RoleId
     ) -> Result<bool> {
+        let mut guild = Some(guild);
+
+        while guild.is_some() {
+            match guild.unwrap() {
+                GuildContainer::Guild(partial_guild) => {
+                    guild = Some(GuildContainer::Id(partial_guild.id));
+                },
+                GuildContainer::Id(guild_id) => {
+                    let mut has_role = None;
+
+                    #[cfg(feature = "cache")]
+                        {
+                            if let Some(cache) = cache_http.cache() {
+                                if let Some(guild) = cache.read().await.guilds.get(&guild_id) {
+                                    if let Some(member) = guild.read().await.members.get(&self.id) {
+                                        has_role = Some(member.roles.contains(&role));
+                                    }
+                                }
+                            }
+                        }
+
+                    #[cfg(feature = "http")]
+                        {
+                            if let Some(has_role) = has_role {
+                                return Ok(has_role);
+                            } else {
+                                return cache_http.http().get_member(guild_id.0, self.id.0).await.map(|m| m.roles.contains(&role));
+                            }
+                        }
+                    #[cfg(not(feature = "http"))]
+                        {
+                            return Err(Error::Model(ModelError::ItemMissing));
+                        }
+                },
+                GuildContainer::__Nonexhaustive => unreachable!(),
+            }
+        }
+
+        unreachable!();
+        /*
         match guild {
             GuildContainer::Guild(partial_guild) => {
                 self._has_role(
                     cache_http,
                     GuildContainer::Id(partial_guild.id), role
-                )
+                ).await
             },
             GuildContainer::Id(guild_id) => {
                 let mut has_role = None;
@@ -693,13 +737,11 @@ impl User {
                 #[cfg(feature = "cache")]
                     {
                         if let Some(cache) = cache_http.cache() {
-                            has_role = cache.read()
-                                .guilds
-                                .get(&guild_id)
-                                .and_then(|g| {
-                                    g.read().members.get(&self.id)
-                                        .and_then(|m| Some(m.roles.contains(&role)))
-                                });
+                            if let Some(guild) = cache.read().await.guilds.get(&guild_id) {
+                                if let Some(member) = guild.read().await.members.get(&self.id) {
+                                    has_role = Some(member.roles.contains(&role));
+                                }
+                            }
                         }
                     }
 
@@ -720,7 +762,7 @@ impl User {
                     }
             },
             GuildContainer::__Nonexhaustive => unreachable!(),
-        }
+        }*/
     }
 
     /// Refreshes the information about the user.
@@ -802,9 +844,10 @@ impl User {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-                return guild_id.to_guild_cached(cache).and_then(|guild| {
-                    guild.read().members.get(&self.id).and_then(|member| member.nick.clone())
-                });
+                if let Some(guild) = guild_id.to_guild_cached(cache).await {
+                    let guild = guild.read().await;
+                    return guild.members.get(&self.id).and_then(|member| member.nick.clone());
+                }
             }
         }
 
@@ -840,7 +883,12 @@ impl UserId {
     /// [`User`]: ../user/struct.User.html
     #[cfg(feature = "cache")]
     #[inline]
-    pub fn to_user_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<User>>> {cache.as_ref().read().user(self) }
+    pub async fn to_user_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<User>>> {
+        let guard = cache.as_ref().read().await;
+        let res = guard.user(self);
+
+        res
+    }
 
     /// First attempts to find a [`User`] by its Id in the cache,
     /// upon failure requests it via the REST API.
@@ -856,8 +904,8 @@ impl UserId {
         {
             if let Some(cache) = cache_http.cache() {
 
-                if let Some(user) = cache.read().user(self) {
-                    return Ok(user.read().clone());
+                if let Some(user) = cache.read().await.user(self) {
+                    return Ok(user.read().await.clone());
                 }
             }
         }
@@ -904,12 +952,18 @@ impl<'a> From<&'a CurrentUser> for UserId {
 
 impl From<Member> for UserId {
     /// Gets the Id of a `Member`.
-    fn from(member: Member) -> UserId { member.user.read().id }
+    fn from(member: Member) -> UserId {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        rt.block_on(member.user.read()).id
+    }
 }
 
 impl<'a> From<&'a Member> for UserId {
     /// Gets the Id of a `Member`.
-    fn from(member: &Member) -> UserId { member.user.read().id }
+    fn from(member: &Member) -> UserId {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        rt.block_on(member.user.read()).id
+    }
 }
 
 impl From<User> for UserId {

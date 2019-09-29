@@ -22,7 +22,7 @@ pub use self::private_channel::*;
 pub use self::reaction::*;
 pub use self::channel_category::*;
 
-use crate::{internal::RwLockExt, model::prelude::*};
+use crate::model::prelude::*;
 use serde::de::Error as DeError;
 use serde::ser::{SerializeStruct, Serialize, Serializer};
 use serde_json;
@@ -42,7 +42,7 @@ use crate::cache::CacheRwLock;
 #[cfg(feature = "cache")]
 use std::sync::Arc;
 #[cfg(feature = "cache")]
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 
 /// A container for any channel.
 #[derive(Clone, Debug)]
@@ -83,7 +83,7 @@ impl Channel {
     /// # #[cfg(all(feature = "model", feature = "cache"))]
     /// # fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::id::ChannelId};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #     let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -126,7 +126,7 @@ impl Channel {
     /// # #[cfg(all(feature = "model", feature = "cache"))]
     /// # fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::id::ChannelId};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #   let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -165,7 +165,7 @@ impl Channel {
     /// # #[cfg(all(feature = "model", feature = "cache"))]
     /// # fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::id::ChannelId};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #   let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -207,7 +207,7 @@ impl Channel {
     /// # #[cfg(all(feature = "model", feature = "cache"))]
     /// # fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::id::ChannelId};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #   let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -245,19 +245,19 @@ impl Channel {
     pub async fn delete(&self, cache_http: impl CacheHttp) -> Result<()> {
         match *self {
             Channel::Group(ref group) => {
-                let g = group.read();
+                let g = group.read().await;
                 let _ = g.leave(cache_http.http()).await?;
             },
             Channel::Guild(ref public_channel) => {
-                let g = public_channel.read();
+                let g = public_channel.read().await;
                 let _ = g.delete(cache_http).await?;
             },
             Channel::Private(ref private_channel) => {
-                let g = private_channel.read();
+                let g = private_channel.read().await;
                 let _ = g.delete(cache_http.http()).await?;
             },
             Channel::Category(ref category) => {
-                let g = category.read();
+                let g = category.read().await;
                 g.delete(cache_http).await?;
             },
             Channel::__Nonexhaustive => unreachable!(),
@@ -269,10 +269,10 @@ impl Channel {
     /// Determines if the channel is NSFW.
     #[cfg(feature = "model")]
     #[inline]
-    pub fn is_nsfw(&self) -> bool {
+    pub async fn is_nsfw(&self) -> bool {
         match *self {
-            Channel::Guild(ref channel) => channel.with(|c| c.is_nsfw()),
-            Channel::Category(ref category) => category.with(|c| c.is_nsfw()),
+            Channel::Guild(ref channel) => channel.read().await.is_nsfw(),
+            Channel::Category(ref category) => category.read().await.is_nsfw(),
             Channel::Group(_) | Channel::Private(_) => false,
             Channel::__Nonexhaustive => unreachable!(),
         }
@@ -284,12 +284,12 @@ impl Channel {
     /// [`Group`]: struct.Group.html
     /// [`GuildChannel`]: struct.GuildChannel.html
     /// [`PrivateChannel`]: struct.PrivateChannel.html
-    pub fn id(&self) -> ChannelId {
+    pub async fn id(&self) -> ChannelId {
         match *self {
-            Channel::Group(ref group) => group.with(|g| g.channel_id),
-            Channel::Guild(ref ch) => ch.with(|c| c.id),
-            Channel::Private(ref ch) => ch.with(|c| c.id),
-            Channel::Category(ref category) => category.with(|c| c.id),
+            Channel::Group(ref group) => group.read().await.channel_id,
+            Channel::Guild(ref ch) => ch.read().await.id,
+            Channel::Private(ref ch) => ch.read().await.id,
+            Channel::Category(ref category) => category.read().await.id,
             Channel::__Nonexhaustive => unreachable!(),
         }
     }
@@ -301,10 +301,10 @@ impl Channel {
     ///
     /// [`GuildChannel`]: struct.GuildChannel.html
     /// [`CategoryChannel`]: struct.ChannelCategory.html
-    pub fn position(&self) -> Option<i64> {
+    pub async fn position(&self) -> Option<i64> {
         match *self {
-            Channel::Guild(ref channel) => Some(channel.with(|c| c.position)),
-            Channel::Category(ref catagory) => Some(catagory.with(|c| c.position)),
+            Channel::Guild(ref channel) => Some(channel.read().await.position),
+            Channel::Category(ref catagory) => Some(catagory.read().await.position),
             _ => None
         }
     }
@@ -340,18 +340,20 @@ impl<'de> Deserialize<'de> for Channel {
 impl Serialize for Channel {
     fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
         where S: Serializer {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
         match *self {
             Channel::Category(ref c) => {
-                ChannelCategory::serialize(&*c.read(), serializer)
+                ChannelCategory::serialize(&*rt.block_on(c.read()), serializer)
             },
             Channel::Group(ref c) => {
-                Group::serialize(&*c.read(), serializer)
+                Group::serialize(&*rt.block_on(c.read()), serializer)
             },
             Channel::Guild(ref c) => {
-                GuildChannel::serialize(&*c.read(), serializer)
+                GuildChannel::serialize(&*rt.block_on(c.read()), serializer)
             },
             Channel::Private(ref c) => {
-                PrivateChannel::serialize(&*c.read(), serializer)
+                PrivateChannel::serialize(&*rt.block_on(c.read()), serializer)
             },
             Channel::__Nonexhaustive => unreachable!(),
         }
@@ -374,16 +376,23 @@ impl Display for Channel {
     /// [`GuildChannel`]: struct.GuildChannel.html
     /// [`PrivateChannel`]: struct.PrivateChannel.html
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
         match *self {
-            Channel::Group(ref group) => Display::fmt(&group.read().name(), f),
-            Channel::Guild(ref ch) => Display::fmt(&ch.read().id.mention(), f),
+            Channel::Group(ref group) => rt.block_on(async move {
+                let guard = group.read().await;
+                let res = guard.name().await;
+
+                Display::fmt(&res, f)
+            }),
+            Channel::Guild(ref ch) => Display::fmt(&rt.block_on(ch.read()).id.mention(), f),
             Channel::Private(ref ch) => {
-                let channel = ch.read();
-                let recipient = channel.recipient.read();
+                let channel = rt.block_on(ch.read());
+                let recipient = rt.block_on(channel.recipient.read());
 
                 Display::fmt(&recipient.name, f)
             },
-            Channel::Category(ref category) => Display::fmt(&category.read().name, f),
+            Channel::Category(ref category) => Display::fmt(&rt.block_on(category.read()).name, f),
             Channel::__Nonexhaustive => unreachable!(),
         }
     }
@@ -542,7 +551,7 @@ mod test {
     #[cfg(all(feature = "model", feature = "utils"))]
     mod model_utils {
         use crate::model::prelude::*;
-        use parking_lot::RwLock;
+        use async_std::sync::RwLock;
         use std::collections::HashMap;
         use std::sync::Arc;
 
@@ -638,9 +647,12 @@ impl FromStrAndCache for Channel {
 
     fn from_str(cache: impl AsRef<CacheRwLock>, s: &str) -> StdResult<Self, Self::Err> {
         match parse_channel(s) {
-            Some(x) => match ChannelId(x).to_channel_cached(&cache) {
-                Some(channel) => Ok(channel),
-                _ => Err(ChannelParseError::NotPresentInCache),
+            Some(x) => {
+                let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+                match rt.block_on(ChannelId(x).to_channel_cached(&cache)) {
+                    Some(channel) => Ok(channel),
+                    _ => Err(ChannelParseError::NotPresentInCache),
+                }
             },
             _ => Err(ChannelParseError::InvalidChannel),
         }

@@ -10,11 +10,7 @@ use crate::builder::{
 #[cfg(feature = "model")]
 use crate::http::AttachmentType;
 #[cfg(feature = "model")]
-use crate::internal::RwLockExt;
-#[cfg(feature = "model")]
 use std::borrow::Cow;
-#[cfg(feature = "model")]
-use std::fmt::Write as FmtWrite;
 #[cfg(feature = "http")]
 use crate::http::Http;
 
@@ -230,20 +226,21 @@ impl Group {
     /// If there are no recipients in the group, the name will be "Empty Group".
     /// Otherwise, the name is generated in a Comma Separated Value list, such
     /// as "person 1, person 2, person 3".
-    pub fn name(&self) -> Cow<'_, str> {
+    pub async fn name(&self) -> Cow<'_, str> {
+        use std::fmt::Write;
         match self.name {
-            Some(ref name) => Cow::Borrowed(name),
+            Some(ref name) => Cow::Borrowed(name.as_str()),
             None => {
                 let mut name = match self.recipients.values().nth(0) {
-                    Some(recipient) => recipient.with(|c| c.name.clone()),
+                    Some(recipient) => recipient.read().await.name.clone(),
                     None => return Cow::Borrowed("Empty Group"),
                 };
 
                 for recipient in self.recipients.values().skip(1) {
-                    let _ = write!(name, ", {}", recipient.with(|r| r.name.clone()));
+                    let _ = write!(name, ", {}", recipient.read().await.name.clone());
                 }
 
-                Cow::Owned(name)
+                Cow::Owned(name) as Cow<'_, str>
             },
         }
     }

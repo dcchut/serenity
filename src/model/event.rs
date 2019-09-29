@@ -13,11 +13,10 @@ use super::utils::{deserialize_emojis, deserialize_u64};
 use super::prelude::*;
 use crate::constants::{OpCode, VoiceOpCode};
 use crate::internal::prelude::*;
+use async_trait::async_trait;
 
 #[cfg(feature = "cache")]
 use crate::cache::{Cache, CacheUpdate};
-#[cfg(feature = "cache")]
-use crate::internal::RwLockExt;
 #[cfg(feature = "cache")]
 use std::collections::hash_map::Entry;
 #[cfg(feature = "cache")]
@@ -59,66 +58,76 @@ impl Serialize for ChannelCreateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for ChannelCreateEvent {
     type Output = Channel;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
         match self.channel {
             Channel::Group(ref group) => {
                 let group = Arc::clone(group);
 
-                let channel_id = group.with_mut(|writer| {
+                let channel_id = {
+                    let mut writer = group.write().await;
+
                     for (recipient_id, recipient) in &mut writer.recipients {
-                        cache.update_user_entry(&recipient.read());
+                        let tmp = recipient.read().await.clone();
+                        cache.update_user_entry(&tmp).await;
 
                         *recipient = Arc::clone(&cache.users[recipient_id]);
                     }
 
                     writer.channel_id
-                });
+                };
 
                 let ch = cache.groups.insert(channel_id, group);
 
                 ch.map(Channel::Group)
             },
             Channel::Guild(ref channel) => {
-                let (guild_id, channel_id) = channel.with(|channel| (channel.guild_id, channel.id));
+                let (guild_id, channel_id) = {
+                    let guard = channel.read().await;
+                    (guard.guild_id, guard.id)
+                };
 
                 cache.channels.insert(channel_id, Arc::clone(channel));
 
-                cache
-                    .guilds
-                    .get_mut(&guild_id)
-                    .and_then(|guild| {
-                        guild
-                            .with_mut(|guild| guild.channels.insert(channel_id, Arc::clone(channel)))
-                    })
-                    .map(Channel::Guild)
+                if let Some(entry) = cache.guilds.get_mut(&guild_id) {
+                    entry.write().await.channels.insert(channel_id, Arc::clone(channel)).map(Channel::Guild)
+                } else {
+                    None
+                }
             },
             Channel::Private(ref channel) => {
-                if let Some(channel) = cache.private_channels.get(&channel.with(|c| c.id)) {
+                let tmp_id = channel.read().await.id;
+
+                if let Some(channel) = cache.private_channels.get(&tmp_id) {
                     return Some(Channel::Private(Arc::clone(&(*channel))));
                 }
 
                 let channel = Arc::clone(channel);
 
-                let id = channel.with_mut(|writer| {
-                    let user_id = writer.recipient.with_mut(|user| {
-                        cache.update_user_entry(user);
+                let id = {
+                    let mut guard = channel.write().await;
+                    let user_id = {
+                        let user = guard.recipient.write().await;
+                        let c_user = user.clone();
+
+                        cache.update_user_entry(&c_user).await;
 
                         user.id
-                    });
+                    };
 
-                    writer.recipient = Arc::clone(&cache.users[&user_id]);
-                    writer.id
-                });
+                    guard.recipient = Arc::clone(&cache.users[&user_id]);
+                    guard.id
+                };
 
                 let ch = cache.private_channels.insert(id, Arc::clone(&channel));
                 ch.map(Channel::Private)
             },
             Channel::Category(ref category) => cache
                 .categories
-                .insert(category.read().id, Arc::clone(category))
+                .insert(category.read().await.id, Arc::clone(category))
                 .map(Channel::Category),
             Channel::__Nonexhaustive => unreachable!(),
         }
@@ -132,29 +141,32 @@ pub struct ChannelDeleteEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for ChannelDeleteEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         match self.channel {
             Channel::Guild(ref channel) => {
-                let (guild_id, channel_id) = channel.with(|channel| (channel.guild_id, channel.id));
+                let (guild_id, channel_id) = {
+                    let guard = channel.read().await;
+                    (guard.guild_id, guard.id)
+                };
 
                 cache.channels.remove(&channel_id);
 
-                cache
-                    .guilds
-                    .get_mut(&guild_id)
-                    .and_then(|guild| guild.with_mut(|g| g.channels.remove(&channel_id)));
+                if let Some(entry) = cache.guilds.get_mut(&guild_id) {
+                    entry.write().await.channels.remove(&channel_id);
+                }
             },
             Channel::Category(ref category) => {
-                let channel_id = category.with(|cat| cat.id);
+                let channel_id = category.read().await.id;
 
                 cache.categories.remove(&channel_id);
             },
             Channel::Private(ref channel) => {
                 let id = {
-                    channel.read().id
+                    channel.read().await.id
                 };
 
                 cache.private_channels.remove(&id);
@@ -166,7 +178,7 @@ impl CacheUpdate for ChannelDeleteEvent {
         };
 
         // Remove the cached messages for the channel.
-        cache.messages.remove(&self.channel.id());
+        cache.messages.remove(&self.channel.id().await);
 
         None
     }
@@ -197,30 +209,25 @@ pub struct ChannelPinsUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for ChannelPinsUpdateEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         if let Some(channel) = cache.channels.get(&self.channel_id) {
-            channel.with_mut(|c| {
-                c.last_pin_timestamp = self.last_pin_timestamp;
-            });
+            channel.write().await.last_pin_timestamp = self.last_pin_timestamp;
 
             return None;
         }
 
         if let Some(channel) = cache.private_channels.get_mut(&self.channel_id) {
-            channel.with_mut(|c| {
-                c.last_pin_timestamp = self.last_pin_timestamp;
-            });
+            channel.write().await.last_pin_timestamp = self.last_pin_timestamp;
 
             return None;
         }
 
         if let Some(group) = cache.groups.get_mut(&self.channel_id) {
-            group.with_mut(|c| {
-                c.last_pin_timestamp = self.last_pin_timestamp;
-            });
+            group.write().await.last_pin_timestamp = self.last_pin_timestamp;
 
             return None;
         }
@@ -239,15 +246,16 @@ pub struct ChannelRecipientAddEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for ChannelRecipientAddEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
-        cache.update_user_entry(&self.user);
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
+        cache.update_user_entry(&self.user).await;
         let user = Arc::clone(&cache.users[&self.user.id]);
 
         if let Some(group) = cache.groups.get_mut(&self.channel_id) {
-            group.write().recipients.insert(self.user.id, user);
+            group.write().await.recipients.insert(self.user.id, user);
         }
 
         None
@@ -264,13 +272,18 @@ pub struct ChannelRecipientRemoveEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for ChannelRecipientRemoveEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
-        cache.groups.get_mut(&self.channel_id).map(|group| {
-            group.with_mut(|g| g.recipients.remove(&self.user.id))
-        });
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
+        match cache.groups.get_mut(&self.channel_id) {
+            Some(group) => {
+                let mut group = group.write().await;
+                group.recipients.remove(&self.user.id)
+            },
+            None => None,
+        };
 
         None
     }
@@ -283,53 +296,59 @@ pub struct ChannelUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for ChannelUpdateEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         match self.channel {
             Channel::Group(ref group) => {
-                let (ch_id, no_recipients) =
-                    group.with(|g| (g.channel_id, g.recipients.is_empty()));
+                let (ch_id, no_recipients) = {
+                    let guard = group.read().await;
+                    (guard.channel_id, guard.recipients.is_empty())
+                };
 
                 match cache.groups.entry(ch_id) {
                     Entry::Vacant(e) => {
                         e.insert(Arc::clone(group));
                     },
                     Entry::Occupied(mut e) => {
-                        let mut dest = e.get_mut().write();
+                        let mut dest = e.get_mut().write().await;
 
                         if no_recipients {
                             let recipients = mem::replace(&mut dest.recipients, HashMap::new());
 
-                            dest.clone_from(&group.read());
+                            dest.clone_from(&group.read().await.clone());
 
                             dest.recipients = recipients;
                         } else {
-                            dest.clone_from(&group.read());
+                            dest.clone_from(&group.read().await.clone());
                         }
                     },
                 }
             },
             Channel::Guild(ref channel) => {
-                let (guild_id, channel_id) = channel.with(|channel| (channel.guild_id, channel.id));
+                let (guild_id, channel_id) = {
+                    let guard = channel.read().await;
+                    (guard.guild_id, guard.id)
+                };
 
                 cache.channels.insert(channel_id, Arc::clone(channel));
 
                 if let Some(guild) = cache.guilds.get_mut(&guild_id) {
-                    guild
-                        .with_mut(|g| g.channels.insert(channel_id, Arc::clone(channel)));
+                    let mut guild = guild.write().await;
+                    guild.channels.insert(channel_id, Arc::clone(channel));
                 }
             },
             Channel::Private(ref channel) => {
-                if let Some(private) = cache.private_channels.get_mut(&channel.read().id) {
+                if let Some(private) = cache.private_channels.get_mut(&channel.read().await.id) {
                     private.clone_from(channel);
                 }
             },
             Channel::Category(ref category) => {
                 if let Some(c) = cache
                     .categories
-                    .get_mut(&category.read().id)
+                    .get_mut(&category.read().await.id)
                     { c.clone_from(category) }
             },
             Channel::__Nonexhaustive => unreachable!(),
@@ -378,16 +397,18 @@ pub struct GuildCreateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildCreateEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         cache.unavailable_guilds.remove(&self.guild.id);
 
         let mut guild = self.guild.clone();
 
         for (user_id, member) in &mut guild.members {
-            cache.update_user_entry(&member.user.read());
+            let tmp = member.user.read().await.clone();
+            cache.update_user_entry(&tmp).await;
             let user = Arc::clone(&cache.users[user_id]);
 
             member.user = Arc::clone(&user);
@@ -425,22 +446,26 @@ pub struct GuildDeleteEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildDeleteEvent {
     type Output = Arc<RwLock<Guild>>;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
         // Remove channel entries for the guild if the guild is found.
-        cache.guilds.remove(&self.guild.id).map(|guild| {
-            for channel_id in guild.write().channels.keys() {
-                // Remove the channel from the cache.
-                cache.channels.remove(channel_id);
+        match cache.guilds.remove(&self.guild.id) {
+            Some(guild) => {
+                for channel_id in guild.write().await.channels.keys() {
+                    // Remove the channel from the cache.
+                    cache.channels.remove(channel_id);
 
-                // Remove the channel's cached messages.
-                cache.messages.remove(channel_id);
-            }
+                    // Remove the channel's cached messages.
+                    cache.messages.remove(channel_id);
+                }
 
-            guild
-        })
+                Some(guild)
+            },
+            None => None,
+        }
     }
 }
 
@@ -469,14 +494,14 @@ pub struct GuildEmojisUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildEmojisUpdateEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         if let Some(guild) = cache.guilds.get_mut(&self.guild_id) {
-            guild.with_mut(|g| {
-                g.emojis.clone_from(&self.emojis)
-            });
+            let mut guild = guild.write().await;
+            guild.emojis.clone_from(&self.emojis)
         }
 
         None
@@ -498,21 +523,22 @@ pub struct GuildMemberAddEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildMemberAddEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
-        let user_id = self.member.user.with(|u| u.id);
-        cache.update_user_entry(&self.member.user.read());
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
+        let user_id = self.member.user.read().await.id;
+        let tmp = self.member.user.read().await.clone();
+        cache.update_user_entry(&tmp).await;
 
         // Always safe due to being inserted above.
         self.member.user = Arc::clone(&cache.users[&user_id]);
 
         if let Some(guild) = cache.guilds.get_mut(&self.guild_id) {
-            guild.with_mut(|guild| {
-                guild.member_count += 1;
-                guild.members.insert(user_id, self.member.clone());
-            });
+            let mut guild = guild.write().await;
+            guild.member_count += 1;
+            guild.members.insert(user_id, self.member.clone());
         }
 
         None
@@ -561,16 +587,19 @@ pub struct GuildMemberRemoveEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildMemberRemoveEvent {
     type Output = Member;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
-        cache.guilds.get_mut(&self.guild_id).and_then(|guild| {
-            guild.with_mut(|guild| {
-                guild.member_count -= 1;
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+        match cache.guilds.get_mut(&self.guild_id) {
+            Some(guild) => {
+                let mut guild = guild.write().await;
+                guild.member_count -=1;
                 guild.members.remove(&self.user.id)
-            })
-        })
+            },
+            None => None,
+        }
     }
 }
 
@@ -585,14 +614,15 @@ pub struct GuildMemberUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildMemberUpdateEvent {
     type Output = Member;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
-        cache.update_user_entry(&self.user);
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+        cache.update_user_entry(&self.user).await;
 
         if let Some(guild) = cache.guilds.get_mut(&self.guild_id) {
-            let mut guild = guild.write();
+            let mut guild = guild.write().await;
 
             let mut found = false;
 
@@ -601,7 +631,7 @@ impl CacheUpdate for GuildMemberUpdateEvent {
 
                 member.nick.clone_from(&self.nick);
                 member.roles.clone_from(&self.roles);
-                member.user.write().clone_from(&self.user);
+                member.user.write().await.clone_from(&self.user);
 
                 found = true;
 
@@ -642,16 +672,19 @@ pub struct GuildMembersChunkEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildMembersChunkEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         for member in self.members.values() {
-            cache.update_user_entry(&member.user.read());
+            let tmp = member.user.read().await.clone();
+            cache.update_user_entry(&tmp).await;
         }
 
         if let Some(guild) = cache.guilds.get_mut(&self.guild_id) {
-            guild.with_mut(|g| g.members.extend(self.members.clone()))
+            let mut guild = guild.write().await;
+            guild.members.extend(self.members.clone())
         }
 
         None
@@ -684,7 +717,11 @@ impl<'de> Deserialize<'de> for GuildMembersChunkEvent {
             .map(|members| members
                 .into_iter()
                 .fold(HashMap::new(), |mut acc, member| {
-                    let id = member.user.read().id;
+                    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+                    let id = rt.block_on(async {
+                        member.user.read().await.id
+                    });
 
                     acc.insert(id, member);
 
@@ -709,16 +746,17 @@ pub struct GuildRoleCreateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildRoleCreateEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
-        cache.guilds.get_mut(&self.guild_id).map(|guild| {
-            guild
-                .write()
-                .roles
-                .insert(self.role.id, self.role.clone())
-        });
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
+        match cache.guilds.get_mut(&self.guild_id) {
+            Some(guild) => {
+                guild.write().await.roles.insert(self.role.id, self.role.clone());
+            },
+            None => {},
+        };
 
         None
     }
@@ -733,14 +771,15 @@ pub struct GuildRoleDeleteEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildRoleDeleteEvent {
     type Output = Role;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
-        cache
-            .guilds
-            .get_mut(&self.guild_id)
-            .and_then(|guild| guild.with_mut(|g| g.roles.remove(&self.role_id)))
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+        match cache.guilds.get_mut(&self.guild_id) {
+            Some(entry) => entry.write().await.roles.remove(&self.role_id),
+            None => None,
+        }
     }
 }
 
@@ -753,17 +792,18 @@ pub struct GuildRoleUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildRoleUpdateEvent {
     type Output = Role;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
-        cache.guilds.get_mut(&self.guild_id).and_then(|guild| {
-            guild.with_mut(|g| {
-                g.roles
-                    .get_mut(&self.role.id)
-                    .map(|role| mem::replace(role, self.role.clone()))
-            })
-        })
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+        match cache.guilds.get_mut(&self.guild_id) {
+            Some(guild) => {
+                let mut guild = guild.write().await;
+                guild.roles.get_mut(&self.role.id).map(|role| mem::replace(role, self.role.clone()))
+            },
+            None => None,
+        }
     }
 }
 
@@ -775,10 +815,11 @@ pub struct GuildUnavailableEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildUnavailableEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         cache.unavailable_guilds.insert(self.guild_id);
         cache.guilds.remove(&self.guild_id);
 
@@ -793,12 +834,13 @@ pub struct GuildUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for GuildUpdateEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         if let Some(guild) = cache.guilds.get_mut(&self.guild.id) {
-            let mut guild = guild.write();
+            let mut guild = guild.write().await;
 
             guild.afk_timeout = self.guild.afk_timeout;
             guild.afk_channel_id.clone_from(&self.guild.afk_channel_id);
@@ -837,11 +879,12 @@ pub struct MessageCreateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for MessageCreateEvent {
     /// The oldest message, if the channel's message cache was already full.
     type Output = Message;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
         let max = cache.settings().max_messages;
 
         if max == 0 {
@@ -924,10 +967,11 @@ pub struct MessageUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for MessageUpdateEvent {
     type Output = Message;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
         if let Some(messages) = cache.messages.get_mut(&self.channel_id) {
 
             if let Some(message) = messages.get_mut(&self.id) {
@@ -979,20 +1023,22 @@ pub struct PresenceUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for PresenceUpdateEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         let user_id = self.presence.user_id;
 
         if let Some(user) = self.presence.user.as_mut() {
-            cache.update_user_entry(&user.read());
+            let tmp = user.read().await.clone();
+            cache.update_user_entry(&tmp).await;
             *user = Arc::clone(&cache.users[&user_id]);
         }
 
         if let Some(guild_id) = self.guild_id {
             if let Some(guild) = cache.guilds.get_mut(&guild_id) {
-                let mut guild = guild.write();
+                let mut guild = guild.write().await;
 
                 // If the member went offline, remove them from the presence list.
                 if self.presence.status == OnlineStatus::Offline {
@@ -1068,10 +1114,11 @@ pub struct PresencesReplaceEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for PresencesReplaceEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         cache.presences.extend({
             let mut p: HashMap<UserId, Presence> = HashMap::default();
 
@@ -1170,10 +1217,11 @@ pub struct ReadyEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for ReadyEvent {
     type Output = ();
 
-    fn update(&mut self, cache: &mut Cache) -> Option<()> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         let mut ready = self.ready.clone();
 
         for guild in ready.guilds {
@@ -1196,7 +1244,8 @@ impl CacheUpdate for ReadyEvent {
 
         for (user_id, presence) in &mut ready.presences {
             if let Some(ref user) = presence.user {
-                cache.update_user_entry(&user.read());
+                let tmp = user.read().await.clone();
+                cache.update_user_entry(&tmp).await;
             }
 
             presence.user = cache.users.get(user_id).cloned();
@@ -1257,10 +1306,11 @@ pub struct UserUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for UserUpdateEvent {
     type Output = CurrentUser;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
         Some(mem::replace(&mut cache.user, self.current_user.clone()))
     }
 }
@@ -1299,13 +1349,14 @@ pub struct VoiceStateUpdateEvent {
 }
 
 #[cfg(feature = "cache")]
+#[async_trait]
 impl CacheUpdate for VoiceStateUpdateEvent {
     type Output = VoiceState;
 
-    fn update(&mut self, cache: &mut Cache) -> Option<VoiceState> {
+    async fn update(&mut self, cache: &mut Cache) -> Option<VoiceState> {
         if let Some(guild_id) = self.guild_id {
             if let Some(guild) = cache.guilds.get_mut(&guild_id) {
-                let mut guild = guild.write();
+                let mut guild = guild.write().await;
 
                 if self.voice_state.channel_id.is_some() {
                     // Update or add to the voice state list

@@ -138,32 +138,34 @@ fn check_discrepancy(
     }
 
     #[cfg(feature = "cache")]
-    {
-        if let Some(guild_id) = msg.guild_id {
-            let guild = match guild_id.to_guild_cached(&ctx) {
-                Some(g) => g,
-                None => return Ok(()),
-            };
+        {
+            let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
-            let guild = guild.read();
+            if let Some(guild_id) = msg.guild_id {
+                let guild = match rt.block_on(guild_id.to_guild_cached(&ctx)) {
+                    Some(g) => g,
+                    None => return Ok(()),
+                };
 
-            let perms = guild.user_permissions_in(msg.channel_id, msg.author.id);
+                let guild = rt.block_on(guild.read());
 
-            if !perms.contains(*options.required_permissions())
-                && !(options.owner_privilege() && config.owners.contains(&msg.author.id))
-            {
-                return Err(DispatchError::LackingPermissions(
-                    *options.required_permissions(),
-                ));
-            }
+                let perms = rt.block_on(guild.user_permissions_in(msg.channel_id, msg.author.id));
 
-            if let Some(member) = guild.members.get(&msg.author.id) {
-                if !perms.administrator() && !has_correct_roles(options, &guild, &member) {
-                    return Err(DispatchError::LackingRole);
+                if !perms.contains(*options.required_permissions())
+                    && !(options.owner_privilege() && config.owners.contains(&msg.author.id))
+                {
+                    return Err(DispatchError::LackingPermissions(
+                        *options.required_permissions(),
+                    ));
+                }
+
+                if let Some(member) = guild.members.get(&msg.author.id) {
+                    if !perms.administrator() && !has_correct_roles(options, &guild, &member) {
+                        return Err(DispatchError::LackingRole);
+                    }
                 }
             }
         }
-    }
 
     Ok(())
 }
@@ -265,6 +267,7 @@ fn parse_group(
 
     Err(ParseError::UnrecognisedCommand(None))
 }
+
 
 #[inline]
 fn handle_command(

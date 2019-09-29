@@ -102,7 +102,7 @@ impl Member {
             return Ok(());
         }
 
-        match http.as_ref().add_member_role(self.guild_id.0, self.user.read().id.0, role_id.0).await {
+        match http.as_ref().add_member_role(self.guild_id.0, self.user.read().await.id.0, role_id.0).await {
             Ok(()) => {
                 self.roles.push(role_id);
 
@@ -127,7 +127,7 @@ impl Member {
         builder.roles(&self.roles);
         let map = utils::hashmap_to_json_map(builder.0);
 
-        match http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await {
+        match http.as_ref().edit_member(self.guild_id.0, self.user.read().await.id.0, &map).await {
             Ok(()) => Ok(()),
             Err(why) => {
                 self.roles.retain(|r| !role_ids.contains(r));
@@ -167,7 +167,7 @@ impl Member {
 
         http.as_ref().ban_user(
             self.guild_id.0,
-            self.user.read().id.0,
+            self.user.read().await.id.0,
             dmd,
             &*reason,
         ).await
@@ -175,9 +175,9 @@ impl Member {
 
     /// Determines the member's colour.
     #[cfg(all(feature = "cache", feature = "utils"))]
-    pub fn colour(&self, cache: impl AsRef<CacheRwLock>) -> Option<Colour> {
-        let cache = cache.as_ref().read();
-        let guild = cache.guilds.get(&self.guild_id)?.read();
+    pub async fn colour(&self, cache: impl AsRef<CacheRwLock>) -> Option<Colour> {
+        let cache = cache.as_ref().read().await;
+        let guild = cache.guilds.get(&self.guild_id)?.read().await;
 
         let mut roles = self.roles
             .iter()
@@ -197,16 +197,16 @@ impl Member {
     /// (This returns the first channel that can be read by the member, if there isn't
     /// one returns `None`)
     #[cfg(feature = "cache")]
-    pub fn default_channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<GuildChannel>>> {
-        let guild = match self.guild_id.to_guild_cached(&cache) {
+    pub async fn default_channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<GuildChannel>>> {
+        let guild = match self.guild_id.to_guild_cached(&cache).await {
             Some(guild) => guild,
             None => return None,
         };
 
-        let reader = guild.read();
+        let reader = guild.read().await;
 
         for (cid, channel) in &reader.channels {
-            if reader.user_permissions_in(*cid, self.user.read().id).read_messages() {
+            if reader.user_permissions_in(*cid, self.user.read().await.id).await.read_messages() {
                 return Some(Arc::clone(channel));
             }
         }
@@ -218,20 +218,20 @@ impl Member {
     ///
     /// The nickname takes priority over the member's username if it exists.
     #[inline]
-    pub fn display_name(&self) -> Cow<'_, String> {
-        self.nick
-            .as_ref()
-            .map(Cow::Borrowed)
-            .unwrap_or_else(|| Cow::Owned(self.user.read().name.clone()))
+    pub async fn display_name(&self) -> Cow<'_, String> {
+        match self.nick.as_ref().map(Cow::Borrowed)  {
+            Some(x) => x,
+            None => Cow::Owned(self.user.read().await.name.clone()),
+        }
     }
 
     /// Returns the DiscordTag of a Member, taking possible nickname into account.
     #[inline]
-    pub fn distinct(&self) -> String {
+    pub async fn distinct(&self) -> String {
         format!(
             "{}#{}",
-            self.display_name(),
-            self.user.read().discriminator
+            self.display_name().await,
+            self.user.read().await.discriminator
         )
     }
 
@@ -249,7 +249,7 @@ impl Member {
         f(&mut edit_member);
         let map = utils::hashmap_to_json_map(edit_member.0);
 
-        http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await
+        http.as_ref().edit_member(self.guild_id.0, self.user.read().await.id.0, &map).await
     }
 
     /// Retrieves the ID and position of the member's highest role in the
@@ -265,8 +265,8 @@ impl Member {
     /// position. If two or more roles have the same highest position, then the
     /// role with the lowest ID is the highest.
     #[cfg(feature = "cache")]
-    pub fn highest_role_info(&self, cache: impl AsRef<CacheRwLock>) -> Option<(RoleId, i64)> {
-        let guild = self.guild_id.to_guild_cached(&cache)?;
+    pub async fn highest_role_info(&self, cache: impl AsRef<CacheRwLock>) -> Option<(RoleId, i64)> {
+        let guild = self.guild_id.to_guild_cached(&cache).await?;
         let reader = guild.try_read()?;
 
         let mut highest = None;
@@ -328,22 +328,22 @@ impl Member {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-                let locked_cache = cache.read();
+                let locked_cache = cache.read().await;
 
                 if let Some(guild) = locked_cache.guilds.get(&self.guild_id) {
                     let req = Permissions::KICK_MEMBERS;
-                    let reader = guild.read();
+                    let reader = guild.read().await;
 
-                    if !reader.has_perms(cache, req) {
+                    if !reader.has_perms(cache, req).await {
                         return Err(Error::Model(ModelError::InvalidPermissions(req)));
                     }
 
-                    reader.check_hierarchy(cache, self.user.read().id)?;
+                    reader.check_hierarchy(cache, self.user.read().await.id).await?;
                 }
             }
         }
 
-        self.guild_id.kick(cache_http.http(), self.user.read().id).await
+        self.guild_id.kick(cache_http.http(), self.user.read().await.id).await
     }
 
     /// Returns the guild-level permissions for the member.
@@ -367,15 +367,15 @@ impl Member {
     /// [`ModelError::GuildNotFound`]: ../error/enum.Error.html#variant.GuildNotFound
     /// [`ModelError::ItemMissing`]: ../error/enum.Error.html#variant.ItemMissing
     #[cfg(feature = "cache")]
-    pub fn permissions(&self, cache: impl AsRef<CacheRwLock>) -> Result<Permissions> {
-        let guild = match self.guild_id.to_guild_cached(&cache) {
+    pub async fn permissions(&self, cache: impl AsRef<CacheRwLock>) -> Result<Permissions> {
+        let guild = match self.guild_id.to_guild_cached(&cache).await {
             Some(guild) => guild,
             None => return Err(From::from(ModelError::GuildNotFound)),
         };
 
-        let reader = guild.read();
+        let reader = guild.read().await;
 
-        Ok(reader.member_permissions(self.user.read().id))
+        Ok(reader.member_permissions(self.user.read().await.id).await)
     }
 
     /// Removes a [`Role`] from the member, editing its roles in-place if the
@@ -397,7 +397,7 @@ impl Member {
             return Ok(());
         }
 
-        match http.as_ref().remove_member_role(self.guild_id.0, self.user.read().id.0, role_id.0).await {
+        match http.as_ref().remove_member_role(self.guild_id.0, self.user.read().await.id.0, role_id.0).await {
             Ok(()) => {
                 self.roles.retain(|r| r.0 != role_id.0);
 
@@ -421,7 +421,7 @@ impl Member {
         builder.roles(&self.roles);
         let map = utils::hashmap_to_json_map(builder.0);
 
-        match http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await {
+        match http.as_ref().edit_member(self.guild_id.0, self.user.read().await.id.0, &map).await {
             Ok(()) => Ok(()),
             Err(why) => {
                 self.roles.extend_from_slice(role_ids);
@@ -437,17 +437,19 @@ impl Member {
     ///
     /// If role data can not be found for the member, then `None` is returned.
     #[cfg(feature = "cache")]
-    pub fn roles(&self, cache: impl AsRef<CacheRwLock>) -> Option<Vec<Role>> {
-        self
-            .guild_id
-            .to_guild_cached(&cache)
-            .map(|g| g
-                .read()
-                .roles
-                .values()
-                .filter(|role| self.roles.contains(&role.id))
-                .cloned()
-                .collect())
+    pub async fn roles(&self, cache: impl AsRef<CacheRwLock>) -> Option<Vec<Role>> {
+        match self.guild_id.to_guild_cached(&cache).await {
+            Some(guild) => {
+                Some(guild.read()
+                    .await
+                    .roles
+                    .values()
+                    .filter(|role| self.roles.contains(&role.id))
+                    .cloned()
+                    .collect())
+            },
+            None => None,
+        }
     }
 
     /// Unbans the [`User`] from the guild.
@@ -464,7 +466,7 @@ impl Member {
     /// [Ban Members]: ../permissions/struct.Permissions.html#associatedconstant.BAN_MEMBERS
     #[cfg(all(feature = "cache", feature = "http"))]
     pub async fn unban(&self, http: impl AsRef<Http>) -> Result<()> {
-        http.as_ref().remove_ban(self.guild_id.0, self.user.read().id.0).await
+        http.as_ref().remove_ban(self.guild_id.0, self.user.read().await.id.0).await
     }
 
     /// Retrieves the member's user ID.
@@ -477,8 +479,8 @@ impl Member {
     /// This function can deadlock while retrieving a read guard to the user
     /// object if your application infinitely holds a write lock elsewhere.
     #[cfg(feature = "cache")]
-    pub fn user_id(&self) -> UserId {
-        self.user.read().id
+    pub async fn user_id(&self) -> UserId {
+        self.user.read().await.id
     }
 }
 
@@ -494,7 +496,8 @@ impl Display for Member {
     ///
     // This is in the format of `<@USER_ID>`.
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Display::fmt(&self.user.read().mention(), f)
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        Display::fmt(&rt.block_on(self.user.read()).mention(), f)
     }
 }
 

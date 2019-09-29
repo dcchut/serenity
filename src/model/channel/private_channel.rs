@@ -15,8 +15,6 @@ use crate::builder::{
 };
 #[cfg(feature = "model")]
 use crate::http::AttachmentType;
-#[cfg(feature = "model")]
-use crate::internal::RwLockExt;
 #[cfg(feature = "http")]
 use crate::http::Http;
 
@@ -194,7 +192,7 @@ impl PrivateChannel {
     }
 
     /// Returns "DM with $username#discriminator".
-    pub fn name(&self) -> String { format!("DM with {}", self.recipient.with(|r| r.tag())) }
+    pub async fn name(&self) -> String { format!("DM with {}", self.recipient.read().await.tag()) }
 
     /// Gets the list of [`User`]s who have reacted to a [`Message`] with a
     /// certain [`Emoji`].
@@ -312,6 +310,7 @@ impl PrivateChannel {
 impl Display for PrivateChannel {
     /// Formats the private channel, displaying the recipient's username.
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.write_str(&self.recipient.read().name)
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        f.write_str(&rt.block_on(self.recipient.read()).name)
     }
 }

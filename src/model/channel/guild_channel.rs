@@ -6,7 +6,7 @@ use crate::model::prelude::*;
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache::CacheRwLock;
 #[cfg(feature = "cache")]
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 #[cfg(feature = "cache")]
 use std::sync::Arc;
 #[cfg(feature = "model")]
@@ -177,7 +177,7 @@ impl GuildChannel {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn Error>> {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::id::{ChannelId, UserId}};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #     let http = Arc::new(Http::default());
@@ -223,7 +223,7 @@ impl GuildChannel {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn Error>> {
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::id::{ChannelId, UserId}};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #   let http = Arc::new(Http::default());
@@ -425,7 +425,12 @@ impl GuildChannel {
     /// **Note**: Right now this performs a clone of the guild. This will be
     /// optimized in the future.
     #[cfg(feature = "cache")]
-    pub fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> { cache.as_ref().read().guild(self.guild_id) }
+    pub async fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> {
+        let guard = cache.as_ref().read().await;
+        let res = guard.guild(self.guild_id) ;
+
+        res
+    }
 
     /// Gets all of the channel's invites.
     ///
@@ -584,8 +589,8 @@ impl GuildChannel {
     #[cfg(feature = "cache")]
     #[inline]
     #[deprecated(since="0.6.4", note="Please use `permissions_for_user` instead.")]
-    pub fn permissions_for<U: Into<UserId>>(&self, cache: impl AsRef<CacheRwLock>, user_id: U) -> Result<Permissions> {
-        self.permissions_for_user(&cache, user_id.into())
+    pub async fn permissions_for<U: Into<UserId>>(&self, cache: impl AsRef<CacheRwLock>, user_id: U) -> Result<Permissions> {
+        self.permissions_for_user(&cache, user_id.into()).await
     }
 
     /// Calculates the permissions of a role.
@@ -608,15 +613,20 @@ impl GuildChannel {
     /// [`Role`]: ../guild/struct.Role.html
     #[cfg(feature = "cache")]
     #[inline]
-    pub fn permissions_for_user<U: Into<UserId>>(&self, cache: impl AsRef<CacheRwLock>, user_id: U) -> Result<Permissions> {
-        self._permissions_for_user(&cache, user_id.into())
+    pub async fn permissions_for_user<U: Into<UserId>>(&self, cache: impl AsRef<CacheRwLock>, user_id: U) -> Result<Permissions> {
+        self._permissions_for_user(&cache, user_id.into()).await
     }
 
     #[cfg(feature = "cache")]
-    fn _permissions_for_user(&self, cache: impl AsRef<CacheRwLock>, user_id: UserId) -> Result<Permissions> {
-        self.guild(&cache)
-            .ok_or_else(|| Error::Model(ModelError::GuildNotFound))
-            .map(|g| g.read().user_permissions_in(self.id, user_id))
+    async fn _permissions_for_user(&self, cache: impl AsRef<CacheRwLock>, user_id: UserId) -> Result<Permissions> {
+        match self.guild(&cache).await {
+            Some(guild) => {
+                let guard = guild.read().await;
+
+                Ok(guard.user_permissions_in(self.id, user_id).await)
+            },
+            None => Err(Error::Model(ModelError::GuildNotFound)),
+        }
     }
 
     /// Calculates the permissions of a member.
@@ -727,16 +737,24 @@ impl GuildChannel {
     /// [Send Messages]: ../permissions/struct.Permissions.html#associatedconstant.SEND_MESSAGES
     #[cfg(feature = "cache")]
     #[inline]
-    pub fn permissions_for_role<R: Into<RoleId>>(&self, cache: impl AsRef<CacheRwLock>, role_id: R) -> Result<Permissions> {
-        self._permissions_for_role(&cache, role_id.into())
+    pub async fn permissions_for_role<R: Into<RoleId>>(&self, cache: impl AsRef<CacheRwLock>, role_id: R) -> Result<Permissions> {
+        self._permissions_for_role(&cache, role_id.into()).await
     }
 
     #[cfg(feature = "cache")]
-    fn _permissions_for_role(&self, cache: impl AsRef<CacheRwLock>, role_id: RoleId) -> Result<Permissions> {
-        self.guild(&cache)
-            .ok_or(Error::Model(ModelError::GuildNotFound))?
-            .read().role_permissions_in(self.id, role_id)
-            .ok_or(Error::Model(ModelError::GuildNotFound))
+    async fn _permissions_for_role(&self, cache: impl AsRef<CacheRwLock>, role_id: RoleId) -> Result<Permissions> {
+        // The weird definitions here are to deal with rustc's processing of async borrows
+        let guard = self.guild(&cache).await;
+
+        let res = guard
+            .ok_or(Error::Model(ModelError::GuildNotFound))?;
+
+        let res2 = res.read().await;
+
+        let res3 = res2.role_permissions_in(self.id, role_id).await
+            .ok_or(Error::Model(ModelError::GuildNotFound));
+
+        res3
     }
 
     /// Pins a [`Message`] to the channel.
@@ -892,20 +910,23 @@ impl GuildChannel {
     /// [`ModelError::InvalidChannelType`]: ../error/enum.Error.html#variant.InvalidChannelType
     #[cfg(feature = "cache")]
     #[inline]
-    pub fn members(&self, cache: impl AsRef<CacheRwLock>) -> Result<Vec<Member>> {
+    pub async fn members(&self, cache: impl AsRef<CacheRwLock>) -> Result<Vec<Member>> {
         let cache = cache.as_ref();
-        let guild = cache.read().guild(self.guild_id).unwrap();
+        let guild = cache.read().await.guild(self.guild_id).unwrap();
 
         match self.kind {
             ChannelType::Voice => Ok(guild
                 .read()
+                .await
                 .voice_states
                 .values()
                 .filter_map(|v| {
                     v.channel_id.and_then(
                         |c| {
+                            let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
                             if c == self.id {
-                                guild.read().members.get(&v.user_id).cloned()
+                                rt.block_on(guild.read()).members.get(&v.user_id).cloned()
                             } else {
                                 None
                             }
@@ -915,15 +936,18 @@ impl GuildChannel {
                 .collect()),
             ChannelType::News | ChannelType::Text => Ok(guild
                     .read()
+                    .await
                     .members
                     .iter()
-                    .filter_map(|e|
-                        if self.permissions_for_user(&cache, e.0).map(|p| p.contains(Permissions::READ_MESSAGES)).unwrap_or(false) {
+                    .filter_map(|e| {
+                        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+                        if rt.block_on(self.permissions_for_user(&cache, e.0)).map(|p| p.contains(Permissions::READ_MESSAGES)).unwrap_or(false) {
                             Some(e.1.clone())
                         } else {
                             None
                         }
-                    ).collect()),
+                    }).collect()),
             _ => Err(Error::from(ModelError::InvalidChannelType)),
         }
     }

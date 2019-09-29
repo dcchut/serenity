@@ -35,8 +35,6 @@ use uwl::{UnicodeStream, StrExt};
 use crate::cache::CacheRwLock;
 #[cfg(feature = "cache")]
 use crate::model::guild::{Guild, Member};
-#[cfg(feature = "cache")]
-use crate::internal::RwLockExt;
 
 /// An enum representing all possible fail conditions under which a command won't
 /// be executed.
@@ -243,85 +241,89 @@ impl StandardFramework {
         None
     }
 
-    fn should_fail(
-        &mut self,
-        ctx: &mut Context,
-        msg: &Message,
-        args: &mut Args,
+    fn should_fail<'a>(
+        &'a mut self,
+        ctx: &'a mut Context,
+        msg: &'a Message,
+        args: &'a mut Args,
         command: &'static CommandOptions,
         group: &'static GroupOptions,
-    ) -> Option<DispatchError> {
-        if let Some(min) = command.min_args {
-            if args.len() < min as usize {
-                return Some(DispatchError::NotEnoughArguments {
-                    min,
-                    given: args.len(),
-                });
-            }
-        }
-
-        if let Some(max) = command.max_args {
-            if args.len() > max as usize {
-                return Some(DispatchError::TooManyArguments {
-                    max,
-                    given: args.len(),
-                });
-            }
-        }
-
-        if (group.owner_privilege && command.owner_privilege)
-            && self.config.owners.contains(&msg.author.id)
-        {
-            return None;
-        }
-
-        if self.config.blocked_users.contains(&msg.author.id) {
-            return Some(DispatchError::BlockedUser);
-        }
-
-        #[cfg(feature = "cache")]
-        {
-            if let Some(Channel::Guild(chan)) = msg.channel_id.to_channel_cached(&ctx.cache) {
-                let guild_id = chan.with(|c| c.guild_id);
-
-                if self.config.blocked_guilds.contains(&guild_id) {
-                    return Some(DispatchError::BlockedGuild);
+    ) -> impl std::future::Future<Output = Option<DispatchError>> + 'a {
+        async move {
+            if let Some(min) = command.min_args {
+                if args.len() < min as usize {
+                    return Some(DispatchError::NotEnoughArguments {
+                        min,
+                        given: args.len(),
+                    });
                 }
+            }
 
-                if let Some(guild) = guild_id.to_guild_cached(&ctx.cache) {
-                    if self.config.blocked_users.contains(&guild.with(|g| g.owner_id)) {
-                        return Some(DispatchError::BlockedGuild);
+            if let Some(max) = command.max_args {
+                if args.len() > max as usize {
+                    return Some(DispatchError::TooManyArguments {
+                        max,
+                        given: args.len(),
+                    });
+                }
+            }
+
+            if (group.owner_privilege && command.owner_privilege)
+                && self.config.owners.contains(&msg.author.id)
+            {
+                return None;
+            }
+
+            if self.config.blocked_users.contains(&msg.author.id) {
+                return Some(DispatchError::BlockedUser);
+            }
+
+            #[cfg(feature = "cache")]
+                {
+                    if let Some(Channel::Guild(chan)) = msg.channel_id.to_channel_cached(&ctx.cache).await {
+                        let chan = chan.read().await;
+                        let guild_id = chan.guild_id;
+
+                        if self.config.blocked_guilds.contains(&guild_id) {
+                            return Some(DispatchError::BlockedGuild);
+                        }
+
+                        if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
+                            let guild = guild.read().await;
+                            if self.config.blocked_users.contains(&guild.owner_id) {
+                                return Some(DispatchError::BlockedGuild);
+                            }
+                        }
                     }
                 }
+
+            if !self.config.allowed_channels.is_empty() &&
+                !self.config.allowed_channels.contains(&msg.channel_id) {
+                return Some(DispatchError::BlockedChannel);
             }
-        }
 
-        if !self.config.allowed_channels.is_empty() &&
-           !self.config.allowed_channels.contains(&msg.channel_id) {
-            return Some(DispatchError::BlockedChannel);
-        }
+            if let Some(ref mut bucket) = command.bucket.as_ref().and_then(|b| self.buckets.get_mut(*b)) {
+                let rate_limit = bucket.take(msg.author.id.0);
 
-        if let Some(ref mut bucket) = command.bucket.as_ref().and_then(|b| self.buckets.get_mut(*b)) {
-            let rate_limit = bucket.take(msg.author.id.0);
+                let apply = bucket.check.as_ref().map_or(true, |check| {
+                    (check)(ctx, msg.guild_id, msg.channel_id, msg.author.id)
+                });
 
-            let apply = bucket.check.as_ref().map_or(true, |check| {
-                (check)(ctx, msg.guild_id, msg.channel_id, msg.author.id)
-            });
-
-            if apply && rate_limit > 0 {
-                return Some(DispatchError::Ratelimited(rate_limit));
+                if apply && rate_limit > 0 {
+                    return Some(DispatchError::Ratelimited(rate_limit));
+                }
             }
-        }
 
-        for check in group.checks.iter().chain(command.checks.iter()) {
-            let res = (check.function)(ctx, msg, args, command);
+            for check in group.checks.iter().chain(command.checks.iter()) {
+                let res = (check.function)(ctx, msg, args, command);
 
-            if let CheckResult::Failure(r) = res {
-                return Some(DispatchError::CheckFailed(check.name, r));
+                if let CheckResult::Failure(r) = res {
+                    return Some(DispatchError::CheckFailed(check.name, r));
+                }
             }
-        }
 
-        None
+            None
+        }
     }
 
     /// Adds a group which can organize several related commands.
@@ -691,14 +693,18 @@ impl Framework for StandardFramework {
             return;
         }
 
-        let invocation = parse::command(
-            &ctx,
-            &msg,
-            &mut stream,
-            &self.groups,
-            &self.config,
-            self.help.as_ref().map(|h| h.options.names),
-        );
+        let invocation = {
+            let r = &mut stream;
+
+            parse::command(
+                &ctx,
+                &msg,
+                r,
+                &self.groups,
+                &self.config,
+                self.help.as_ref().map(|h| h.options.names),
+            )
+        };
 
         let invoke = match invocation {
             Ok(i) => i,
@@ -790,7 +796,7 @@ impl Framework for StandardFramework {
                 };
 
                 if let Some(error) =
-                    self.should_fail(&mut ctx, &msg, &mut args, &command.options, &group.options)
+                    self.should_fail(&mut ctx, &msg, &mut args, &command.options, &group.options).await
                 {
                     if let Some(dispatch) = &self.dispatch {
                         dispatch(&mut ctx, &msg, error);
@@ -883,15 +889,16 @@ impl CommonOptions for &CommandOptions {
 }
 
 #[cfg(feature = "cache")]
-pub(crate) fn has_correct_permissions(
+pub(crate) async fn has_correct_permissions(
     cache: impl AsRef<CacheRwLock>,
     options: &impl CommonOptions,
     message: &Message,
 ) -> bool {
     if options.required_permissions().is_empty() {
         true
-    } else if let Some(guild) = message.guild(&cache) {
-        let perms = guild.with(|g| g.user_permissions_in(message.channel_id, message.author.id));
+    } else if let Some(guild) = message.guild(&cache).await {
+        let guild = guild.read().await;
+        let perms = guild.user_permissions_in(message.channel_id, message.author.id).await;
 
         perms.contains(*options.required_permissions())
     } else {

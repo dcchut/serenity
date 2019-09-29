@@ -259,7 +259,7 @@ impl InviteGuild {
     /// [`utils::shard_id`]: ../../utils/fn.shard_id.html
     #[cfg(all(feature = "cache", feature = "utils"))]
     #[inline]
-    pub fn shard_id(&self, cache: impl AsRef<CacheRwLock>) -> u64 { self.id.shard_id(&cache) }
+    pub async fn shard_id(&self, cache: impl AsRef<CacheRwLock>) -> u64 { self.id.shard_id(&cache).await }
 
     /// Returns the Id of the shard associated with the guild.
     ///

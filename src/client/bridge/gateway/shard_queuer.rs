@@ -2,7 +2,7 @@ use crate::gateway::Shard;
 use crate::internal::prelude::*;
 use crate::CacheAndHttp;
 use futures::lock::Mutex;
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 use std::{
     collections::{HashMap, VecDeque},
     sync::{

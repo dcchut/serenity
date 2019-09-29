@@ -82,7 +82,7 @@ impl Role {
     pub async fn delete<T>(&mut self, cache_and_http: T) -> Result<()>
     where T: AsRef<CacheRwLock> + AsRef<Http> {
         AsRef::<Http>::as_ref(&cache_and_http)
-            .delete_role(self.find_guild(&cache_and_http)?.0, self.id.0).await
+            .delete_role(self.find_guild(&cache_and_http).await?.0, self.id.0).await
     }
 
     /// Edits a [`Role`], optionally setting its new fields.
@@ -110,7 +110,7 @@ impl Role {
     #[cfg(all(feature = "builder", feature = "cache", feature = "http"))]
     pub async fn edit<F: FnOnce(&mut EditRole) -> &mut EditRole, T>(&self, cache_and_http: T, f: F) -> Result<Role>
     where T: AsRef<CacheRwLock> + AsRef<Http> {
-        match self.find_guild(&cache_and_http) {
+        match self.find_guild(&cache_and_http).await {
             Ok(guild_id) => {
                 guild_id.edit_role(&cache_and_http, self.id, f).await
             },
@@ -126,9 +126,9 @@ impl Role {
     ///
     /// [`ModelError::GuildNotFound`]: ../error/enum.Error.html#variant.GuildNotFound
     #[cfg(feature = "cache")]
-    pub fn find_guild(&self, cache: impl AsRef<CacheRwLock>) -> Result<GuildId> {
-        for guild in cache.as_ref().read().guilds.values() {
-            let guild = guild.read();
+    pub async fn find_guild(&self, cache: impl AsRef<CacheRwLock>) -> Result<GuildId> {
+        for guild in cache.as_ref().read().await.guilds.values() {
+            let guild = guild.read().await;
 
             if guild.roles.contains_key(&RoleId(self.id.0)) {
                 return Ok(guild.id);
@@ -190,14 +190,14 @@ impl RoleId {
     ///
     /// [`Role`]: ../guild/struct.Role.html
     #[cfg(feature = "cache")]
-    pub fn to_role_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Role> {
-        self._to_role_cached(&cache)
+    pub async fn to_role_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Role> {
+        self._to_role_cached(&cache).await
     }
 
     #[cfg(feature = "cache")]
-    pub(crate) fn _to_role_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Role> {
-        for guild in cache.as_ref().read().guilds.values() {
-            let guild = guild.read();
+    pub(crate) async fn _to_role_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Role> {
+        for guild in cache.as_ref().read().await.guilds.values() {
+            let guild = guild.read().await;
 
             if !guild.roles.contains_key(&self) {
                 continue;
@@ -227,8 +227,10 @@ impl FromStrAndCache for Role {
     type Err = RoleParseError;
 
     fn from_str(cache: impl AsRef<CacheRwLock>, s: &str) -> StdResult<Self, Self::Err> {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
         match parse_role(s) {
-            Some(x) => match RoleId(x).to_role_cached(&cache) {
+            Some(x) => match rt.block_on(RoleId(x).to_role_cached(&cache)) {
                 Some(role) => Ok(role),
                 _ => Err(RoleParseError::NotPresentInCache),
             },

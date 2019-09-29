@@ -1,6 +1,6 @@
 use crate::model::prelude::*;
 use async_trait::async_trait;
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 use serde_json::Value;
 use std::{
     collections::HashMap,

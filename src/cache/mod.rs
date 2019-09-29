@@ -39,7 +39,7 @@
 
 use std::str::FromStr;
 use crate::model::prelude::*;
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 use std::collections::{
     hash_map::Entry,
     HashMap,
@@ -279,11 +279,11 @@ impl Cache {
     /// [`Member`]: ../model/guild/struct.Member.html
     /// [`Shard::chunk_guilds`]: ../gateway/struct.Shard.html#method.chunk_guilds
     /// [`User`]: ../model/user/struct.User.html
-    pub fn unknown_members(&self) -> u64 {
+    pub async fn unknown_members(&self) -> u64 {
         let mut total = 0;
 
         for guild in self.guilds.values() {
-            let guild = guild.read();
+            let guild = guild.read().await;
 
             let members = guild.members.len() as u64;
 
@@ -307,7 +307,7 @@ impl Cache {
     ///
     /// ```rust,no_run
     /// # use serenity::{cache::{Cache, CacheRwLock}};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -424,7 +424,7 @@ impl Cache {
     ///
     /// ```rust,no_run
     /// # use serenity::{cache::{Cache, CacheRwLock}};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::{error::Error, sync::Arc};
     /// #
     /// # fn main() -> Result<(), Box<Error>> {
@@ -523,7 +523,7 @@ impl Cache {
     ///
     /// ```rust,no_run
     /// # use serenity::cache::{Cache, CacheRwLock};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::{error::Error, sync::Arc};
     /// #
     /// # fn main() -> Result<(), Box<Error>> {
@@ -556,7 +556,7 @@ impl Cache {
     ///
     /// ```rust,ignore
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::prelude::*, prelude::*};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
@@ -593,15 +593,16 @@ impl Cache {
     /// [`Guild`]: ../model/guild/struct.Guild.html
     /// [`members`]: ../model/guild/struct.Guild.html#structfield.members
     #[inline]
-    pub fn member<G, U>(&self, guild_id: G, user_id: U) -> Option<Member>
+    pub async fn member<G, U>(&self, guild_id: G, user_id: U) -> Option<Member>
         where G: Into<GuildId>, U: Into<UserId> {
-        self._member(guild_id.into(), user_id.into())
+        self._member(guild_id.into(), user_id.into()).await
     }
 
-    fn _member(&self, guild_id: GuildId, user_id: UserId) -> Option<Member> {
-        self.guilds.get(&guild_id).and_then(|guild| {
-            guild.read().members.get(&user_id).cloned()
-        })
+    async fn _member(&self, guild_id: GuildId, user_id: UserId) -> Option<Member> {
+        match self.guilds.get(&guild_id) {
+            Some(guild) => guild.read().await.members.get(&user_id).cloned(),
+            None => None,
+        }
     }
 
     /// Retrieves a [`Channel`]'s message from the cache based on the channel's and
@@ -616,7 +617,7 @@ impl Cache {
     ///
     /// ```rust,no_run
     /// # use serenity::{cache::{Cache, CacheRwLock}, http::Http, model::id::{ChannelId, MessageId}};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # #[tokio::main]
@@ -668,7 +669,7 @@ impl Cache {
     /// # use std::error::Error;
     /// #
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::prelude::*, prelude::*};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # fn try_main() -> Result<(), Box<Error>> {
@@ -716,7 +717,7 @@ impl Cache {
     ///
     /// ```rust,no_run
     /// # use serenity::cache::{Cache, CacheRwLock};
-    /// # use parking_lot::RwLock;
+    /// # use async_std::sync::RwLock;
     /// # use std::{error::Error, sync::Arc};
     /// #
     /// # fn main() -> Result<(), Box<Error>> {
@@ -729,15 +730,16 @@ impl Cache {
     /// # }
     /// ```
     #[inline]
-    pub fn role<G, R>(&self, guild_id: G, role_id: R) -> Option<Role>
+    pub async fn role<G, R>(&self, guild_id: G, role_id: R) -> Option<Role>
         where G: Into<GuildId>, R: Into<RoleId> {
-        self._role(guild_id.into(), role_id.into())
+        self._role(guild_id.into(), role_id.into()).await
     }
 
-    fn _role(&self, guild_id: GuildId, role_id: RoleId) -> Option<Role> {
-        self.guilds
-            .get(&guild_id)
-            .and_then(|g| g.read().roles.get(&role_id).cloned())
+    async fn _role(&self, guild_id: GuildId, role_id: RoleId) -> Option<Role> {
+        match self.guilds.get(&guild_id) {
+            Some(guild) => guild.read().await.roles.get(&role_id).cloned(),
+            None => None,
+        }
     }
 
     /// Returns an immutable reference to the settings.
@@ -830,17 +832,17 @@ impl Cache {
     ///
     /// [`CacheUpdate`]: trait.CacheUpdate.html
     /// [`CacheUpdate` examples]: trait.CacheUpdate.html#examples
-    pub fn update<E: CacheUpdate>(&mut self, e: &mut E) -> Option<E::Output> {
-        e.update(self)
+    pub async fn update<E: CacheUpdate>(&mut self, e: &mut E) -> Option<E::Output> {
+        e.update(self).await
     }
 
-    pub(crate) fn update_user_entry(&mut self, user: &User) {
+    pub(crate) async fn update_user_entry(&mut self, user: &User) {
         match self.users.entry(user.id) {
             Entry::Vacant(e) => {
                 e.insert(Arc::new(RwLock::new(user.clone())));
             },
             Entry::Occupied(mut e) => {
-                e.get_mut().write().clone_from(user);
+                e.get_mut().write().await.clone_from(user);
             },
         }
     }

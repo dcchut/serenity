@@ -28,7 +28,7 @@ use super::utils::*;
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache::CacheRwLock;
 #[cfg(all(feature = "cache", feature = "model"))]
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 #[cfg(all(feature = "http", feature = "model"))]
 use serde_json::json;
 #[cfg(all(feature = "cache", feature = "model"))]
@@ -172,10 +172,10 @@ pub struct Guild {
 #[cfg(feature = "model")]
 impl Guild {
     #[cfg(feature = "cache")]
-    fn check_hierarchy(&self, cache: impl AsRef<CacheRwLock>, other_user: UserId) -> Result<()> {
-        let current_id = cache.as_ref().read().user.id;
+    async fn check_hierarchy(&self, cache: impl AsRef<CacheRwLock>, other_user: UserId) -> Result<()> {
+        let current_id = cache.as_ref().read().await.user.id;
 
-        if let Some(higher) = self.greater_member_hierarchy(&cache, other_user, current_id) {
+        if let Some(higher) = self.greater_member_hierarchy(&cache, other_user, current_id).await {
             if higher != current_id {
                 return Err(Error::Model(ModelError::Hierarchy));
             }
@@ -188,9 +188,9 @@ impl Guild {
     /// (This returns the first channel that can be read by the user, if there isn't one,
     /// returns `None`)
     #[cfg(feature = "http")]
-    pub fn default_channel(&self, uid: UserId) -> Option<Arc<RwLock<GuildChannel>>> {
+    pub async fn default_channel(&self, uid: UserId) -> Option<Arc<RwLock<GuildChannel>>> {
         for (cid, channel) in &self.channels {
-            if self.user_permissions_in(*cid, uid).read_messages() {
+            if self.user_permissions_in(*cid, uid).await.read_messages() {
                 return Some(Arc::clone(channel));
             }
         }
@@ -203,10 +203,10 @@ impl Guild {
     /// returns `None`)
     /// Note however that this is very costy if used in a server with lots of channels,
     /// members, or both.
-    pub fn default_channel_guaranteed(&self) -> Option<Arc<RwLock<GuildChannel>>> {
+    pub async fn default_channel_guaranteed(&self) -> Option<Arc<RwLock<GuildChannel>>> {
         for (cid, channel) in &self.channels {
             for memid in self.members.keys() {
-                if self.user_permissions_in(*cid, *memid).read_messages() {
+                if self.user_permissions_in(*cid, *memid).await.read_messages() {
                     return Some(Arc::clone(channel));
                 }
             }
@@ -216,29 +216,33 @@ impl Guild {
     }
 
     #[cfg(feature = "cache")]
-    fn has_perms(&self, cache: impl AsRef<CacheRwLock>, mut permissions: Permissions) -> bool {
-        let user_id = cache.as_ref().read().user.id;
+    async fn has_perms(&self, cache: impl AsRef<CacheRwLock>, mut permissions: Permissions) -> bool {
+        let user_id = cache.as_ref().read().await.user.id;
 
-        let perms = self.member_permissions(user_id);
+        let perms = self.member_permissions(user_id).await;
         permissions.remove(perms);
 
         permissions.is_empty()
     }
 
     #[cfg(feature = "cache")]
-    pub fn channel_id_from_name(&self, cache: impl AsRef<CacheRwLock>, name: impl AsRef<str>) -> Option<ChannelId> {
+    pub async fn channel_id_from_name(&self, cache: impl AsRef<CacheRwLock>, name: impl AsRef<str>) -> Option<ChannelId> {
         let name = name.as_ref();
-        let cache = cache.as_ref().read();
-        let guild = cache.guilds.get(&self.id)?.read();
+        let cache = cache.as_ref().read().await;
+        let guild = cache.guilds.get(&self.id)?.read().await;
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
         guild.channels
             .iter()
             .find_map(|(id, c)| {
-                if c.read().name == name {
-                    Some(*id)
-                } else {
-                    None
-                }
+                let f = async {
+                    if c.read().await.name == name {
+                        Some(*id)
+                    } else {
+                        None
+                    }
+                };
+                rt.block_on(f)
             })
     }
 
@@ -284,11 +288,11 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::BAN_MEMBERS;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
 
-                self.check_hierarchy(cache, user)?;
+                self.check_hierarchy(cache, user).await?;
             }
         }
 
@@ -314,7 +318,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::BAN_MEMBERS;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -408,7 +412,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::MANAGE_CHANNELS;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -484,7 +488,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::MANAGE_ROLES;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -510,7 +514,7 @@ impl Guild {
         {
             if let Some(cache) = cache_http.cache() {
 
-                if self.owner_id != cache.read().user.id {
+                if self.owner_id != cache.read().await.user.id {
                     let req = Permissions::MANAGE_GUILD;
 
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
@@ -596,7 +600,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::MANAGE_GUILD;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -681,7 +685,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::CHANGE_NICKNAME;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -753,13 +757,13 @@ impl Guild {
     /// [`position`]: struct.Role.html#structfield.position
     #[cfg(feature = "cache")]
     #[inline]
-    pub fn greater_member_hierarchy<T, U>(&self, cache: impl AsRef<CacheRwLock>, lhs_id: T, rhs_id: U)
+    pub async fn greater_member_hierarchy<T, U>(&self, cache: impl AsRef<CacheRwLock>, lhs_id: T, rhs_id: U)
         -> Option<UserId> where T: Into<UserId>, U: Into<UserId> {
-        self._greater_member_hierarchy(&cache, lhs_id.into(), rhs_id.into())
+        self._greater_member_hierarchy(&cache, lhs_id.into(), rhs_id.into()).await
     }
 
     #[cfg(feature = "cache")]
-    fn _greater_member_hierarchy(
+    async fn _greater_member_hierarchy(
         &self,
         cache: impl AsRef<CacheRwLock>,
         lhs_id: UserId,
@@ -779,9 +783,11 @@ impl Guild {
 
         let lhs = self.members.get(&lhs_id)?
             .highest_role_info(&cache)
+            .await
             .unwrap_or((RoleId(0), 0));
         let rhs = self.members.get(&rhs_id)?
             .highest_role_info(&cache)
+            .await
             .unwrap_or((RoleId(0), 0));
 
         // If LHS and RHS both have no top position or have the same role ID,
@@ -843,7 +849,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::MANAGE_GUILD;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -948,16 +954,23 @@ impl Guild {
             (&name[..], None)
         };
 
+
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
         self.members
             .values()
             .find(|member| {
-                let name_matches = member.user.read().name == name;
-                let discrim_matches = match discrim {
-                    Some(discrim) => member.user.read().discriminator == discrim,
-                    None => true,
+                let matcher = async {
+                    let name_matches = member.user.read().await.name == name;
+                    let discrim_matches = match discrim {
+                        Some(discrim) => member.user.read().await.discriminator == discrim,
+                        None => true,
+                    };
+
+                    name_matches && discrim_matches
                 };
 
-                name_matches && discrim_matches
+                rt.block_on(matcher)
             })
             .or_else(|| {
                 self.members
@@ -976,17 +989,21 @@ impl Guild {
     /// - "zeya", "zeyaa", "zeyla", "zeyzey", "zeyzeyzey"
     ///
     /// [`Member`]: struct.Member.html
-    pub fn members_starting_with(&self, prefix: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
+    pub async fn members_starting_with(&self, prefix: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+        async fn afilter(case_sensitive : bool, prefix: &str, member : &&Member) -> bool {
+            if case_sensitive {
+                member.user.read().await.name.starts_with(prefix)
+            } else {
+                contains_case_insensitive(&member.user.read().await.name, prefix)
+            }
+        }
+
         let mut members: Vec<&Member> = self.members
             .values()
             .filter(|member|
-
-                if case_sensitive {
-                    member.user.read().name.starts_with(prefix)
-                } else {
-                    starts_with_case_insensitive(&member.user.read().name, prefix)
-                }
-
+                rt.block_on(afilter(case_sensitive, prefix, member))
                 || member.nick.as_ref()
                     .map_or(false, |nick|
 
@@ -997,31 +1014,34 @@ impl Guild {
                     })).collect();
 
         if sorted {
+            async fn acmp(a : &&Member, b : &&Member, prefix: &str) -> std::cmp::Ordering {
+                let name_a = match a.nick {
+                    Some(ref nick) => {
+                        if contains_case_insensitive(&a.user.read().await.name[..], prefix) {
+                            Cow::Owned(a.user.read().await.name.clone())
+                        } else {
+                            Cow::Borrowed(nick)
+                        }
+                    },
+                    None => Cow::Owned(a.user.read().await.name.clone()),
+                };
+
+                let name_b = match b.nick {
+                    Some(ref nick) => {
+                        if contains_case_insensitive(&b.user.read().await.name[..], prefix) {
+                            Cow::Owned(b.user.read().await.name.clone())
+                        } else {
+                            Cow::Borrowed(nick)
+                        }
+                    },
+                    None => Cow::Owned(b.user.read().await.name.clone()),
+                };
+                closest_to_origin(prefix, &name_a[..], &name_b[..])
+            }
+
             members
                 .sort_by(|a, b| {
-                    let name_a = match a.nick {
-                        Some(ref nick) => {
-                            if contains_case_insensitive(&a.user.read().name[..], prefix) {
-                                Cow::Owned(a.user.read().name.clone())
-                            } else {
-                                Cow::Borrowed(nick)
-                            }
-                        },
-                        None => Cow::Owned(a.user.read().name.clone()),
-                    };
-
-                    let name_b = match b.nick {
-                        Some(ref nick) => {
-                            if contains_case_insensitive(&b.user.read().name[..], prefix) {
-                                Cow::Owned(b.user.read().name.clone())
-                            } else {
-                                Cow::Borrowed(nick)
-                            }
-                        },
-                        None => Cow::Owned(b.user.read().name.clone()),
-                    };
-
-                    closest_to_origin(prefix, &name_a[..], &name_b[..])
+                    rt.block_on(acmp(a,b, prefix))
                 });
             members
         } else {
@@ -1051,17 +1071,21 @@ impl Guild {
     /// as both fields have to be considered again for sorting.
     ///
     /// [`Member`]: struct.Member.html
-    pub fn members_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
+    pub async fn members_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+        async fn afilter(case_sensitive : bool, substring: &str, member : &&Member) -> bool {
+            if case_sensitive {
+                member.user.read().await.name.contains(substring)
+            } else {
+                contains_case_insensitive(&member.user.read().await.name, substring)
+            }
+        }
         let mut members: Vec<&Member> = self.members
             .values()
             .filter(|member|
 
-                if case_sensitive {
-                    member.user.read().name.contains(substring)
-                } else {
-                    contains_case_insensitive(&member.user.read().name, substring)
-                }
-
+                rt.block_on(afilter(case_sensitive, substring, member))
                 || member.nick.as_ref()
                     .map_or(false, |nick| {
 
@@ -1073,31 +1097,34 @@ impl Guild {
                     })).collect();
 
         if sorted {
+            async fn acmp(a : &&Member, b : &&Member, substring: &str) -> std::cmp::Ordering {
+                let name_a = match a.nick {
+                    Some(ref nick) => {
+                        if contains_case_insensitive(&a.user.read().await.name[..], substring) {
+                            Cow::Owned(a.user.read().await.name.clone())
+                        } else {
+                            Cow::Borrowed(nick)
+                        }
+                    },
+                    None => Cow::Owned(a.user.read().await.name.clone()),
+                };
+
+                let name_b = match b.nick {
+                    Some(ref nick) => {
+                        if contains_case_insensitive(&b.user.read().await.name[..], substring) {
+                            Cow::Owned(b.user.read().await.name.clone())
+                        } else {
+                            Cow::Borrowed(nick)
+                        }
+                    },
+                    None => Cow::Owned(b.user.read().await.name.clone()),
+                };
+
+                closest_to_origin(substring, &name_a[..], &name_b[..])
+            }
             members
                 .sort_by(|a, b| {
-                    let name_a = match a.nick {
-                        Some(ref nick) => {
-                            if contains_case_insensitive(&a.user.read().name[..], substring) {
-                                Cow::Owned(a.user.read().name.clone())
-                            } else {
-                                Cow::Borrowed(nick)
-                            }
-                        },
-                        None => Cow::Owned(a.user.read().name.clone()),
-                    };
-
-                    let name_b = match b.nick {
-                        Some(ref nick) => {
-                            if contains_case_insensitive(&b.user.read().name[..], substring) {
-                                Cow::Owned(b.user.read().name.clone())
-                            } else {
-                                Cow::Borrowed(nick)
-                            }
-                        },
-                        None => Cow::Owned(b.user.read().name.clone()),
-                    };
-
-                    closest_to_origin(substring, &name_a[..], &name_b[..])
+                    rt.block_on(acmp(a,b,substring))
                 });
             members
         } else {
@@ -1121,23 +1148,33 @@ impl Guild {
     /// - "zey", "azey", "zeyla", "zeylaa", "zeyzeyzey"
     ///
     /// [`Member`]: struct.Member.html
-    pub fn members_username_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
+    pub async fn members_username_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
+        async fn afilter(case_sensitive : bool, substring: &str, member : &&Member) -> bool {
+            if case_sensitive {
+                member.user.read().await.name.contains(substring)
+            } else {
+                contains_case_insensitive(&member.user.read().await.name, substring)
+            }
+        }
+
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
         let mut members: Vec<&Member> = self.members
             .values()
             .filter(|member| {
-                if case_sensitive {
-                    member.user.read().name.contains(substring)
-                } else {
-                    contains_case_insensitive(&member.user.read().name, substring)
-                }
+                rt.block_on(afilter(case_sensitive, substring, member))
             }).collect();
 
         if sorted {
+            async fn acmp(a : &&Member, b : &&Member, substring: &str) -> std::cmp::Ordering {
+                let name_a = &a.user.read().await.name;
+                let name_b = &b.user.read().await.name;
+                closest_to_origin(substring, &name_a[..], &name_b[..])
+            }
+
             members
                 .sort_by(|a, b| {
-                    let name_a = &a.user.read().name;
-                    let name_b = &b.user.read().name;
-                    closest_to_origin(substring, &name_a[..], &name_b[..])
+                   rt.block_on(acmp(a,b,substring))
                 });
             members
         } else {
@@ -1164,7 +1201,7 @@ impl Guild {
     /// a nick, the username will be used (this should never happen).
     ///
     /// [`Member`]: struct.Member.html
-    pub fn members_nick_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
+    pub async fn members_nick_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
         let mut members: Vec<&Member> = self.members
             .values()
             .filter(|member|
@@ -1179,23 +1216,29 @@ impl Guild {
                     })).collect();
 
         if sorted {
+            async fn acmp(a : &&Member, b : &&Member, substring: &str) -> std::cmp::Ordering {
+                let name_a = match a.nick {
+                    Some(ref nick) => {
+                        Cow::Borrowed(nick)
+                    },
+                    None => Cow::Owned(a.user.read().await.name.clone()),
+                };
+
+                let name_b = match b.nick {
+                    Some(ref nick) => {
+                        Cow::Borrowed(nick)
+                    },
+                    None => Cow::Owned(b.user.read().await.name.clone()),
+                };
+
+                closest_to_origin(substring, &name_a[..], &name_b[..])
+            }
+
+            let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
             members
                 .sort_by(|a, b| {
-                    let name_a = match a.nick {
-                        Some(ref nick) => {
-                            Cow::Borrowed(nick)
-                        },
-                        None => Cow::Owned(a.user.read().name.clone()),
-                    };
-
-                    let name_b = match b.nick {
-                        Some(ref nick) => {
-                                Cow::Borrowed(nick)
-                            },
-                        None => Cow::Owned(b.user.read().name.clone()),
-                    };
-
-                    closest_to_origin(substring, &name_a[..], &name_b[..])
+                    rt.block_on(acmp(a,b,substring))
                 });
             members
         } else {
@@ -1207,12 +1250,12 @@ impl Guild {
     ///
     /// [`Member`]: struct.Member.html
     #[inline]
-    pub fn member_permissions<U>(&self, user_id: U) -> Permissions
+    pub async fn member_permissions<U>(&self, user_id: U) -> Permissions
         where U: Into<UserId> {
-        self._member_permissions(user_id.into())
+        self._member_permissions(user_id.into()).await
     }
 
-    fn _member_permissions(&self, user_id: UserId) -> Permissions {
+    async fn _member_permissions(&self, user_id: UserId) -> Permissions {
         if user_id == self.owner_id {
             return Permissions::all();
         }
@@ -1247,7 +1290,7 @@ impl Guild {
             } else {
                 warn!(
                     "(╯°□°）╯︵ ┻━┻ {} on {} has non-existent role {:?}",
-                    member.user.read().id,
+                    member.user.read().await.id,
                     self.id,
                     role,
                 );
@@ -1274,21 +1317,21 @@ impl Guild {
     /// [`User`]: ../user/struct.User.html
     #[inline]
     #[deprecated(since="0.6.4", note="Please use `user_permissions_in` instead.")]
-    pub fn permissions_in<C, U>(&self, channel_id: C, user_id: U) -> Permissions
+    pub async fn permissions_in<C, U>(&self, channel_id: C, user_id: U) -> Permissions
         where C: Into<ChannelId>, U: Into<UserId> {
-        self.user_permissions_in(channel_id.into(), user_id.into())
+        self.user_permissions_in(channel_id.into(), user_id.into()).await
     }
 
     /// Calculate a [`User`]'s permissions in a given channel in the guild.
     ///
     /// [`User`]: ../user/struct.User.html
     #[inline]
-    pub fn user_permissions_in<C, U>(&self, channel_id: C, user_id: U) -> Permissions
+    pub async fn user_permissions_in<C, U>(&self, channel_id: C, user_id: U) -> Permissions
         where C: Into<ChannelId>, U: Into<UserId> {
-        self._user_permissions_in(channel_id.into(), user_id.into())
+        self._user_permissions_in(channel_id.into(), user_id.into()).await
     }
 
-    fn _user_permissions_in(
+    async fn _user_permissions_in(
         &self,
         channel_id: ChannelId,
         user_id: UserId,
@@ -1326,7 +1369,7 @@ impl Guild {
             } else {
                 warn!(
                     "(╯°□°）╯︵ ┻━┻ {} on {} has non-existent role {:?}",
-                    member.user.read().id,
+                    member.user.read().await.id,
                     self.id,
                     role
                 );
@@ -1339,7 +1382,7 @@ impl Guild {
         }
 
         if let Some(channel) = self.channels.get(&channel_id) {
-            let channel = channel.read();
+            let channel = channel.read().await;
 
             // If this is a text channel, then throw out voice permissions.
             if channel.kind == ChannelType::Text {
@@ -1410,12 +1453,12 @@ impl Guild {
     ///
     /// [`Role`]: ../guild/struct.Role.html
     #[inline]
-    pub fn role_permissions_in<C, R>(&self, channel_id: C, role_id: R) -> Option<Permissions>
+    pub async fn role_permissions_in<C, R>(&self, channel_id: C, role_id: R) -> Option<Permissions>
         where C: Into<ChannelId>, R: Into<RoleId> {
-        self._role_permissions_in(channel_id.into(), role_id.into())
+        self._role_permissions_in(channel_id.into(), role_id.into()).await
     }
 
-    fn _role_permissions_in(
+    async fn _role_permissions_in(
         &self,
         channel_id: ChannelId,
         role_id: RoleId,
@@ -1430,7 +1473,7 @@ impl Guild {
         }
 
         if let Some(channel) = self.channels.get(&channel_id) {
-            let channel = channel.read();
+            let channel = channel.read().await;
 
             for overwrite in &channel.permission_overwrites {
 
@@ -1481,7 +1524,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::KICK_MEMBERS;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -1536,7 +1579,7 @@ impl Guild {
     /// [`utils::shard_id`]: ../../utils/fn.shard_id.html
     #[cfg(all(feature = "cache", feature = "utils"))]
     #[inline]
-    pub fn shard_id(&self, cache: impl AsRef<CacheRwLock>) -> u64 { self.id.shard_id(&cache) }
+    pub async fn shard_id(&self, cache: impl AsRef<CacheRwLock>) -> u64 { self.id.shard_id(&cache).await }
 
     /// Returns the Id of the shard associated with the guild.
     ///
@@ -1602,7 +1645,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::KICK_MEMBERS;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -1630,7 +1673,7 @@ impl Guild {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::BAN_MEMBERS;
 
-                if !self.has_perms(cache, req) {
+                if !self.has_perms(cache, req).await {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }

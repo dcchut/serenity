@@ -1,6 +1,6 @@
 //! Models pertaining to the gateway.
 
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 use serde::de::Error as DeError;
 use serde::ser::{SerializeStruct, Serialize, Serializer};
 use serde_json;
@@ -471,6 +471,8 @@ impl Serialize for Presence {
             id: u64,
         }
 
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
         let mut state = serializer.serialize_struct("Presence", 5)?;
         state.serialize_field("game", &self.activity)?;
         state.serialize_field("last_modified", &self.last_modified)?;
@@ -478,7 +480,7 @@ impl Serialize for Presence {
         state.serialize_field("status", &self.status)?;
 
         if let Some(ref user) = self.user {
-            state.serialize_field("user", &*user.read())?;
+            state.serialize_field("user", &*rt.block_on(user.read()))?;
         } else {
             state.serialize_field("user", &UserId {
                 id: self.user_id.0,

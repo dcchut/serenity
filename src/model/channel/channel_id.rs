@@ -1,6 +1,6 @@
 #[cfg(feature = "http")]
 use crate::http::CacheHttp;
-use crate::{internal::RwLockExt, model::prelude::*};
+use crate::model::prelude::*;
 
 #[cfg(feature = "model")]
 use std::borrow::Cow;
@@ -16,7 +16,7 @@ use crate::builder::{
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache:: {Cache, CacheRwLock};
 #[cfg(all(feature = "cache", feature = "model"))]
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 #[cfg(feature = "model")]
 use crate::http::AttachmentType;
 #[cfg(feature = "model")]
@@ -322,15 +322,15 @@ impl ChannelId {
     /// [`Channel`]: ../channel/enum.Channel.html
     #[cfg(feature = "cache")]
     #[inline]
-    pub fn to_channel_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Channel> {
-        self._to_channel_cached(&cache.as_ref())
+    pub async fn to_channel_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Channel> {
+        self._to_channel_cached(&cache.as_ref()).await
     }
 
     /// To allow testing pass their own cache instead of using the globale one.
     #[cfg(feature = "cache")]
     #[inline]
-    pub(crate) fn _to_channel_cached(self, cache: &RwLock<Cache>) -> Option<Channel> {
-        cache.read().channel(self)
+    pub(crate) async fn _to_channel_cached(self, cache: &RwLock<Cache>) -> Option<Channel> {
+        cache.read().await.channel(self)
     }
 
     /// First attempts to find a [`Channel`] by its Id in the cache,
@@ -347,7 +347,7 @@ impl ChannelId {
         {
             if let Some(cache) = cache_http.cache() {
 
-                if let Some(channel) = cache.read().channel(self) {
+                if let Some(channel) = cache.read().await.channel(self) {
                     return Ok(channel);
                 }
             }
@@ -422,21 +422,31 @@ impl ChannelId {
 
     /// Returns the name of whatever channel this id holds.
     #[cfg(all(feature = "model", feature = "cache"))]
-    pub fn name(self, cache: impl AsRef<CacheRwLock>) -> Option<String> {
-        let channel = if let Some(c) = self.to_channel_cached(&cache) {
+    pub async fn name(self, cache: impl AsRef<CacheRwLock>) -> Option<String> {
+        let channel = if let Some(c) = self.to_channel_cached(&cache).await {
             c
         } else {
             return None;
         };
 
         Some(match channel {
-            Channel::Guild(channel) => channel.read().name().to_string(),
-            Channel::Group(channel) => match channel.read().name() {
-                Cow::Borrowed(name) => name.to_string(),
-                Cow::Owned(name) => name,
+            Channel::Guild(channel) => channel.read().await.name().to_string(),
+            Channel::Group(channel) => {
+                let guard = channel.read().await;
+                let res = guard.name().await;
+
+                match res {
+                    Cow::Borrowed(name) => name.to_string(),
+                    Cow::Owned(name) => name,
+                }
             },
-            Channel::Category(category) => category.read().name().to_string(),
-            Channel::Private(channel) => channel.read().name(),
+            Channel::Category(category) => category.read().await.name().to_string(),
+            Channel::Private(channel) => {
+                let guard = channel.read().await;
+                let res = guard.name().await;
+
+                res
+            },
             Channel::__Nonexhaustive => unreachable!(),
         })
     }
@@ -711,26 +721,30 @@ impl ChannelId {
 impl From<Channel> for ChannelId {
     /// Gets the Id of a `Channel`.
     fn from(channel: Channel) -> ChannelId {
-        match channel {
-            Channel::Group(group) => group.with(|g| g.channel_id),
-            Channel::Guild(ch) => ch.with(|c| c.id),
-            Channel::Private(ch) => ch.with(|c| c.id),
-            Channel::Category(ch) => ch.with(|c| c.id),
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+        rt.block_on(async {match channel {
+            Channel::Group(group) => group.read().await.channel_id,
+            Channel::Guild(ch) => ch.read().await.id,
+            Channel::Private(ch) => ch.read().await.id,
+            Channel::Category(ch) => ch.read().await.id,
             Channel::__Nonexhaustive => unreachable!(),
-        }
+        }})
     }
 }
 
 impl<'a> From<&'a Channel> for ChannelId {
     /// Gets the Id of a `Channel`.
     fn from(channel: &Channel) -> ChannelId {
-        match *channel {
-            Channel::Group(ref group) => group.with(|g| g.channel_id),
-            Channel::Guild(ref ch) => ch.with(|c| c.id),
-            Channel::Private(ref ch) => ch.with(|c| c.id),
-            Channel::Category(ref ch) => ch.with(|c| c.id),
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+        rt.block_on(async {match *channel {
+            Channel::Group(ref group) => group.read().await.channel_id,
+            Channel::Guild(ref ch) => ch.read().await.id,
+            Channel::Private(ref ch) => ch.read().await.id,
+            Channel::Category(ref ch) => ch.read().await.id,
             Channel::__Nonexhaustive => unreachable!(),
-        }
+        }})
     }
 }
 

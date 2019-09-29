@@ -276,24 +276,24 @@ pub(crate) fn levenshtein_distance(word_a: &str, word_b: &str) -> usize {
 /// Checks whether a user is member of required roles
 /// and given the required permissions.
 #[cfg(feature = "cache")]
-pub fn has_all_requirements(
+pub async fn has_all_requirements(
     cache: impl AsRef<CacheRwLock>,
     cmd: &CommandOptions,
     msg: &Message,
 ) -> bool {
-    if let Some(guild) = msg.guild(&cache) {
-        let guild = guild.read();
+    if let Some(guild) = msg.guild(&cache).await {
+        let guild = guild.read().await;
 
         if let Some(member) = guild.members.get(&msg.author.id) {
 
-            if let Ok(permissions) = member.permissions(&cache) {
+            if let Ok(permissions) = member.permissions(&cache).await {
 
                 return if cmd.allowed_roles.is_empty() {
-                    permissions.administrator() || has_correct_permissions(&cache, &cmd, msg)
+                    permissions.administrator() || has_correct_permissions(&cache, &cmd, msg).await
                 } else {
                     permissions.administrator()
                         || (has_correct_roles(&cmd, &guild, member)
-                            && has_correct_permissions(&cache, &cmd, msg))
+                            && has_correct_permissions(&cache, &cmd, msg).await)
                 };
             }
         }
@@ -346,7 +346,7 @@ fn find_any_command_matches(
 }
 
 #[cfg(all(feature = "cache", feature = "http"))]
-fn check_command_behaviour(
+async fn check_command_behaviour(
     msg: &Message,
     options: &impl CommonOptions,
     owners: &HashSet<UserId>,
@@ -369,10 +369,10 @@ fn check_command_behaviour(
             return HelpBehaviour::Nothing;
         }
 
-        if has_correct_permissions(&cache, options, msg) {
+        if has_correct_permissions(&cache, options, msg).await {
 
-            if let Some(guild) = msg.guild(&cache) {
-                let guild = guild.read();
+            if let Some(guild) = msg.guild(&cache).await {
+                let guild = guild.read().await;
 
                 if let Some(member) = guild.members.get(&msg.author.id) {
                     if has_correct_roles(options, &guild, &member) {
@@ -405,17 +405,19 @@ fn nested_group_command_search<'a>(
     similar_commands: &mut Vec<SuggestedCommandName>,
     owners: &HashSet<UserId>,
 ) -> Result<CustomisedHelpData<'a>, ()> {
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
     for group in groups {
         let group = *group;
         let mut found: Option<&'static InternalCommand> = None;
 
-        let group_behaviour = check_command_behaviour(
-                &msg,
-                &group.options,
-                &owners,
-                &help_options,
-                &cache,
-        );
+        let group_behaviour = rt.block_on(check_command_behaviour(
+            &msg,
+            &group.options,
+            &owners,
+            &help_options,
+            &cache,
+        ));
 
         match &group_behaviour {
             HelpBehaviour::Nothing => (),
@@ -449,20 +451,18 @@ fn nested_group_command_search<'a>(
             };
 
             if search_command_name_matched.is_some() {
-
-                if HelpBehaviour::Nothing == check_command_behaviour(
+                if HelpBehaviour::Nothing == rt.block_on(check_command_behaviour(
                     &msg,
                     &command.options,
                     &owners,
                     &help_options,
                     &cache,
-                ) {
+                )) {
                     found = Some(command);
                 } else {
                     break;
                 }
             } else if help_options.max_levenshtein_distance > 0 {
-
                 let command_name = if let Some(first_prefix) = group.options.prefixes.get(0) {
                     format!("{} {}", &first_prefix, &command.options.names[0])
                 } else {
@@ -472,13 +472,13 @@ fn nested_group_command_search<'a>(
                 let levenshtein_distance = levenshtein_distance(&command_name, &name);
 
                 if levenshtein_distance <= help_options.max_levenshtein_distance
-                    && HelpBehaviour::Nothing == check_command_behaviour(
-                        &msg,
-                        &command.options,
-                        &owners,
-                        &help_options,
-                        &cache,
-                    )
+                    && HelpBehaviour::Nothing == rt.block_on(check_command_behaviour(
+                    &msg,
+                    &command.options,
+                    &owners,
+                    &help_options,
+                    &cache,
+                ))
                 {
                     similar_commands.push(SuggestedCommandName {
                         name: command_name,
@@ -549,7 +549,6 @@ fn nested_group_command_search<'a>(
             Ok(found) => return Ok(found),
             Err(()) => (),
         }
-
     }
 
     Err(())
@@ -558,7 +557,7 @@ fn nested_group_command_search<'a>(
 /// Tries to extract a single command matching searched command name otherwise
 /// returns similar commands.
 #[cfg(feature = "cache")]
-fn fetch_single_command<'a>(
+async fn fetch_single_command<'a>(
     cache: impl AsRef<CacheRwLock>,
     groups: &[&'static CommandGroup],
     name: &str,
@@ -586,7 +585,7 @@ fn fetch_single_command<'a>(
 
 #[cfg(feature = "cache")]
 #[allow(clippy::too_many_arguments)]
-fn fill_eligible_commands<'a>(
+async fn fill_eligible_commands<'a>(
     context: &Context,
     commands: &[&'static InternalCommand],
     owners: &HashSet<UserId>,
@@ -611,7 +610,7 @@ fn fill_eligible_commands<'a>(
                     owners,
                     help_options,
                     &context.cache,
-                )
+                ).await
             )
         }
     };
@@ -639,7 +638,7 @@ fn fill_eligible_commands<'a>(
             owners,
             help_options,
             &context.cache,
-        );
+        ).await;
 
         let name = format_command_name!(command_behaviour, &name);
         to_fill.command_names.push(name);
@@ -661,8 +660,9 @@ fn fetch_all_eligible_commands_in_group<'a>(
 ) -> GroupCommandsPair {
     let mut group_with_cmds = GroupCommandsPair::default();
     let mut highest_formatter = highest_formatter;
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
-    fill_eligible_commands(
+    rt.block_on(fill_eligible_commands(
         &context,
         &commands,
         &owners,
@@ -671,7 +671,7 @@ fn fetch_all_eligible_commands_in_group<'a>(
         &msg,
         &mut group_with_cmds,
         &mut highest_formatter,
-    );
+    ));
 
     for sub_group in group.options.sub_groups {
         if HelpBehaviour::Hide == highest_formatter {
@@ -835,7 +835,7 @@ pub fn searched_lowercase<'a>(
 /// shall be picked and in what textual format.
 #[cfg(feature = "cache")]
 #[allow(clippy::implicit_hasher)]
-pub fn create_customised_help_data<'a>(
+pub async fn create_customised_help_data<'a>(
     context: &Context,
     groups: &[&'static CommandGroup],
     owners: &HashSet<UserId>,
@@ -848,7 +848,7 @@ pub fn create_customised_help_data<'a>(
     if !args.is_empty() {
         let name = args.message();
 
-        return match fetch_single_command(&cache, &groups, &name, &help_options, &msg, owners) {
+        return match fetch_single_command(&cache, &groups, &name, &help_options, &msg, owners).await {
             Ok(single_command) => single_command,
             Err(suggestions) => {
                 let mut searched_named_lowercase = name.to_lowercase().to_string();
@@ -1223,7 +1223,7 @@ pub async fn with_embeds(
     owners: HashSet<UserId>,
 ) -> CommandResult {
     let formatted_help =
-        create_customised_help_data(&context, &groups, &owners, &args, help_options, msg);
+        create_customised_help_data(&context, &groups, &owners, &args, help_options, msg).await;
 
     if let Err(why) = match formatted_help {
         CustomisedHelpData::SuggestedCommands {
@@ -1424,7 +1424,7 @@ pub async fn plain(
     owners: HashSet<UserId>,
 ) -> CommandResult {
     let formatted_help =
-        create_customised_help_data(&context, &groups, &owners, &args, help_options, msg);
+        create_customised_help_data(&context, &groups, &owners, &args, help_options, msg).await;
 
     let result = match formatted_help {
         CustomisedHelpData::SuggestedCommands {

@@ -1,7 +1,6 @@
 //! Miscellaneous helper traits, enums, and structs for models.
 
 use super::prelude::*;
-use crate::internal::RwLockExt;
 
 #[cfg(all(feature = "model", feature = "utils"))]
 use std::error::Error as StdError;
@@ -25,15 +24,19 @@ impl Mentionable for ChannelId {
     fn mention(&self) -> String { format!("<#{}>", self.0) }
 }
 
+
+
 impl Mentionable for Channel {
     fn mention(&self) -> String {
-        match *self {
-            Channel::Guild(ref x) => x.with(Mentionable::mention),
-            Channel::Private(ref x) => x.with(Mentionable::mention),
-            Channel::Group(ref x) => x.with(Mentionable::mention),
-            Channel::Category(ref x) => x.with(Mentionable::mention),
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+
+        rt.block_on(async {match *self {
+            Channel::Guild(ref x) => x.read().await.mention(),
+            Channel::Private(ref x) => x.read().await.mention(),
+            Channel::Group(ref x) => x.read().await.mention(),
+            Channel::Category(ref x) => x.read().await.mention(),
             Channel::__Nonexhaustive => unreachable!(),
-        }
+        } })
     }
 }
 
@@ -60,7 +63,12 @@ impl Mentionable for Group {
 }
 
 impl Mentionable for Member {
-    fn mention(&self) -> String { format!("<@{}>", self.user.with(|u| u.id.0)) }
+    fn mention(&self) -> String {
+        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        let u = rt.block_on(self.user.read());
+
+        format!("<@{}>", u.id.0)
+    }
 }
 
 impl Mentionable for PrivateChannel {
@@ -72,6 +80,7 @@ impl Mentionable for PrivateChannel {
 impl Mentionable for RoleId {
     fn mention(&self) -> String { format!("<@&{}>", self.0) }
 }
+
 
 impl Mentionable for Role {
     fn mention(&self) -> String { format!("<@&{}>", self.id.0) }
@@ -310,7 +319,7 @@ mod test {
     #[cfg(feature = "utils")]
     mod utils {
         use crate::model::prelude::*;
-        use parking_lot::RwLock;
+        use async_std::sync::RwLock;
         use std::sync::Arc;
         use crate::utils::Colour;
 

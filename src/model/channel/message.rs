@@ -11,7 +11,7 @@ use crate::builder::{CreateEmbed, EditMessage};
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache::CacheRwLock;
 #[cfg(all(feature = "cache", feature = "model"))]
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 #[cfg(all(feature = "client", feature = "model"))]
 use serde_json::json;
 #[cfg(all(feature = "cache", feature = "model"))]
@@ -124,12 +124,21 @@ impl Message {
     /// Returns `None` if the channel is not in the cache.
     #[cfg(feature = "cache")]
     #[inline]
-    pub fn channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Channel> { cache.as_ref().read().channel(self.channel_id) }
+    pub async fn channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Channel> {
+        let guard = cache.as_ref().read().await;
+        let res = guard.channel(self.channel_id);
+
+        res
+    }
 
     /// A util function for determining whether this message was sent by someone else, or the
     /// bot.
     #[cfg(all(feature = "cache", feature = "utils"))]
-    pub fn is_own(&self, cache: impl AsRef<CacheRwLock>) -> bool { self.author.id == cache.as_ref().read().user.id }
+    pub async fn is_own(&self, cache: impl AsRef<CacheRwLock>) -> bool {
+        let guard = cache.as_ref().read().await;
+
+        self.author.id == guard.user.id
+    }
 
     /// Deletes the message.
     ///
@@ -151,7 +160,7 @@ impl Message {
         {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::MANAGE_MESSAGES;
-                let is_author = self.author.id == cache.read().user.id;
+                let is_author = self.author.id == cache.read().await.user.id;
                 let has_perms = utils::user_has_perms(&cache, self.channel_id, self.guild_id, req)?;
 
                 if !is_author && !has_perms {
@@ -232,7 +241,7 @@ impl Message {
         {
             if let Some(cache) = cache_http.cache() {
 
-                if self.author.id != cache.read().user.id {
+                if self.author.id != cache.read().await.user.id {
                     return Err(Error::Model(ModelError::InvalidUser));
                 }
             }
@@ -292,7 +301,7 @@ impl Message {
     /// Returns message content, but with user and role mentions replaced with
     /// names and everyone/here mentions cancelled.
     #[cfg(feature = "cache")]
-    pub fn content_safe(&self, cache: impl AsRef<CacheRwLock>) -> String {
+    pub async fn content_safe(&self, cache: impl AsRef<CacheRwLock>) -> String {
         let mut result = self.content.clone();
 
         // First replace all user mentions.
@@ -309,7 +318,7 @@ impl Message {
         for id in &self.mention_roles {
             let mention = id.mention();
 
-            if let Some(role) = id.to_role_cached(&cache) {
+            if let Some(role) = id.to_role_cached(&cache).await {
                 result = result.replace(&mention, &format!("@{}", role.name));
             } else {
                 result = result.replace(&mention, "@deleted-role");
@@ -360,8 +369,11 @@ impl Message {
     ///
     /// [`guild_id`]: #method.guild_id
     #[cfg(feature = "cache")]
-    pub fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> {
-       cache.as_ref().read().guild(self.guild_id?)
+    pub async fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> {
+        let guard = cache.as_ref().read().await;
+        let res = guard.guild(self.guild_id?);
+
+        res
     }
 
     /// True if message was sent using direct messages.
@@ -378,8 +390,11 @@ impl Message {
     ///
     /// [`Guild::members`]: ../guild/struct.Guild.html#structfield.members
     #[cfg(feature = "cache")]
-    pub fn member(&self, cache: impl AsRef<CacheRwLock>) -> Option<Member> {
-        self.guild(&cache).and_then(|g| g.read().members.get(&self.author.id).cloned())
+    pub async fn member(&self, cache: impl AsRef<CacheRwLock>) -> Option<Member> {
+        match self.guild(&cache).await {
+            Some(entry) => entry.read().await.members.get(&self.author.id).cloned(),
+            None => None,
+        }
     }
 
     /// Checks the length of a string to ensure that it is within Discord's

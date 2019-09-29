@@ -1,4 +1,4 @@
-use parking_lot::RwLock;
+use async_std::sync::RwLock;
 use serde::de::Error as DeError;
 use serde::de::MapAccess;
 use serde::ser::{SerializeSeq, Serialize, Serializer};
@@ -64,10 +64,11 @@ pub fn deserialize_members<'de, D: Deserializer<'de>>(
     deserializer: D)
     -> StdResult<HashMap<UserId, Member>, D::Error> {
     let vec: Vec<Member> = Deserialize::deserialize(deserializer)?;
+
     let mut members = HashMap::new();
 
     for member in vec {
-        let user_id = member.user.read().id;
+        let user_id = futures::executor::block_on(member.user.read()).id;
 
         members.insert(user_id, member);
     }
@@ -105,12 +106,13 @@ pub fn deserialize_private_channels<'de, D: Deserializer<'de>>(
     deserializer: D)
     -> StdResult<HashMap<ChannelId, Channel>, D::Error> {
     let vec: Vec<Channel> = Deserialize::deserialize(deserializer)?;
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
     let mut private_channels = HashMap::new();
 
     for private_channel in vec {
         let id = match private_channel {
-            Channel::Group(ref group) => group.read().channel_id,
-            Channel::Private(ref channel) => channel.read().id,
+            Channel::Group(ref group) => rt.block_on(group.read()).channel_id,
+            Channel::Private(ref channel) => rt.block_on(channel.read()).id,
             Channel::Guild(_) => unreachable!("Guild private channel decode"),
             Channel::Category(_) => unreachable!("Channel category private channel decode"),
             Channel::__Nonexhaustive => unreachable!(),
@@ -179,8 +181,9 @@ pub fn serialize_single_recipient<S: Serializer>(
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(1))?;
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
-    seq.serialize_element(&*user.read())?;
+    seq.serialize_element(&*rt.block_on(user.read()))?;
 
     seq.end()
 }
@@ -194,7 +197,8 @@ pub fn serialize_sync_user<S: Serializer>(
     user: &Arc<RwLock<User>>,
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
-    User::serialize(&*user.read(), serializer)
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+    User::serialize(&*rt.block_on(user.read()), serializer)
 }
 
 pub fn deserialize_users<'de, D: Deserializer<'de>>(
@@ -215,9 +219,10 @@ pub fn serialize_users<S: Serializer>(
     serializer: S
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(users.len()))?;
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
     for user in users.values() {
-        seq.serialize_element(&*user.read())?;
+        seq.serialize_element(&*rt.block_on(user.read()))?;
     }
 
     seq.end()
@@ -272,9 +277,10 @@ pub fn serialize_gen_locked_map<K: Eq + Hash, S: Serializer, V: Serialize>(
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(map.len()))?;
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
     for value in map.values() {
-        seq.serialize_element(&*value.read())?;
+        seq.serialize_element(&*rt.block_on(value.read()))?;
     }
 
     seq.end()
@@ -287,7 +293,8 @@ pub fn user_has_perms(
     guild_id: Option<GuildId>,
     mut permissions: Permissions
 ) -> Result<bool> {
-    let cache = cache.as_ref().read();
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+    let cache = rt.block_on(cache.as_ref().read());
     let current_user = &cache.user;
 
     let guild_id = match guild_id {
@@ -299,7 +306,7 @@ pub fn user_has_perms(
             };
 
             match channel {
-                Channel::Guild(channel) => channel.read().guild_id,
+                Channel::Guild(channel) => rt.block_on(channel.read()).guild_id,
                 Channel::Group(_) | Channel::Private(_) | Channel::Category(_) => {
                     // Both users in DMs, all users in groups, and maybe all channels in categories
                     // will have the same permissions.
@@ -322,9 +329,10 @@ pub fn user_has_perms(
         None => return Err(Error::Model(ModelError::ItemMissing)),
     };
 
-    let perms = guild
-        .read()
-        .user_permissions_in(channel_id, current_user.id);
+    let perms = rt.block_on(async {
+        let g = guild.read().await;
+        g.user_permissions_in(channel_id, current_user.id).await
+    });
 
     permissions.remove(perms);
 

@@ -53,7 +53,7 @@ use futures::sink::SinkExt;
 /// # #[cfg(feature = "framework")]
 /// # async fn try_main() -> Result<(), Box<dyn Error>> {
 /// #
-/// use parking_lot::{Mutex, RwLock};
+/// use futures::lock::{Mutex};
 /// use serenity::client::bridge::gateway::{ShardManager, ShardManagerOptions};
 /// use serenity::client::{EventHandler, RawEventHandler};
 /// // Of note, this imports `typemap`'s `ShareMap` type.
@@ -64,6 +64,7 @@ use futures::sink::SinkExt;
 /// use serenity::prelude::*;
 /// use std::sync::Arc;
 /// use std::env;
+/// use async_std::sync::RwLock;
 ///
 /// struct Handler;
 ///
@@ -250,7 +251,7 @@ impl ShardManager {
     /// let mut client = Client::new(&token, Handler).await.unwrap();
     ///
     /// // restart shard ID 7
-    /// client.shard_manager.lock().restart(ShardId(7));
+    /// client.shard_manager.lock().await.restart(ShardId(7));
     /// # }
     /// ```
     ///

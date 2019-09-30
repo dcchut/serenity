@@ -240,13 +240,8 @@ impl Cache {
     /// # use serenity::model::prelude::*;
     /// # use serenity::prelude::*;
     /// #
-    /// # #[cfg(feature = "client")]
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// use std::thread;
     /// use std::time::Duration;
     /// use async_trait::async_trait;
-    ///
     /// struct Handler;
     ///
     /// #[async_trait]
@@ -261,12 +256,15 @@ impl Cache {
     ///         //
     ///         // For demonstrative purposes we're just sleeping the thread for 5
     ///         // seconds.
-    ///         thread::sleep(Duration::from_secs(5));
+    ///         tokio::timer::delay_for(Duration::from_secs(5)).await;
     ///
-    ///         println!("{} unknown members", ctx.cache.read().unknown_members());
+    ///         let guard = ctx.cache.read().await;
+    ///         println!("{} unknown members", guard.unknown_members().await);
     ///     }
     /// }
-    ///
+    /// # #[cfg(feature = "client")]
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let mut client = Client::new("token", Handler).await.unwrap();
     ///
     /// client.start().await.unwrap();
@@ -310,10 +308,12 @@ impl Cache {
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
+    /// # async fn try_main() {
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// let amount = cache.read().all_private_channels().len();
+    /// let amount = cache.read().await.all_private_channels().len();
     ///
     /// println!("There are {} private channels", amount);
+    /// # }
     /// ```
     ///
     /// [`Group`]: ../model/channel/struct.Group.html
@@ -348,7 +348,7 @@ impl Cache {
     /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn ready(&self, context: Context, _: Ready) {
-    ///         let guilds = context.cache.read().guilds.len();
+    ///         let guilds = context.cache.read().await.guilds.len();
     ///
     ///         println!("Guilds in the Cache: {}", guilds);
     ///     }
@@ -427,11 +427,11 @@ impl Cache {
     /// # use async_std::sync::RwLock;
     /// # use std::{error::Error, sync::Arc};
     /// #
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
     /// // assuming the cache is in scope, e.g. via `Context`
-    /// if let Some(guild) = cache.read().guild(7) {
-    ///     println!("Guild name: {}", guild.read().name);
+    /// if let Some(guild) = cache.read().await.guild(7) {
+    ///     println!("Guild name: {}", guild.read().await.name);
     /// }
     /// #   Ok(())
     /// # }
@@ -470,7 +470,7 @@ impl Cache {
     /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, message: Message) {
-    ///         let cache = context.cache.read();
+    ///         let cache = context.cache.read().await;
     ///
     ///         let channel = match cache.guild_channel(message.channel_id) {
     ///             Some(channel) => channel,
@@ -526,10 +526,10 @@ impl Cache {
     /// # use async_std::sync::RwLock;
     /// # use std::{error::Error, sync::Arc};
     /// #
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// if let Some(group) = cache.read().group(7) {
-    ///     println!("Owner Id: {}", group.read().owner_id);
+    /// if let Some(group) = cache.read().await.group(7) {
+    ///     println!("Owner Id: {}", group.read().await.owner_id);
     /// }
     /// #     Ok(())
     /// # }
@@ -626,7 +626,7 @@ impl Cache {
     /// # let message = ChannelId(0).message(&http, MessageId(1)).await.unwrap();
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
     /// #
-    /// let cache = cache.read();
+    /// let cache = cache.read().await;
     /// let fetched_message = cache.message(message.channel_id, message.id);
     ///
     /// match fetched_message {
@@ -672,23 +672,20 @@ impl Cache {
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// #   let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// #   let cache = cache.read();
+    /// #   let cache = cache.read().await;
     /// // assuming the cache has been unlocked
     ///
     /// if let Some(channel) = cache.private_channel(7) {
-    ///     let channel_reader = channel.read();
-    ///     let user_reader = channel_reader.recipient.read();
+    ///     let channel_reader = channel.read().await;
+    ///     let user_reader = channel_reader.recipient.read().await;
     ///
     ///     println!("The recipient is {}", user_reader.name);
     /// }
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
-    /// # }
     /// ```
     ///
     /// [`private_channels`]: #structfield.private_channels
@@ -720,10 +717,11 @@ impl Cache {
     /// # use async_std::sync::RwLock;
     /// # use std::{error::Error, sync::Arc};
     /// #
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
     /// // assuming the cache is in scope, e.g. via `Context`
-    /// if let Some(role) = cache.read().role(7, 77) {
+    /// let guard = cache.read().await;
+    /// if let Some(role) = guard.role(7, 77).await {
     ///     println!("Role with Id 77 is called {}", role.name);
     /// }
     /// #     Ok(())
@@ -793,8 +791,8 @@ impl Cache {
     /// #
     /// # #[command]
     /// # async fn test(context: &mut Context) -> CommandResult {
-    /// if let Some(user) = context.cache.read().user(7) {
-    ///     println!("User with Id 7 is currently named {}", user.read().name);
+    /// if let Some(user) = context.cache.read().await.user(7) {
+    ///     println!("User with Id 7 is currently named {}", user.read().await.name);
     /// }
     /// # Ok(())
     /// # }
@@ -881,191 +879,194 @@ mod test {
     use crate::{
         cache::{Cache, CacheUpdate, Settings},
         model::prelude::*,
-        prelude::RwLock,
+        utils::run_async_test,
     };
     use crate::model::guild::PremiumTier::Tier2;
+    use async_std::sync::RwLock;
 
     #[test]
     fn test_cache_messages() {
-        let mut settings = Settings::new();
-        settings.max_messages(2);
-        let mut cache = Cache::new_with_settings(settings);
+        run_async_test(async move {
+            let mut settings = Settings::new();
+            settings.max_messages(2);
+            let mut cache = Cache::new_with_settings(settings);
 
-        // Test inserting one message into a channel's message cache.
-        let datetime = DateTime::parse_from_str(
-            "1983 Apr 13 12:09:14.274 +0000",
-            "%Y %b %d %H:%M:%S%.3f %z",
-        ).unwrap();
-        let mut event = MessageCreateEvent {
-            message: Message {
-                id: MessageId(3),
-                attachments: vec![],
-                author: User {
-                    id: UserId(2),
-                    avatar: None,
-                    bot: false,
-                    discriminator: 1,
-                    name: "user 1".to_owned(),
+            // Test inserting one message into a channel's message cache.
+            let datetime = DateTime::parse_from_str(
+                "1983 Apr 13 12:09:14.274 +0000",
+                "%Y %b %d %H:%M:%S%.3f %z",
+            ).unwrap();
+            let mut event = MessageCreateEvent {
+                message: Message {
+                    id: MessageId(3),
+                    attachments: vec![],
+                    author: User {
+                        id: UserId(2),
+                        avatar: None,
+                        bot: false,
+                        discriminator: 1,
+                        name: "user 1".to_owned(),
+                        _nonexhaustive: (),
+                    },
+                    channel_id: ChannelId(2),
+                    guild_id: Some(GuildId(1)),
+                    content: String::new(),
+                    edited_timestamp: None,
+                    embeds: vec![],
+                    kind: MessageType::Regular,
+                    member: None,
+                    mention_everyone: false,
+                    mention_roles: vec![],
+                    mention_channels: None,
+                    mentions: vec![],
+                    nonce: Value::Number(Number::from(1)),
+                    pinned: false,
+                    reactions: vec![],
+                    timestamp: datetime.clone(),
+                    tts: false,
+                    webhook_id: None,
+                    activity: None,
+                    application: None,
+                    message_reference: None,
+                    flags: None,
                     _nonexhaustive: (),
                 },
-                channel_id: ChannelId(2),
-                guild_id: Some(GuildId(1)),
-                content: String::new(),
-                edited_timestamp: None,
-                embeds: vec![],
-                kind: MessageType::Regular,
-                member: None,
-                mention_everyone: false,
-                mention_roles: vec![],
-                mention_channels: None,
-                mentions: vec![],
-                nonce: Value::Number(Number::from(1)),
-                pinned: false,
-                reactions: vec![],
-                timestamp: datetime.clone(),
-                tts: false,
-                webhook_id: None,
-                activity: None,
-                application: None,
-                message_reference: None,
-                flags: None,
                 _nonexhaustive: (),
-            },
-            _nonexhaustive: (),
-        };
-        // Check that the channel cache doesn't exist.
-        assert!(!cache.messages.contains_key(&event.message.channel_id));
-        // Add first message, none because message ID 2 doesn't already exist.
-        assert!(event.update(&mut cache).is_none());
-        // None, it only returns the oldest message if the cache was already full.
-        assert!(event.update(&mut cache).is_none());
-        // Assert there's only 1 message in the channel's message cache.
-        assert_eq!(cache.messages.get(&event.message.channel_id).unwrap().len(), 1);
+            };
+            // Check that the channel cache doesn't exist.
+            assert!(!cache.messages.contains_key(&event.message.channel_id));
+            // Add first message, none because message ID 2 doesn't already exist.
+            assert!(event.update(&mut cache).await.is_none());
+            // None, it only returns the oldest message if the cache was already full.
+            assert!(event.update(&mut cache).await.is_none());
+            // Assert there's only 1 message in the channel's message cache.
+            assert_eq!(cache.messages.get(&event.message.channel_id).unwrap().len(), 1);
 
-        // Add a second message, assert that channel message cache length is 2.
-        event.message.id = MessageId(4);
-        assert!(event.update(&mut cache).is_none());
-        assert_eq!(cache.messages.get(&event.message.channel_id).unwrap().len(), 2);
+            // Add a second message, assert that channel message cache length is 2.
+            event.message.id = MessageId(4);
+            assert!(event.update(&mut cache).await.is_none());
+            assert_eq!(cache.messages.get(&event.message.channel_id).unwrap().len(), 2);
 
-        // Add a third message, the first should now be removed.
-        event.message.id = MessageId(5);
-        assert!(event.update(&mut cache).is_some());
+            // Add a third message, the first should now be removed.
+            event.message.id = MessageId(5);
+            assert!(event.update(&mut cache).await.is_some());
 
-        {
-            let channel = cache.messages.get(&event.message.channel_id).unwrap();
+            {
+                let channel = cache.messages.get(&event.message.channel_id).unwrap();
 
-            assert_eq!(channel.len(), 2);
-            // Check that the first message is now removed.
-            assert!(!channel.contains_key(&MessageId(3)));
-        }
+                assert_eq!(channel.len(), 2);
+                // Check that the first message is now removed.
+                assert!(!channel.contains_key(&MessageId(3)));
+            }
 
-        let guild_channel = GuildChannel {
-            id: event.message.channel_id,
-            bitrate: None,
-            category_id: None,
-            guild_id: event.message.guild_id.unwrap(),
-            kind: ChannelType::Text,
-            last_message_id: None,
-            last_pin_timestamp: None,
-            name: String::new(),
-            permission_overwrites: vec![],
-            position: 0,
-            topic: None,
-            user_limit: None,
-            nsfw: false,
-            slow_mode_rate: Some(0),
-            _nonexhaustive: (),
-        };
+            let guild_channel = GuildChannel {
+                id: event.message.channel_id,
+                bitrate: None,
+                category_id: None,
+                guild_id: event.message.guild_id.unwrap(),
+                kind: ChannelType::Text,
+                last_message_id: None,
+                last_pin_timestamp: None,
+                name: String::new(),
+                permission_overwrites: vec![],
+                position: 0,
+                topic: None,
+                user_limit: None,
+                nsfw: false,
+                slow_mode_rate: Some(0),
+                _nonexhaustive: (),
+            };
 
-        // Add a channel delete event to the cache, the cached messages for that
-        // channel should now be gone.
-        let mut delete = ChannelDeleteEvent {
-            channel: Channel::Guild(Arc::new(RwLock::new(guild_channel.clone()))),
-            _nonexhaustive: (),
-        };
-        assert!(cache.update(&mut delete).is_none());
-        assert!(!cache.messages.contains_key(&delete.channel.id()));
+            // Add a channel delete event to the cache, the cached messages for that
+            // channel should now be gone.
+            let mut delete = ChannelDeleteEvent {
+                channel: Channel::Guild(Arc::new(RwLock::new(guild_channel.clone()))),
+                _nonexhaustive: (),
+            };
+            assert!(cache.update(&mut delete).await.is_none());
+            assert!(!cache.messages.contains_key(&delete.channel.id().await));
 
-        // Test deletion of a guild channel's message cache when a GuildDeleteEvent
-        // is received.
-        let mut guild_create = {
-            let mut channels = HashMap::new();
-            channels.insert(ChannelId(2), Arc::new(RwLock::new(guild_channel.clone())));
+            // Test deletion of a guild channel's message cache when a GuildDeleteEvent
+            // is received.
+            let mut guild_create = {
+                let mut channels = HashMap::new();
+                channels.insert(ChannelId(2), Arc::new(RwLock::new(guild_channel.clone())));
 
-            GuildCreateEvent {
-                guild: Guild {
+                GuildCreateEvent {
+                    guild: Guild {
+                        id: GuildId(1),
+                        afk_channel_id: None,
+                        afk_timeout: 0,
+                        application_id: None,
+                        default_message_notifications: DefaultMessageNotificationLevel::All,
+                        emojis: HashMap::new(),
+                        explicit_content_filter: ExplicitContentFilter::None,
+                        features: vec![],
+                        icon: None,
+                        joined_at: datetime,
+                        large: false,
+                        member_count: 0,
+                        members: HashMap::new(),
+                        mfa_level: MfaLevel::None,
+                        name: String::new(),
+                        owner_id: UserId(3),
+                        presences: HashMap::new(),
+                        region: String::new(),
+                        roles: HashMap::new(),
+                        splash: None,
+                        system_channel_id: None,
+                        verification_level: VerificationLevel::Low,
+                        voice_states: HashMap::new(),
+                        description: None,
+                        premium_tier: PremiumTier::Tier0,
+                        channels,
+                        premium_subscription_count: 0,
+                        banner: None,
+                        vanity_url_code: Some("bruhmoment".to_string()),
+                        preferred_locale: "en-US".to_string(),
+                        _nonexhaustive: (),
+                    },
+                    _nonexhaustive: (),
+                }
+            };
+            assert!(cache.update(&mut guild_create).await.is_none());
+            assert!(cache.update(&mut event).await.is_none());
+
+            let mut guild_delete = GuildDeleteEvent {
+                guild: PartialGuild {
                     id: GuildId(1),
                     afk_channel_id: None,
                     afk_timeout: 0,
-                    application_id: None,
                     default_message_notifications: DefaultMessageNotificationLevel::All,
+                    embed_channel_id: None,
+                    embed_enabled: false,
                     emojis: HashMap::new(),
-                    explicit_content_filter: ExplicitContentFilter::None,
                     features: vec![],
                     icon: None,
-                    joined_at: datetime,
-                    large: false,
-                    member_count: 0,
-                    members: HashMap::new(),
                     mfa_level: MfaLevel::None,
                     name: String::new(),
                     owner_id: UserId(3),
-                    presences: HashMap::new(),
                     region: String::new(),
                     roles: HashMap::new(),
                     splash: None,
-                    system_channel_id: None,
                     verification_level: VerificationLevel::Low,
-                    voice_states: HashMap::new(),
                     description: None,
-                    premium_tier: PremiumTier::Tier0,
-                    channels,
-                    premium_subscription_count: 0,
+                    premium_tier: Tier2,
+                    premium_subscription_count: 12,
                     banner: None,
                     vanity_url_code: Some("bruhmoment".to_string()),
-                    preferred_locale: "en-US".to_string(),
                     _nonexhaustive: (),
                 },
                 _nonexhaustive: (),
-            }
-        };
-        assert!(cache.update(&mut guild_create).is_none());
-        assert!(cache.update(&mut event).is_none());
+            };
 
-        let mut guild_delete = GuildDeleteEvent {
-            guild: PartialGuild {
-                id: GuildId(1),
-                afk_channel_id: None,
-                afk_timeout: 0,
-                default_message_notifications: DefaultMessageNotificationLevel::All,
-                embed_channel_id: None,
-                embed_enabled: false,
-                emojis: HashMap::new(),
-                features: vec![],
-                icon: None,
-                mfa_level: MfaLevel::None,
-                name: String::new(),
-                owner_id: UserId(3),
-                region: String::new(),
-                roles: HashMap::new(),
-                splash: None,
-                verification_level: VerificationLevel::Low,
-                description: None,
-                premium_tier: Tier2,
-                premium_subscription_count: 12,
-                banner: None,
-                vanity_url_code: Some("bruhmoment".to_string()),
-                _nonexhaustive: (),
-            },
-            _nonexhaustive: (),
-        };
+            // The guild existed in the cache, so the cache's guild is returned by the
+            // update.
+            assert!(cache.update(&mut guild_delete).await.is_some());
 
-        // The guild existed in the cache, so the cache's guild is returned by the
-        // update.
-        assert!(cache.update(&mut guild_delete).is_some());
-
-        // Assert that the channel's message cache no longer exists.
-        assert!(!cache.messages.contains_key(&ChannelId(2)));
+            // Assert that the channel's message cache no longer exists.
+            assert!(!cache.messages.contains_key(&ChannelId(2)));
+        });
     }
 }
 

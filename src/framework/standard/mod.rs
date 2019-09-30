@@ -512,16 +512,16 @@ impl StandardFramework {
     ///
     /// client.with_framework(StandardFramework::new()
     ///     .before(|ctx, msg, cmd_name| {
-    ///         if let Ok(channel) = futures::executor::block_on(msg.channel_id.to_channel(ctx)) {
-    ///             //  Don't run unless in nsfw channel
-    ///             if !channel.is_nsfw() {
-    ///                 return false;
+    ///         futures::executor::block_on(async move {
+    ///             if let Ok(channel) = msg.channel_id.to_channel(ctx).await {
+    ///                 if !channel.is_nsfw().await {
+    ///                     return false;
+    ///                 }
     ///             }
-    ///         }
+    ///             println!("Running command {}", cmd_name);
     ///
-    ///         println!("Running command {}", cmd_name);
-    ///
-    ///         true
+    ///             true
+    ///         })
     ///     }));
     /// # }
     /// ```

@@ -548,6 +548,7 @@ impl GuildId {
     /// ```rust,no_run
     /// # use serenity::model::id::GuildId;
     /// # use serenity::http::Http;
+    /// # async fn try_main() {
     /// # let guild_id = GuildId::default();
     /// # let ctx = Http::default();
     /// for member_result in guild_id.members_iter(&ctx) {
@@ -555,11 +556,13 @@ impl GuildId {
     ///         Ok(member) => println!(
     ///             "{} is {}",
     ///             member,
-    ///             member.display_name()
+    ///             member.display_name().await
     ///         ),
     ///         Err(error) => eprintln!("Uh oh!  Error: {}", error),
     ///     }
     /// }
+    /// # }
+    /// ```
     #[cfg(all(feature = "http", feature = "cache"))]
     pub fn members_iter<H: AsRef<Http>>(self, http: H) -> MembersIter<H> {
         MembersIter::new(self, http)

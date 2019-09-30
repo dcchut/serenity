@@ -4,6 +4,7 @@
 mod colour;
 mod message_builder;
 mod custom_message;
+mod async_test;
 
 pub use self::{
     colour::Colour,
@@ -14,6 +15,7 @@ pub use self::{
         MessageBuilder,
     },
 	custom_message::CustomMessage,
+    async_test::run_async_test,
 };
 
 use base64;
@@ -774,6 +776,8 @@ async fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: 
 /// # use serenity::client::{Cache, CacheRwLock};
 /// # use async_std::sync::RwLock;
 /// #
+/// # #[tokio::main]
+/// # async fn main() {
 /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
 /// use serenity::utils::{
 ///     content_safe,
@@ -781,9 +785,11 @@ async fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: 
 /// };
 ///
 /// let with_mention = "@everyone";
-/// let without_mention = content_safe(&cache, &with_mention, &ContentSafeOptions::default());
+/// let options = ContentSafeOptions::default();
+/// let without_mention = content_safe(&cache, &with_mention, &options).await;
 ///
 /// assert_eq!("@\u{200B}everyone".to_string(), without_mention);
+/// # }
 /// ```
 /// [`ContentSafeOptions`]: struct.ContentSafeOptions.html
 /// [`Cache`]: ../cache/struct.Cache.html
@@ -876,195 +882,197 @@ mod test {
             sync::Arc,
         };
 
-        let user = User {
-            id: UserId(100000000000000000),
-            avatar: None,
-            bot: false,
-            discriminator: 0000,
-            name: "Crab".to_string(),
-            _nonexhaustive: (),
-        };
+        run_async_test(async move {
+            let user = User {
+                id: UserId(100000000000000000),
+                avatar: None,
+                bot: false,
+                discriminator: 0000,
+                name: "Crab".to_string(),
+                _nonexhaustive: (),
+            };
 
-        let mut guild = Guild {
-            afk_channel_id: None,
-            afk_timeout: 0,
-            application_id: None,
-            channels: HashMap::new(),
-            default_message_notifications: DefaultMessageNotificationLevel::All,
-            emojis: HashMap::new(),
-            explicit_content_filter: ExplicitContentFilter::None,
-            features: Vec::new(),
-            icon: None,
-            id: GuildId(381880193251409931),
-            joined_at: DateTime::parse_from_str(
-                "1983 Apr 13 12:09:14.274 +0000",
-                "%Y %b %d %H:%M:%S%.3f %z").unwrap(),
-            large: false,
-            member_count: 1,
-            members: HashMap::new(),
-            mfa_level: MfaLevel::None,
-            name: "serenity".to_string(),
-            owner_id: UserId(114941315417899012),
-            presences: HashMap::new(),
-            region: "Ferris Island".to_string(),
-            roles: HashMap::new(),
-            splash: None,
-            system_channel_id: None,
-            verification_level: VerificationLevel::None,
-            voice_states: HashMap::new(),
-            description: None,
-            premium_tier: PremiumTier::Tier0,
-            premium_subscription_count: 0,
-            banner: None,
-            vanity_url_code: Some("bruhmoment1".to_string()),
-            preferred_locale: "en-US".to_string(),
-            _nonexhaustive: (),
-        };
+            let mut guild = Guild {
+                afk_channel_id: None,
+                afk_timeout: 0,
+                application_id: None,
+                channels: HashMap::new(),
+                default_message_notifications: DefaultMessageNotificationLevel::All,
+                emojis: HashMap::new(),
+                explicit_content_filter: ExplicitContentFilter::None,
+                features: Vec::new(),
+                icon: None,
+                id: GuildId(381880193251409931),
+                joined_at: DateTime::parse_from_str(
+                    "1983 Apr 13 12:09:14.274 +0000",
+                    "%Y %b %d %H:%M:%S%.3f %z").unwrap(),
+                large: false,
+                member_count: 1,
+                members: HashMap::new(),
+                mfa_level: MfaLevel::None,
+                name: "serenity".to_string(),
+                owner_id: UserId(114941315417899012),
+                presences: HashMap::new(),
+                region: "Ferris Island".to_string(),
+                roles: HashMap::new(),
+                splash: None,
+                system_channel_id: None,
+                verification_level: VerificationLevel::None,
+                voice_states: HashMap::new(),
+                description: None,
+                premium_tier: PremiumTier::Tier0,
+                premium_subscription_count: 0,
+                banner: None,
+                vanity_url_code: Some("bruhmoment1".to_string()),
+                preferred_locale: "en-US".to_string(),
+                _nonexhaustive: (),
+            };
 
-        let member = Member {
-            deaf: false,
-            guild_id: guild.id,
-            joined_at: None,
-            mute: false,
-            nick: Some("Ferris".to_string()),
-            roles: Vec::new(),
-            user: Arc::new(RwLock::new(user.clone())),
-            _nonexhaustive: (),
-        };
+            let member = Member {
+                deaf: false,
+                guild_id: guild.id,
+                joined_at: None,
+                mute: false,
+                nick: Some("Ferris".to_string()),
+                roles: Vec::new(),
+                user: Arc::new(RwLock::new(user.clone())),
+                _nonexhaustive: (),
+            };
 
-        let role = Role {
-            id: RoleId(333333333333333333),
-            colour: Colour::ORANGE,
-            hoist: true,
-            managed: false,
-            mentionable: true,
-            name: "ferris-club-member".to_string(),
-            permissions: Permissions::all(),
-            position: 0,
-            _nonexhaustive: (),
-        };
+            let role = Role {
+                id: RoleId(333333333333333333),
+                colour: Colour::ORANGE,
+                hoist: true,
+                managed: false,
+                mentionable: true,
+                name: "ferris-club-member".to_string(),
+                permissions: Permissions::all(),
+                position: 0,
+                _nonexhaustive: (),
+            };
 
-        let channel = GuildChannel {
-            id: ChannelId(111880193700067777),
-            bitrate: None,
-            category_id: None,
-            guild_id: guild.id,
-            kind: ChannelType::Text,
-            last_message_id: None,
-            last_pin_timestamp: None,
-            name: "general".to_string(),
-            permission_overwrites: Vec::new(),
-            position: 0,
-            topic: None,
-            user_limit: None,
-            nsfw: false,
-            slow_mode_rate: Some(0),
-            _nonexhaustive: (),
-        };
+            let channel = GuildChannel {
+                id: ChannelId(111880193700067777),
+                bitrate: None,
+                category_id: None,
+                guild_id: guild.id,
+                kind: ChannelType::Text,
+                last_message_id: None,
+                last_pin_timestamp: None,
+                name: "general".to_string(),
+                permission_overwrites: Vec::new(),
+                position: 0,
+                topic: None,
+                user_limit: None,
+                nsfw: false,
+                slow_mode_rate: Some(0),
+                _nonexhaustive: (),
+            };
 
-        let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
+            let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
 
-        {
-            let mut cache = cache.try_write().unwrap();
-            guild.members.insert(user.id, member.clone());
-            guild.roles.insert(role.id, role.clone());
-            cache.users.insert(user.id, Arc::new(RwLock::new(user.clone())));
-            cache.guilds.insert(guild.id, Arc::new(RwLock::new(guild.clone())));
-            cache.channels.insert(channel.id, Arc::new(RwLock::new(channel.clone())));
-        }
+            {
+                let mut cache = cache.try_write().unwrap();
+                guild.members.insert(user.id, member.clone());
+                guild.roles.insert(role.id, role.clone());
+                cache.users.insert(user.id, Arc::new(RwLock::new(user.clone())));
+                cache.guilds.insert(guild.id, Arc::new(RwLock::new(guild.clone())));
+                cache.channels.insert(channel.id, Arc::new(RwLock::new(channel.clone())));
+            }
 
-        let with_user_metions = "<@!100000000000000000> <@!000000000000000000> <@123> <@!123> \
+            let with_user_metions = "<@!100000000000000000> <@!000000000000000000> <@123> <@!123> \
         <@!123123123123123123123> <@123> <@123123123123123123> <@!invalid> \
         <@invalid> <@日本語 한국어$§)[/__#\\(/&2032$§#> \
         <@!i)/==(<<>z/9080)> <@!1231invalid> <@invalid123> \
         <@123invalid> <@> <@ ";
 
-        let without_user_mentions = "@Crab#0000 @invalid-user @invalid-user @invalid-user \
+            let without_user_mentions = "@Crab#0000 @invalid-user @invalid-user @invalid-user \
         @invalid-user @invalid-user @invalid-user <@!invalid> \
         <@invalid> <@日本語 한국어$§)[/__#\\(/&2032$§#> \
         <@!i)/==(<<>z/9080)> <@!1231invalid> <@invalid123> \
         <@123invalid> <@> <@ ";
 
-        // User mentions
-        let options = ContentSafeOptions::default();
-        assert_eq!(without_user_mentions, content_safe(&cache, with_user_metions, &options));
+            // User mentions
+            let options = ContentSafeOptions::default();
+            assert_eq!(without_user_mentions, content_safe(&cache, with_user_metions, &options).await);
 
-        let options = ContentSafeOptions::default();
-        assert_eq!(format!("@{}#{:04}", user.name, user.discriminator),
-            content_safe(&cache, "<@!100000000000000000>", &options));
+            let options = ContentSafeOptions::default();
+            assert_eq!(format!("@{}#{:04}", user.name, user.discriminator),
+                       content_safe(&cache, "<@!100000000000000000>", &options).await);
 
-        let options = ContentSafeOptions::default();
-        assert_eq!(format!("@{}#{:04}", user.name, user.discriminator),
-            content_safe(&cache, "<@100000000000000000>", &options));
+            let options = ContentSafeOptions::default();
+            assert_eq!(format!("@{}#{:04}", user.name, user.discriminator),
+                       content_safe(&cache, "<@100000000000000000>", &options).await);
 
-        let options = options.show_discriminator(false);
-        assert_eq!(format!("@{}", user.name),
-            content_safe(&cache, "<@!100000000000000000>", &options));
+            let options = options.show_discriminator(false);
+            assert_eq!(format!("@{}", user.name),
+                       content_safe(&cache, "<@!100000000000000000>", &options).await);
 
-        let options = options.show_discriminator(false);
-        assert_eq!(format!("@{}", user.name),
-            content_safe(&cache, "<@100000000000000000>", &options));
+            let options = options.show_discriminator(false);
+            assert_eq!(format!("@{}", user.name),
+                       content_safe(&cache, "<@100000000000000000>", &options).await);
 
-        let options = options.display_as_member_from(guild.id);
-        assert_eq!(format!("@{}", member.nick.unwrap()),
-            content_safe(&cache, "<@!100000000000000000>", &options));
+            let options = options.display_as_member_from(guild.id);
+            assert_eq!(format!("@{}", member.nick.unwrap()),
+                       content_safe(&cache, "<@!100000000000000000>", &options).await);
 
-        let options = options.clean_user(false);
-        assert_eq!(with_user_metions,
-            content_safe(&cache, with_user_metions, &options));
+            let options = options.clean_user(false);
+            assert_eq!(with_user_metions,
+                       content_safe(&cache, with_user_metions, &options).await);
 
-        // Channel mentions
-        let with_channel_mentions = "<#> <#deleted-channel> #deleted-channel <#0> \
+            // Channel mentions
+            let with_channel_mentions = "<#> <#deleted-channel> #deleted-channel <#0> \
         #unsafe-club <#111880193700067777> <#ferrisferrisferris> \
         <#000000000000000000>";
 
-        let without_channel_mentions = "<#> <#deleted-channel> #deleted-channel \
+            let without_channel_mentions = "<#> <#deleted-channel> #deleted-channel \
         #deleted-channel #unsafe-club #general <#ferrisferrisferris> \
         #deleted-channel";
 
-        assert_eq!(without_channel_mentions,
-            content_safe(&cache, with_channel_mentions, &options));
+            assert_eq!(without_channel_mentions,
+                       content_safe(&cache, with_channel_mentions, &options).await);
 
-        let options = options.clean_channel(false);
-        assert_eq!(with_channel_mentions,
-            content_safe(&cache, with_channel_mentions, &options));
+            let options = options.clean_channel(false);
+            assert_eq!(with_channel_mentions,
+                       content_safe(&cache, with_channel_mentions, &options).await);
 
-        // Role mentions
-        let with_role_mentions = "<@&> @deleted-role <@&9829> \
+            // Role mentions
+            let with_role_mentions = "<@&> @deleted-role <@&9829> \
         <@&333333333333333333> <@&000000000000000000>";
 
-        let without_role_mentions = "<@&> @deleted-role @deleted-role \
+            let without_role_mentions = "<@&> @deleted-role @deleted-role \
         @ferris-club-member @deleted-role";
 
-        assert_eq!(without_role_mentions,
-            content_safe(&cache, with_role_mentions, &options));
+            assert_eq!(without_role_mentions,
+                       content_safe(&cache, with_role_mentions, &options).await);
 
-        let options = options.clean_role(false);
-        assert_eq!(with_role_mentions,
-            content_safe(&cache, with_role_mentions, &options));
+            let options = options.clean_role(false);
+            assert_eq!(with_role_mentions,
+                       content_safe(&cache, with_role_mentions, &options).await);
 
-        // Everyone mentions
-        let with_everyone_mention = "@everyone";
+            // Everyone mentions
+            let with_everyone_mention = "@everyone";
 
-        let without_everyone_mention = "@\u{200B}everyone";
+            let without_everyone_mention = "@\u{200B}everyone";
 
-        assert_eq!(without_everyone_mention,
-            content_safe(&cache, with_everyone_mention, &options));
+            assert_eq!(without_everyone_mention,
+                       content_safe(&cache, with_everyone_mention, &options).await);
 
-        let options = options.clean_everyone(false);
-        assert_eq!(with_everyone_mention,
-            content_safe(&cache, with_everyone_mention, &options));
+            let options = options.clean_everyone(false);
+            assert_eq!(with_everyone_mention,
+                       content_safe(&cache, with_everyone_mention, &options).await);
 
-        // Here mentions
-        let with_here_mention = "@here";
+            // Here mentions
+            let with_here_mention = "@here";
 
-        let without_here_mention = "@\u{200B}here";
+            let without_here_mention = "@\u{200B}here";
 
-        assert_eq!(without_here_mention,
-            content_safe(&cache, with_here_mention, &options));
+            assert_eq!(without_here_mention,
+                       content_safe(&cache, with_here_mention, &options).await);
 
-        let options = options.clean_here(false);
-        assert_eq!(with_here_mention,
-            content_safe(&cache, with_here_mention, &options));
+            let options = options.clean_here(false);
+            assert_eq!(with_here_mention,
+                       content_safe(&cache, with_here_mention, &options).await);
+        });
     }
 }

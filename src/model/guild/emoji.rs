@@ -153,7 +153,7 @@ impl Emoji {
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
-    /// # fn main() {
+    /// # async fn try_main() {
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
     /// #
     /// # let mut emoji = serde_json::from_value::<Emoji>(json!({
@@ -166,7 +166,7 @@ impl Emoji {
     /// # })).unwrap();
     /// #
     /// // assuming emoji has been set already
-    /// if let Some(guild_id) = emoji.find_guild_id(&cache) {
+    /// if let Some(guild_id) = emoji.find_guild_id(&cache).await {
     ///     println!("{} is owned by {}", emoji.name, guild_id);
     /// }
     /// # }

@@ -26,7 +26,7 @@ use serde_json::Value;
 /// impl EventHandler for Handler {
 ///     async fn message(&self, context: Context, msg: Message) {
 ///         if msg.content == "!createinvite" {
-///             let channel = match context.cache.read().guild_channel(msg.channel_id) {
+///             let channel = match context.cache.read().await.guild_channel(msg.channel_id) {
 ///                 Some(channel) => channel,
 ///                 None => {
 ///                     let _ = msg.channel_id.say(&context, "Error creating invite").await;
@@ -34,7 +34,7 @@ use serde_json::Value;
 ///                 },
 ///             };
 ///
-///             let channel = channel.read();
+///             let channel = channel.read().await;
 ///
 ///             let creation = channel.create_invite(&context, |i| {
 ///                 i.max_age(3600).max_uses(10)
@@ -94,8 +94,8 @@ impl CreateInvite {
     /// # #[cfg(all(feature = "cache", feature = "client", feature = "framework", feature = "http"))]
     /// # #[command]
     /// # async fn example(context: &mut Context) -> CommandResult {
-    /// #     let channel = context.cache.read().guild_channel(81384788765712384).unwrap();
-    /// #     let channel = channel.read();
+    /// #     let channel = context.cache.read().await.guild_channel(81384788765712384).unwrap();
+    /// #     let channel = channel.read().await;
     /// #
     /// let invite = channel.create_invite(context, |i| {
     ///     i.max_age(3600)
@@ -132,8 +132,8 @@ impl CreateInvite {
     /// # #[cfg(all(feature = "cache", feature = "client", feature = "framework", feature = "http"))]
     /// # #[command]
     /// # async fn example(context: &mut Context) -> CommandResult {
-    /// #     let channel = context.cache.read().guild_channel(81384788765712384).unwrap();
-    /// #     let channel = channel.read();
+    /// #     let channel = context.cache.read().await.guild_channel(81384788765712384).unwrap();
+    /// #     let channel = channel.read().await;
     /// #
     /// let invite = channel.create_invite(context, |i| {
     ///     i.max_uses(5)
@@ -168,8 +168,8 @@ impl CreateInvite {
     /// # #[cfg(all(feature = "cache", feature = "client", feature = "framework", feature = "http"))]
     /// # #[command]
     /// # async fn example(context: &mut Context) -> CommandResult {
-    /// #     let channel = context.cache.read().guild_channel(81384788765712384).unwrap();
-    /// #     let channel = channel.read();
+    /// #     let channel = context.cache.read().await.guild_channel(81384788765712384).unwrap();
+    /// #     let channel = channel.read().await;
     /// #
     /// let invite = channel.create_invite(context, |i| {
     ///     i.temporary(true)
@@ -203,8 +203,8 @@ impl CreateInvite {
     /// # #[cfg(all(feature = "cache", feature = "client", feature = "framework", feature = "http"))]
     /// # #[command]
     /// # async fn example(context: &mut Context) -> CommandResult {
-    /// #     let channel = context.cache.read().guild_channel(81384788765712384).unwrap();
-    /// #     let channel = channel.read();
+    /// #     let channel = context.cache.read().await.guild_channel(81384788765712384).unwrap();
+    /// #     let channel = channel.read().await;
     /// #
     /// let invite = channel.create_invite(context, |i| {
     ///     i.unique(true)

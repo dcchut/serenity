@@ -112,7 +112,7 @@ impl Shard {
     ///
     /// ```rust,no_run
     /// use serenity::gateway::Shard;
-    /// use parking_lot::Mutex;
+    /// use futures::lock::Mutex;
     /// use std::{env, sync::Arc};
     /// #
     /// # use serenity::http::Http;
@@ -123,7 +123,7 @@ impl Shard {
     /// let token = env::var("DISCORD_BOT_TOKEN")?;
     /// // retrieve the gateway response, which contains the URL to connect to
     /// let gateway = Arc::new(Mutex::new(http.get_gateway().await?.url));
-    /// let shard = Shard::new(gateway, &token, [0, 1], true)?;
+    /// let shard = Shard::new(gateway, &token, [0, 1], true).await?;
     ///
     /// // at this point, you can create a `loop`, and receive events and match
     /// // their variants
@@ -272,13 +272,15 @@ impl Shard {
 
     /// ```rust,no_run
     /// # #[cfg(feature = "model")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{gateway::Shard, prelude::Mutex};
     /// # use std::sync::Arc;
+    /// # use futures::lock::Mutex;
     /// #
     /// # let mutex = Arc::new(Mutex::new("".to_string()));
     /// #
-    /// # let mut shard = Shard::new(mutex.clone(), "", [0, 1], true).unwrap();
+    /// # let mut shard = Shard::new(mutex.clone(), "", [0, 1], true).await.unwrap();
     /// #
     /// use serenity::model::gateway::Activity;
     ///
@@ -322,14 +324,15 @@ impl Shard {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "model")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::gateway::Shard;
-    /// # use serenity::prelude::Mutex;
+    /// # use futures::lock::Mutex;
     /// # use std::sync::Arc;
     /// #
     /// # let mutex = Arc::new(Mutex::new("".to_string()));
     /// #
-    /// # let mut shard = Shard::new(mutex.clone(), "", [0, 1], true).unwrap();
+    /// # let mut shard = Shard::new(mutex.clone(), "", [0, 1], true).await.unwrap();
     /// #
     /// assert_eq!(shard.shard_info(), [1, 2]);
     /// # }
@@ -683,15 +686,15 @@ impl Shard {
     /// specifying a query parameter:
     ///
     /// ```rust,no_run
-    /// # use parking_lot::Mutex;
+    /// # use futures::lock::Mutex;
     /// # use serenity::gateway::Shard;
     /// # use std::error::Error;
     /// # use std::sync::Arc;
     /// #
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # async fn try_main() -> Result<(), Box<dyn Error>> {
     /// #     let mutex = Arc::new(Mutex::new("".to_string()));
     /// #
-    /// #     let mut shard = Shard::new(mutex.clone(), "", [0, 1], true)?;
+    /// #     let mut shard = Shard::new(mutex.clone(), "", [0, 1], true).await?;
     /// #
     /// use serenity::model::id::GuildId;
     ///
@@ -701,24 +704,22 @@ impl Shard {
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
-    /// # }
     /// ```
     ///
     /// Chunk a single guild by Id, limiting to 20 members, and specifying a
     /// query parameter of `"do"`:
     ///
     /// ```rust,no_run
-    /// # use parking_lot::Mutex;
+    /// # use futures::lock::Mutex;
     /// # use serenity::gateway::Shard;
     /// # use std::error::Error;
     /// # use std::sync::Arc;
     /// #
-    /// # fn try_main() -> Result<(), Box<Error>> {
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn Error>> {
     /// #     let mutex = Arc::new(Mutex::new("".to_string()));
     /// #
-    /// #     let mut shard = Shard::new(mutex.clone(), "", [0, 1], true)?;
+    /// #     let mut shard = Shard::new(mutex.clone(), "", [0, 1], true).await?;
     /// #
     /// use serenity::model::id::GuildId;
     ///
@@ -728,9 +729,6 @@ impl Shard {
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn main() {
-    /// #     try_main().unwrap();
-    /// # }
     /// ```
     ///
     /// [`Event::GuildMembersChunk`]: ../model/event/enum.Event.html#variant.GuildMembersChunk

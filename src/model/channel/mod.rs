@@ -81,17 +81,18 @@ impl Channel {
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "model", feature = "cache"))]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::id::ChannelId};
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #     let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// #     let channel = ChannelId(0).to_channel_cached(&cache).unwrap();
+    /// #     let channel = ChannelId(0).to_channel_cached(&cache).await.unwrap();
     /// #
     /// match channel.group() {
     ///     Some(group_lock) => {
-    ///         if let Some(ref name) = group_lock.read().name {
+    ///         if let Some(ref name) = group_lock.read().await.name {
     ///             println!("It's a group named {}!", name);
     ///         } else {
     ///              println!("It's an unnamed group!");
@@ -124,17 +125,18 @@ impl Channel {
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "model", feature = "cache"))]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::id::ChannelId};
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #   let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// #   let channel = ChannelId(0).to_channel_cached(&cache).unwrap();
+    /// #   let channel = ChannelId(0).to_channel_cached(&cache).await.unwrap();
     /// #
     /// match channel.guild() {
     ///     Some(guild_lock) => {
-    ///         println!("It's a guild named {}!", guild_lock.read().name);
+    ///         println!("It's a guild named {}!", guild_lock.read().await.name);
     ///     },
     ///     None => { println!("It's not a guild!"); },
     /// }
@@ -163,19 +165,20 @@ impl Channel {
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "model", feature = "cache"))]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::id::ChannelId};
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #   let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// #   let channel = ChannelId(0).to_channel_cached(&cache).unwrap();
+    /// #   let channel = ChannelId(0).to_channel_cached(&cache).await.unwrap();
     /// #
     /// match channel.private() {
     ///     Some(private_lock) => {
-    ///         let private = private_lock.read();
+    ///         let private = private_lock.read().await;
     ///         let recipient_lock = &private.recipient;
-    ///         let recipient = recipient_lock.read();
+    ///         let recipient = recipient_lock.read().await;
     ///         println!("It's a private channel with {}!", recipient.name);
     ///     },
     ///     None => { println!("It's not a private channel!"); },
@@ -205,17 +208,18 @@ impl Channel {
     ///
     /// ```rust,no_run
     /// # #[cfg(all(feature = "model", feature = "cache"))]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::id::ChannelId};
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// #   let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// #   let channel = ChannelId(0).to_channel_cached(&cache).unwrap();
+    /// #   let channel = ChannelId(0).to_channel_cached(&cache).await.unwrap();
     /// #
     /// match channel.category() {
     ///     Some(category_lock) => {
-    ///         println!("It's a category named {}!", category_lock.read().name);
+    ///         println!("It's a category named {}!", category_lock.read().await.name);
     ///     },
     ///     None => { println!("It's not a category!"); },
     /// }
@@ -554,6 +558,7 @@ mod test {
         use async_std::sync::RwLock;
         use std::collections::HashMap;
         use std::sync::Arc;
+        use crate::utils::run_async_test;
 
         fn group() -> Group {
             Group {
@@ -608,35 +613,37 @@ mod test {
 
         #[test]
         fn nsfw_checks() {
-            let mut channel = guild_channel();
-            assert!(!channel.is_nsfw());
-            channel.kind = ChannelType::Voice;
-            assert!(!channel.is_nsfw());
+            run_async_test(async move {
+                let mut channel = guild_channel();
+                assert!(!channel.is_nsfw());
+                channel.kind = ChannelType::Voice;
+                assert!(!channel.is_nsfw());
 
-            channel.kind = ChannelType::Text;
-            channel.name = "nsfw-".to_string();
-            assert!(!channel.is_nsfw());
+                channel.kind = ChannelType::Text;
+                channel.name = "nsfw-".to_string();
+                assert!(!channel.is_nsfw());
 
-            channel.name = "nsfw".to_string();
-            assert!(!channel.is_nsfw());
-            channel.kind = ChannelType::Voice;
-            assert!(!channel.is_nsfw());
-            channel.kind = ChannelType::Text;
+                channel.name = "nsfw".to_string();
+                assert!(!channel.is_nsfw());
+                channel.kind = ChannelType::Voice;
+                assert!(!channel.is_nsfw());
+                channel.kind = ChannelType::Text;
 
-            channel.name = "nsf".to_string();
-            channel.nsfw = true;
-            assert!(channel.is_nsfw());
-            channel.nsfw = false;
-            assert!(!channel.is_nsfw());
+                channel.name = "nsf".to_string();
+                channel.nsfw = true;
+                assert!(channel.is_nsfw());
+                channel.nsfw = false;
+                assert!(!channel.is_nsfw());
 
-            let channel = Channel::Guild(Arc::new(RwLock::new(channel)));
-            assert!(!channel.is_nsfw());
+                let channel = Channel::Guild(Arc::new(RwLock::new(channel)));
+                assert!(!channel.is_nsfw().await);
 
-            let group = group();
-            assert!(!group.is_nsfw());
+                let group = group();
+                assert!(!group.is_nsfw());
 
-            let private_channel = private_channel();
-            assert!(!private_channel.is_nsfw());
+                let private_channel = private_channel();
+                assert!(!private_channel.is_nsfw());
+            });
         }
     }
 }

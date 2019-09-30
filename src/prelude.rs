@@ -16,7 +16,6 @@
 
 pub use crate::error::Error as SerenityError;
 pub use crate::model::misc::Mentionable;
-pub use parking_lot::{Mutex, RwLock};
 
 #[cfg(feature = "client")]
 pub use crate::client::{Client, ClientError, Context, EventHandler, RawEventHandler};

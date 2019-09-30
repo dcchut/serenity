@@ -1725,8 +1725,8 @@ impl Guild {
     /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, ctx: Context, msg: Message) {
-    ///         if let Some(arc) = msg.guild_id.unwrap().to_guild_cached(&ctx.cache) {
-    ///             if let Some(role) = arc.read().role_by_name("role_name") {
+    ///         if let Some(arc) = msg.guild_id.unwrap().to_guild_cached(&ctx.cache).await {
+    ///             if let Some(role) = arc.read().await.role_by_name("role_name") {
     ///                 println!("{:?}", role);
     ///             }
     ///         }
@@ -2285,6 +2285,7 @@ mod test {
         use crate::model::prelude::*;
         use std::collections::*;
         use std::sync::Arc;
+        use crate::utils::run_async_test;
 
         fn gen_user() -> User {
             User {
@@ -2373,21 +2374,27 @@ mod test {
 
         #[test]
         fn member_named_username() {
-            let guild = gen();
-            let lhs = guild
-                .member_named("test#1432")
-                .unwrap()
-                .display_name();
+            run_async_test(async move {
+                let guild = gen();
+                let lhs = guild
+                    .member_named("test#1432")
+                    .unwrap()
+                    .display_name().await;
 
-            assert_eq!(lhs, gen_member().display_name());
+                let rhs = gen_member();
+
+                assert_eq!(lhs, rhs.display_name().await);
+            });
         }
 
         #[test]
         fn member_named_nickname() {
-            let guild = gen();
-            let lhs = guild.member_named("aaaa").unwrap().display_name();
-
-            assert_eq!(lhs, gen_member().display_name());
+            run_async_test(async move {
+                let guild = gen();
+                let lhs = guild.member_named("aaaa").unwrap().display_name().await;
+                let rhs = gen_member();
+                assert_eq!(lhs, rhs.display_name().await);
+            });
         }
     }
 }

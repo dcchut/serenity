@@ -21,12 +21,13 @@ use async_trait::async_trait;
 ///         id::UserId,
 ///         user::User,
 ///     },
-///     prelude::RwLock,
 /// };
 /// use std::{
 ///     collections::hash_map::Entry,
 ///     sync::Arc,
 /// };
+/// use async_std::sync::RwLock;
+/// use async_trait::async_trait;
 ///
 /// // For example, an update to the user's record in the database was
 /// // published to a pubsub channel.
@@ -38,16 +39,17 @@ use async_trait::async_trait;
 ///     user_name: String,
 /// }
 ///
+/// #[async_trait]
 /// impl CacheUpdate for DatabaseUserUpdate {
 ///     // A copy of the old user's data, if it existed in the cache.
 ///     type Output = User;
 ///
-///     fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
+///     async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
 ///         // If an entry for the user already exists, update its fields.
 ///         match cache.users.entry(self.user_id) {
 ///             Entry::Occupied(entry) => {
 ///                 let user = entry.get();
-///                 let mut writer = user.write();
+///                 let mut writer = user.write().await;
 ///                 let old = writer.clone();
 ///
 ///                 writer.bot = self.user_is_bot;

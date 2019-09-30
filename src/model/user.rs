@@ -62,13 +62,14 @@ impl CurrentUser {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "cache")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::prelude::*, prelude::*};
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// # let cache = cache.read();
+    /// # let cache = cache.read().await;
     /// // assuming the cache has been unlocked
     /// let user = &cache.user;
     ///
@@ -165,7 +166,7 @@ impl CurrentUser {
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// # let cache = cache.read();
+    /// # let cache = cache.read().await;
     /// # let http = Arc::new(Http::default());
     /// // assuming the cache has been unlocked
     /// let user = &cache.user;
@@ -204,7 +205,7 @@ impl CurrentUser {
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// # let mut cache = cache.write();
+    /// # let mut cache = cache.write().await;
     /// # let http = Arc::new(Http::default());
     ///
     /// use serenity::model::Permissions;
@@ -238,7 +239,7 @@ impl CurrentUser {
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// # let mut cache = cache.write();
+    /// # let mut cache = cache.write().await;
     /// # let http = Arc::new(Http::default());
     /// use serenity::model::Permissions;
     ///
@@ -298,13 +299,14 @@ impl CurrentUser {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "cache")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::prelude::*, prelude::*};
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// # let cache = cache.read();
+    /// # let cache = cache.read().await;
     /// // assuming the cache has been unlocked
     /// let user = &cache.user;
     ///
@@ -330,13 +332,14 @@ impl CurrentUser {
     ///
     /// ```rust,no_run
     /// # #[cfg(feature = "cache")]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # use serenity::{cache::{Cache, CacheRwLock}, model::prelude::*, prelude::*};
     /// # use async_std::sync::RwLock;
     /// # use std::sync::Arc;
     /// #
     /// # let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
-    /// # let cache = cache.read();
+    /// # let cache = cache.read().await;
     /// // assuming the cache has been unlocked
     /// println!("The current user's distinct identifier is {}", cache.user.tag());
     /// # }
@@ -509,7 +512,7 @@ impl User {
     /// #   #[cfg(feature = "cache")]
     ///     async fn message(&self, ctx: Context, msg: Message) {
     ///         if msg.content == "~help" {
-    ///             let read = ctx.cache.read();
+    ///             let read = ctx.cache.read().await;
     ///             let url = match read.user.invite_url(&ctx, Permissions::empty()).await {
     ///                 Ok(v) => v,
     ///                 Err(why) => {

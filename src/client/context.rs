@@ -95,9 +95,9 @@ impl Context {
     ///
     /// #[async_trait]
     /// impl EventHandler for Handler {
-    ///     async fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, mut ctx: Context, msg: Message) {
     ///         if msg.content == "!online" {
-    ///             ctx.online();
+    ///             ctx.online().await;
     ///         }
     ///     }
     /// }
@@ -133,9 +133,9 @@ impl Context {
     ///
     /// #[async_trait]
     /// impl EventHandler for Handler {
-    ///     async fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, mut ctx: Context, msg: Message) {
     ///         if msg.content == "!idle" {
-    ///             ctx.idle();
+    ///             ctx.idle().await;
     ///         }
     ///     }
     /// }
@@ -171,9 +171,9 @@ impl Context {
     ///
     /// #[async_trait]
     /// impl EventHandler for Handler {
-    ///     async fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, mut ctx: Context, msg: Message) {
     ///         if msg.content == "!dnd" {
-    ///             ctx.dnd();
+    ///             ctx.dnd().await;
     ///         }
     ///     }
     /// }
@@ -210,8 +210,8 @@ impl Context {
     ///
     /// #[async_trait]
     /// impl EventHandler for Handler {
-    ///     async fn ready(&self, ctx: Context, _: Ready) {
-    ///         ctx.invisible();
+    ///     async fn ready(&self, mut ctx: Context, _: Ready) {
+    ///         ctx.invisible().await;
     ///     }
     /// }
     ///
@@ -249,8 +249,8 @@ impl Context {
     ///
     /// #[async_trait]
     /// impl EventHandler for Handler {
-    ///     async fn resume(&self, ctx: Context, _: ResumedEvent) {
-    ///         ctx.reset_presence();
+    ///     async fn resume(&self, mut ctx: Context, _: ResumedEvent) {
+    ///         ctx.reset_presence().await;
     ///     }
     /// }
     ///
@@ -291,14 +291,14 @@ impl Context {
     ///
     /// #[async_trait]
     /// impl EventHandler for Handler {
-    ///     async fn message(&self, ctx: Context, msg: Message) {
+    ///     async fn message(&self, mut ctx: Context, msg: Message) {
     ///         let args = msg.content.splitn(2, ' ').collect::<Vec<&str>>();
     ///
     ///         if args.len() < 2 || *unsafe { args.get_unchecked(0) } != "~setgame" {
     ///             return;
     ///         }
     ///
-    ///         ctx.set_activity(Activity::playing(*unsafe { args.get_unchecked(1) }));
+    ///         ctx.set_activity(Activity::playing(*unsafe { args.get_unchecked(1) })).await;
     ///     }
     /// }
     ///
@@ -333,10 +333,10 @@ impl Context {
     ///
     /// #[async_trait]
     /// impl EventHandler for Handler {
-    ///     async fn ready(&self, ctx: Context, _: Ready) {
+    ///     async fn ready(&self, mut ctx: Context, _: Ready) {
     ///         use serenity::model::user::OnlineStatus;
     ///
-    ///         ctx.set_presence(None, OnlineStatus::Idle);
+    ///         ctx.set_presence(None, OnlineStatus::Idle).await;
     ///     }
     /// }
     ///

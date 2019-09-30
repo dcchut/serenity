@@ -211,6 +211,7 @@ pub struct Client {
     /// 5 seconds:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # extern crate serenity;
     /// #
     /// # use serenity::client::{Client, EventHandler};
@@ -229,12 +230,14 @@ pub struct Client {
     ///
     /// let shard_manager = client.shard_manager.clone();
     ///
-    /// thread::spawn(move || {
+    /// tokio::spawn(async move {
     ///     loop {
-    ///         println!("Shard count instantiated: {}",
-    ///                  shard_manager.lock().shards_instantiated().len());
+    ///         let guard = shard_manager.lock().await;
     ///
-    ///         thread::sleep(Duration::from_millis(5000));
+    ///         println!("Shard count instantiated: {}",
+    ///                  guard.shards_instantiated().await.len());
+    ///
+    ///         tokio::timer::delay_for(Duration::from_millis(5000)).await;
     ///     }
     /// });
     /// #     Ok(())
@@ -268,10 +271,10 @@ pub struct Client {
     ///
     /// // Create a thread which will sleep for 60 seconds and then have the
     /// // shard manager shutdown.
-    /// thread::spawn(move || {
-    ///     thread::sleep(Duration::from_secs(60));
+    /// tokio::spawn(async move {
+    ///     tokio::timer::delay_for(Duration::from_secs(60)).await;
     ///
-    ///     shard_manager.lock().shutdown_all();
+    ///     shard_manager.lock().await.shutdown_all();
     ///
     ///     println!("Shutdown shard manager!");
     /// });

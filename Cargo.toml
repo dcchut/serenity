@@ -119,18 +119,6 @@ default = [
     "utils",
     "native_tls_backend",
 ]
-default_native_tls = [
-    "builder",
-    "cache",
-    "client",
-    "framework",
-    "gateway",
-    "model",
-    "http",
-    "standard_framework",
-    "utils",
-    "native_tls_backend",
-]
 builder = ["utils"]
 cache = []
 client = [

@@ -196,13 +196,13 @@ impl GuildChannel {
     ///     deny: deny,
     ///     kind: PermissionOverwriteType::Member(user_id),
     /// };
-    /// # let cache = cache.read();
+    /// # let cache = cache.read().await;
     /// // assuming the cache has been unlocked
     /// let channel = cache
     ///     .guild_channel(channel_id)
     ///     .ok_or(ModelError::ItemMissing)?;
     ///
-    /// let read = channel.read();
+    /// let read = channel.read().await;
     /// read.create_permission(&http, &overwrite).await?;
     /// # Ok(())
     /// # }
@@ -244,12 +244,12 @@ impl GuildChannel {
     ///     kind: PermissionOverwriteType::Member(user_id),
     /// };
     ///
-    /// let cache = cache.read();
+    /// let cache = cache.read().await;
     /// let channel = cache
     ///     .guild_channel(channel_id)
     ///     .ok_or(ModelError::ItemMissing)?;
     ///
-    /// let read = channel.read();
+    /// let read = channel.read().await;
     /// read.create_permission(&http, &overwrite).await?;
     /// #     Ok(())
     /// # }
@@ -501,12 +501,13 @@ impl GuildChannel {
     /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, msg: Message) {
-    ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
+    ///         let channel = match context.cache.read().await.guild_channel(msg.channel_id) {
     ///             Some(channel) => channel,
     ///             None => return,
     ///         };
     ///
-    ///         let permissions = channel.read().permissions_for(&context.cache, &msg.author).unwrap();
+    ///         let guard = channel.read().await;
+    ///         let permissions = guard.permissions_for(&context.cache, &msg.author).await.unwrap();
     ///
     ///         println!("The user's permissions: {:?}", permissions);
     ///     }
@@ -535,14 +536,16 @@ impl GuildChannel {
     /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, mut msg: Message) {
-    ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
+    ///         let channel = match context.cache.read().await.guild_channel(msg.channel_id) {
     ///             Some(channel) => channel,
     ///             None => return,
     ///         };
     ///
-    ///         let current_user_id = context.cache.read().user.id;
+    ///         let guard = context.cache.read().await;
+    ///         let current_user_id = guard.user.id;
+    ///         let guard = channel.read().await;
     ///         let permissions =
-    ///             channel.read().permissions_for(&context.cache, current_user_id).unwrap();
+    ///             guard.permissions_for(&context.cache, current_user_id).await.unwrap();
     ///
     ///             if !permissions.contains(Permissions::ATTACH_FILES | Permissions::SEND_MESSAGES) {
     ///                 return;
@@ -649,12 +652,13 @@ impl GuildChannel {
     /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, msg: Message) {
-    ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
+    ///         let channel = match context.cache.read().await.guild_channel(msg.channel_id) {
     ///             Some(channel) => channel,
     ///             None => return,
     ///         };
     ///
-    ///         let permissions = channel.read().permissions_for(&context.cache, &msg.author).unwrap();
+    ///         let guard = channel.read().await;
+    ///         let permissions = guard.permissions_for(&context.cache, &msg.author).await.unwrap();
     ///
     ///         println!("The user's permissions: {:?}", permissions);
     ///     }
@@ -684,14 +688,15 @@ impl GuildChannel {
     /// #[async_trait]
     /// impl EventHandler for Handler {
     ///     async fn message(&self, context: Context, mut msg: Message) {
-    ///         let channel = match context.cache.read().guild_channel(msg.channel_id) {
+    ///         let channel = match context.cache.read().await.guild_channel(msg.channel_id) {
     ///             Some(channel) => channel,
     ///             None => return,
     ///         };
     ///
-    ///         let current_user_id = context.cache.read().user.id;
+    ///         let current_user_id = context.cache.read().await.user.id;
+    ///         let guard = channel.read().await;
     ///         let permissions =
-    ///             channel.read().permissions_for(&context.cache, current_user_id).unwrap();
+    ///             guard.permissions_for(&context.cache, current_user_id).await.unwrap();
     ///
     ///             if !permissions.contains(Permissions::ATTACH_FILES | Permissions::SEND_MESSAGES) {
     ///                 return;

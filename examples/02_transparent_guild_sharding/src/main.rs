@@ -4,6 +4,7 @@ use serenity::{
     model::{channel::Message, gateway::Ready},
     prelude::*,
 };
+use async_trait::async_trait;
 
 // Serenity implements transparent sharding in a way that you do not need to
 // manually handle separate processes or connections manually.
@@ -25,28 +26,30 @@ use serenity::{
 // sharding works.
 struct Handler;
 
+#[async_trait]
 impl EventHandler for Handler {
-    fn message(&self, ctx: Context, msg: Message) {
+    async fn message(&self, ctx: Context, msg: Message) {
        if msg.content == "!ping" {
             println!("Shard {}", ctx.shard_id);
 
-            if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!") {
+            if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!").await {
                 println!("Error sending message: {:?}", why);
             }
         }
     }
 
-    fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, _: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
     }
 }
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN")
         .expect("Expected a token in the environment");
-    let mut client = Client::new(&token, Handler).expect("Err creating client");
+    let mut client = Client::new(&token, Handler).await.expect("Err creating client");
 
     // The total number of shards to use. The "current shard number" of a
     // shard - that is, the shard it is assigned to - is indexed at 0,
@@ -54,7 +57,7 @@ fn main() {
     //
     // This means if you have 5 shards, your total shard count will be 5, while
     // each shard will be assigned numbers 0 through 4.
-    if let Err(why) = client.start_shards(2) {
+    if let Err(why) = client.start_shards(2).await {
         println!("Client error: {:?}", why);
     }
 }

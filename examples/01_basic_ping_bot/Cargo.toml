@@ -12,10 +12,3 @@ version = "0.2.0-alpha.5"
 
 [dependencies.async-trait]
 version = "0.1"
-
-[dependencies.simplelog]
-version = "0.7"
-
-[dependencies.reqwest]
-git = "https://github.com/seanmonstar/reqwest"
-features = ["json"]

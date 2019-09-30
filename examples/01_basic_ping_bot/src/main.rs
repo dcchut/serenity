@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use std::env;
 use serenity::{model::{channel::Message, gateway::Ready}, prelude::*};
-use simplelog::{SimpleLogger, Config, LevelFilter};
 
 struct Handler;
 
@@ -34,8 +33,6 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
-    SimpleLogger::init(LevelFilter::Debug, Config::default()).unwrap();
-
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN")
         .expect("Expected a token in the environment");

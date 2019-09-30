@@ -496,8 +496,10 @@ impl Display for Member {
     ///
     // This is in the format of `<@USER_ID>`.
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-        Display::fmt(&rt.block_on(self.user.read()).mention(), f)
+        Display::fmt(&futures::executor::block_on(async {
+            let guard = self.user.read().await;
+            guard.mention().await
+        }), f)
     }
 }
 

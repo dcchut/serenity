@@ -380,23 +380,24 @@ impl Display for Channel {
     /// [`GuildChannel`]: struct.GuildChannel.html
     /// [`PrivateChannel`]: struct.PrivateChannel.html
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
         match *self {
-            Channel::Group(ref group) => rt.block_on(async move {
+            Channel::Group(ref group) => futures::executor::block_on(async move {
                 let guard = group.read().await;
                 let res = guard.name().await;
 
                 Display::fmt(&res, f)
             }),
-            Channel::Guild(ref ch) => Display::fmt(&rt.block_on(ch.read()).id.mention(), f),
+            Channel::Guild(ref ch) => Display::fmt(&futures::executor::block_on(async {
+                let guard = ch.read().await;
+                guard.mention().await
+            }), f),
             Channel::Private(ref ch) => {
-                let channel = rt.block_on(ch.read());
-                let recipient = rt.block_on(channel.recipient.read());
+                let channel = futures::executor::block_on(ch.read());
+                let recipient = futures::executor::block_on(channel.recipient.read());
 
                 Display::fmt(&recipient.name, f)
             },
-            Channel::Category(ref category) => Display::fmt(&rt.block_on(category.read()).name, f),
+            Channel::Category(ref category) => Display::fmt(&futures::executor::block_on(category.read()).name, f),
             Channel::__Nonexhaustive => unreachable!(),
         }
     }

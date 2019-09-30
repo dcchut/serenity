@@ -26,11 +26,14 @@ impl EventHandler for Handler {
             // mentioning users dynamically, pushing "safe" versions of
             // content (such as bolding normalized content), displaying
             // emojis, and more.
-            let response = MessageBuilder::new()
+            let mut builder = MessageBuilder::new();
+
+            let response = builder
                 .push("User ")
                 .push_bold_safe(msg.author.name)
                 .push(" used the 'ping' command in the ")
                 .mention(&channel)
+                .await
                 .push(" channel")
                 .build();
 

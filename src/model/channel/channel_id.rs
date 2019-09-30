@@ -378,11 +378,10 @@ impl ChannelId {
 
     #[cfg(feature = "http")]
     async fn _message(self, http: impl AsRef<Http>, message_id: MessageId) -> Result<Message> {
-        http.as_ref().get_message(self.0, message_id.0).await.map(|mut msg| {
-            msg.transform_content();
+        let mut msg = http.as_ref().get_message(self.0, message_id.0).await?;
+        msg.transform_content().await;
 
-            msg
-        })
+        Ok(msg)
     }
 
     /// Gets messages from the channel.
@@ -409,15 +408,16 @@ impl ChannelId {
             write!(query, "&before={}", before)?;
         }
 
-        http.as_ref().get_messages(self.0, &query).await.map(|msgs| {
-            msgs.into_iter()
-                .map(|mut msg| {
-                    msg.transform_content();
+        let msg = http.as_ref().get_messages(self.0, &query).await?;
+        let mut _msg = Vec::with_capacity(msg.len());
 
-                    msg
-                })
-                .collect::<Vec<Message>>()
-        })
+        // TODO: compare this to master to make sure I didn't screw it up royally
+        for mut msgs in msg {
+            msgs.transform_content().await;
+            _msg.push(msgs);
+        }
+
+        Ok(_msg)
     }
 
     /// Returns the name of whatever channel this id holds.

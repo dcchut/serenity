@@ -276,7 +276,7 @@ impl Message {
         }
     }
 
-    pub(crate) fn transform_content(&mut self) {
+    pub(crate) async fn transform_content(&mut self) {
         match self.kind {
             MessageType::PinsAdd => {
                 self.content = format!(
@@ -289,7 +289,7 @@ impl Message {
                 let chosen = constants::JOIN_MESSAGES[sec % constants::JOIN_MESSAGES.len()];
 
                 self.content = if chosen.contains("$user") {
-                    chosen.replace("$user", &self.author.mention())
+                    chosen.replace("$user", &self.author.mention().await)
                 } else {
                     chosen.to_string()
                 };
@@ -311,12 +311,12 @@ impl Message {
             at_distinct.push_str(&u.name);
             at_distinct.push('#');
             let _ = write!(at_distinct, "{:04}", u.discriminator);
-            result = result.replace(&u.mention(), &at_distinct);
+            result = result.replace(&u.mention().await, &at_distinct);
         }
 
         // Then replace all role mentions.
         for id in &self.mention_roles {
-            let mention = id.mention();
+            let mention = id.mention().await;
 
             if let Some(role) = id.to_role_cached(&cache).await {
                 result = result.replace(&mention, &format!("@{}", role.name));
@@ -532,7 +532,7 @@ impl Message {
             }
         }
 
-        let mut gen = self.author.mention();
+        let mut gen = self.author.mention().await;
         gen.push_str(": ");
         gen.push_str(content);
 

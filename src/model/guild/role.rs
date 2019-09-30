@@ -161,7 +161,7 @@ impl Role {
 impl Display for Role {
     /// Format a mention for the role, pinging its members.
     // This is in the format of: `<@&ROLE_ID>`.
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult { Display::fmt(&self.mention(), f) }
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult { Display::fmt(&futures::executor::block_on(self.mention()), f) }
 }
 
 impl Eq for Role {}

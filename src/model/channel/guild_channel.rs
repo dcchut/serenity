@@ -961,5 +961,5 @@ impl GuildChannel {
 #[cfg(feature = "model")]
 impl Display for GuildChannel {
     /// Formats the channel, creating a mention of it.
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult { Display::fmt(&self.id.mention(), f) }
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult { Display::fmt(&futures::executor::block_on(self.id.mention()), f) }
 }

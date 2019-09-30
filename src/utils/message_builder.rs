@@ -137,12 +137,12 @@ impl MessageBuilder {
     /// [`GuildChannel`]: ../model/channel/struct.GuildChannel.html
     /// [Display implementation]: ../model/id/struct.ChannelId.html#method.fmt-1
     #[inline]
-    pub fn channel<C: Into<ChannelId>>(&mut self, channel: C) -> &mut Self {
-        self._channel(channel.into())
+    pub async fn channel<C: Into<ChannelId>>(&mut self, channel: C) -> &mut Self {
+        self._channel(channel.into()).await
     }
 
-    fn _channel(&mut self, channel: ChannelId) -> &mut Self {
-        let _ = write!(self.0, "{}", channel.mention());
+    async fn _channel(&mut self, channel: ChannelId) -> &mut Self {
+        let _ = write!(self.0, "{}", channel.mention().await);
 
         self
     }
@@ -198,8 +198,8 @@ impl MessageBuilder {
     /// Mentions something that implements the [`Mentionable`] trait.
     ///
     /// [`Mentionable`]: ../model/misc/trait.Mentionable.html
-    pub fn mention<M: Mentionable>(&mut self, item: &M) -> &mut Self {
-        let _ = write!(self.0, "{}", item.mention());
+    pub async fn mention<M: Mentionable>(&mut self, item: &M) -> &mut Self {
+        let _ = write!(self.0, "{}", item.mention().await);
 
         self
     }
@@ -873,8 +873,9 @@ impl MessageBuilder {
     /// [`Role`]: ../model/guild/struct.Role.html
     /// [`RoleId`]: ../model/id/struct.RoleId.html
     /// [Display implementation]: ../model/id/struct.RoleId.html#method.fmt-1
-    pub fn role<R: Into<RoleId>>(&mut self, role: R) -> &mut Self {
-        let _ = write!(self.0, "{}", role.into().mention());
+    pub async fn role<R: Into<RoleId>>(&mut self, role: R) -> &mut Self {
+        let guard = role.into();
+        let _ = write!(self.0, "{}", guard.mention().await);
 
         self
     }
@@ -890,8 +891,9 @@ impl MessageBuilder {
     /// [`User`]: ../model/user/struct.User.html
     /// [`UserId`]: ../model/id/struct.UserId.html
     /// [Display implementation]: ../model/id/struct.UserId.html#method.fmt-1
-    pub fn user<U: Into<UserId>>(&mut self, user: U) -> &mut Self {
-        let _ = write!(self.0, "{}", user.into().mention());
+    pub async fn user<U: Into<UserId>>(&mut self, user: U) -> &mut Self {
+        let guard = user.into();
+        let _ = write!(self.0, "{}", guard.mention().await);
 
         self
     }

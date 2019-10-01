@@ -22,10 +22,16 @@ async-trait = "0.1"
 dashmap = "1.0"
 
 [dependencies.async-std]
-version = "0.99.8"
+git = "https://github.com/async-rs/async-std"
+#version = "0.99.8"
 
 [dependencies.tokio]
-version = "0.2.0-alpha.5"
+version = "0.2.0-alpha.6"
+
+[dependencies.reqwest]
+git = "https://github.com/seanmonstar/reqwest"
+features = ["json"]
+optional = true
 
 [dependencies.audiopus]
 optional = true
@@ -59,11 +65,6 @@ version = "0.4"
 [dependencies.flate2]
 optional = true
 version = "1"
-
-[dependencies.reqwest]
-git = "https://github.com/seanmonstar/reqwest"
-features = ["json"]
-optional = true
 
 [dependencies.rand]
 optional = true

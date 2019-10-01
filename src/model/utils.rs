@@ -106,13 +106,12 @@ pub fn deserialize_private_channels<'de, D: Deserializer<'de>>(
     deserializer: D)
     -> StdResult<HashMap<ChannelId, Channel>, D::Error> {
     let vec: Vec<Channel> = Deserialize::deserialize(deserializer)?;
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
     let mut private_channels = HashMap::new();
 
     for private_channel in vec {
         let id = match private_channel {
-            Channel::Group(ref group) => rt.block_on(group.read()).channel_id,
-            Channel::Private(ref channel) => rt.block_on(channel.read()).id,
+            Channel::Group(ref group) => futures::executor::block_on(group.read()).channel_id,
+            Channel::Private(ref channel) => futures::executor::block_on(channel.read()).id,
             Channel::Guild(_) => unreachable!("Guild private channel decode"),
             Channel::Category(_) => unreachable!("Channel category private channel decode"),
             Channel::__Nonexhaustive => unreachable!(),
@@ -274,24 +273,22 @@ pub fn serialize_gen_locked_map<K: Eq + Hash, S: Serializer, V: Serialize>(
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(map.len()))?;
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
     for value in map.values() {
-        seq.serialize_element(&*rt.block_on(value.read()))?;
+        seq.serialize_element(&*futures::executor::block_on(value.read()))?;
     }
 
     seq.end()
 }
 
 #[cfg(all(feature = "cache", feature = "model"))]
-pub fn user_has_perms(
+pub async fn user_has_perms(
     cache: impl AsRef<CacheRwLock>,
     channel_id: ChannelId,
     guild_id: Option<GuildId>,
     mut permissions: Permissions
 ) -> Result<bool> {
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-    let cache = rt.block_on(cache.as_ref().read());
+    let cache = cache.as_ref().read().await;
     let current_user = &cache.user;
 
     let guild_id = match guild_id {
@@ -303,7 +300,7 @@ pub fn user_has_perms(
             };
 
             match channel {
-                Channel::Guild(channel) => rt.block_on(channel.read()).guild_id,
+                Channel::Guild(channel) => channel.read().await.guild_id,
                 Channel::Group(_) | Channel::Private(_) | Channel::Category(_) => {
                     // Both users in DMs, all users in groups, and maybe all channels in categories
                     // will have the same permissions.
@@ -326,10 +323,10 @@ pub fn user_has_perms(
         None => return Err(Error::Model(ModelError::ItemMissing)),
     };
 
-    let perms = rt.block_on(async {
-        let g = guild.read().await;
-        g.user_permissions_in(channel_id, current_user.id).await
-    });
+    let perms = {
+        let tmp = guild.read().await;
+        tmp.user_permissions_in(channel_id, current_user.id).await
+    };
 
     permissions.remove(perms);
 

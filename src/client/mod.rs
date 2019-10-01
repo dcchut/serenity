@@ -235,7 +235,7 @@ pub struct Client {
     ///         let guard = shard_manager.lock().await;
     ///
     ///         println!("Shard count instantiated: {}",
-    ///                  guard.shards_instantiated().await.len());
+    ///                  guard.shards_instantiated().len());
     ///
     ///         tokio::timer::delay_for(Duration::from_millis(5000)).await;
     ///     }
@@ -932,7 +932,7 @@ impl Client {
 
             let init = shard_data[1] - shard_data[0] + 1;
 
-            manager.set_shards(shard_data[0], init, shard_data[2]).await;
+            manager.set_shards(shard_data[0], init, shard_data[2]);
 
             debug!(
                 "Initializing shard info: {} - {}/{}",
@@ -945,7 +945,7 @@ impl Client {
                 error!("Failed to boot a shard: {:?}", why);
                 info!("Shutting down all shards");
 
-                manager.shutdown_all().await;
+                manager.shutdown_all();
 
                 return Err(Error::Client(ClientError::ShardBootFailure));
             }

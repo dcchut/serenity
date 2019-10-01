@@ -342,20 +342,18 @@ impl<'de> Deserialize<'de> for Channel {
 impl Serialize for Channel {
     fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
         where S: Serializer {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
         match *self {
             Channel::Category(ref c) => {
-                ChannelCategory::serialize(&*rt.block_on(c.read()), serializer)
+                ChannelCategory::serialize(&*futures::executor::block_on(c.read()), serializer)
             },
             Channel::Group(ref c) => {
-                Group::serialize(&*rt.block_on(c.read()), serializer)
+                Group::serialize(&*futures::executor::block_on(c.read()), serializer)
             },
             Channel::Guild(ref c) => {
-                GuildChannel::serialize(&*rt.block_on(c.read()), serializer)
+                GuildChannel::serialize(&*futures::executor::block_on(c.read()), serializer)
             },
             Channel::Private(ref c) => {
-                PrivateChannel::serialize(&*rt.block_on(c.read()), serializer)
+                PrivateChannel::serialize(&*futures::executor::block_on(c.read()), serializer)
             },
             Channel::__Nonexhaustive => unreachable!(),
         }
@@ -651,8 +649,7 @@ impl FromStrAndCache for Channel {
     fn from_str(cache: impl AsRef<CacheRwLock>, s: &str) -> StdResult<Self, Self::Err> {
         match parse_channel(s) {
             Some(x) => {
-                let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-                match rt.block_on(ChannelId(x).to_channel_cached(&cache)) {
+                match futures::executor::block_on(ChannelId(x).to_channel_cached(&cache)) {
                     Some(channel) => Ok(channel),
                     _ => Err(ChannelParseError::NotPresentInCache),
                 }

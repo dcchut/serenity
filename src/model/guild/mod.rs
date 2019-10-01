@@ -189,7 +189,7 @@ impl Guild {
     /// returns `None`)
     #[cfg(feature = "http")]
     pub async fn default_channel(&self, uid: UserId) -> Option<Arc<RwLock<GuildChannel>>> {
-        for (cid, channel) in &self.channels {
+        for (cid, channel) in self.channels.iter() {
             if self.user_permissions_in(*cid, uid).await.read_messages() {
                 return Some(Arc::clone(channel));
             }
@@ -204,7 +204,7 @@ impl Guild {
     /// Note however that this is very costy if used in a server with lots of channels,
     /// members, or both.
     pub async fn default_channel_guaranteed(&self) -> Option<Arc<RwLock<GuildChannel>>> {
-        for (cid, channel) in &self.channels {
+        for (cid, channel) in self.channels.iter() {
             for memid in self.members.keys() {
                 if self.user_permissions_in(*cid, *memid).await.read_messages() {
                     return Some(Arc::clone(channel));
@@ -231,9 +231,10 @@ impl Guild {
         let cache = cache.as_ref().read().await;
         let guild = cache.guilds.get(&self.id)?.read().await;
 
-        for (id, c) in guild.channels.iter() {
-            if c.read().await.name == name {
-                return Some(*id)
+        for (cid, channel) in guild.channels.iter() {
+            let channel = channel.read().await;
+            if channel.name == name {
+                return Some(*cid);
             }
         }
         None
@@ -947,23 +948,16 @@ impl Guild {
             (&name[..], None)
         };
 
-
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
         self.members
             .values()
             .find(|member| {
-                let matcher = async {
-                    let name_matches = member.user.name == name;
-                    let discrim_matches = match discrim {
-                        Some(discrim) => member.user.discriminator == discrim,
-                        None => true,
-                    };
-
-                    name_matches && discrim_matches
+                let name_matches = member.user.name == name;
+                let discrim_matches = match discrim {
+                    Some(discrim) => member.user.discriminator == discrim,
+                    None => true,
                 };
 
-                rt.block_on(matcher)
+                name_matches && discrim_matches
             })
             .or_else(|| {
                 self.members
@@ -1340,7 +1334,6 @@ impl Guild {
 
         if let Some(channel) = self.channels.get(&channel_id) {
             let channel = channel.read().await;
-
             // If this is a text channel, then throw out voice permissions.
             if channel.kind == ChannelType::Text {
                 permissions &= !(Permissions::CONNECT
@@ -1431,7 +1424,6 @@ impl Guild {
 
         if let Some(channel) = self.channels.get(&channel_id) {
             let channel = channel.read().await;
-
             for overwrite in &channel.permission_overwrites {
 
                 if let PermissionOverwriteType::Role(permissions_role_id) = overwrite.kind {

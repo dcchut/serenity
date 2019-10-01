@@ -97,8 +97,10 @@ pub enum ShardClientMessage {
 /// A message for a [`ShardManager`] relating to an operation with a shard.
 ///
 /// [`ShardManager`]: struct.ShardManager.html
-#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Debug)]
 pub enum ShardManagerMessage {
+    /// Indicator that a [`Shard] has been started.
+    Start(ShardId, ShardRunnerInfo),
     /// Indicator that a [`ShardManagerMonitor`] should restart a shard.
     ///
     /// [`ShardManagerMonitor`]: struct.ShardManagerMonitor.html
@@ -164,7 +166,7 @@ impl Display for ShardId {
 ///
 /// [`ShardId`]: struct.ShardId.html
 /// [`ShardRunner`]: struct.ShardRunner.html
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ShardRunnerInfo {
     /// The latency between when a heartbeat was sent and when the
     /// acknowledgement was received.

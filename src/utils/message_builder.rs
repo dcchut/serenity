@@ -26,7 +26,8 @@ use std::{
 /// # use serde_json::json;
 /// # use serenity::model::prelude::*;
 /// #
-/// # fn main() {
+/// # #[tokio::main]
+/// # async fn main() {
 /// # let user = UserId(1);
 /// # let emoji = serde_json::from_value::<Emoji>(json!({
 /// #     "animated": false,
@@ -91,7 +92,8 @@ impl MessageBuilder {
     /// async fn main() {
     ///     let channel_id = ChannelId(81384788765712384);
     ///
-    ///     let content = MessageBuilder::new()
+    ///     let mut builder = MessageBuilder::new();
+    ///     let content = builder
     ///         .channel(channel_id)
     ///         .await
     ///         .push("!")

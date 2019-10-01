@@ -101,7 +101,7 @@ impl Invite {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::CREATE_INVITE;
 
-                if !model_utils::user_has_perms(cache, channel_id, None, req)? {
+                if !model_utils::user_has_perms(cache, channel_id, None, req).await? {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -132,7 +132,7 @@ impl Invite {
                 let req = Permissions::MANAGE_GUILD;
 
                 let guild_id = self.guild.as_ref().map(|g| g.id);
-                if !model_utils::user_has_perms(cache, self.channel.id, guild_id, req)? {
+                if !model_utils::user_has_perms(cache, self.channel.id, guild_id, req).await? {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -362,7 +362,7 @@ impl RichInvite {
                 let req = Permissions::MANAGE_GUILD;
 
                 let guild_id = self.guild.as_ref().map(|g| g.id);
-                if !model_utils::user_has_perms(cache, self.channel.id, guild_id, req)? {
+                if !model_utils::user_has_perms(cache, self.channel.id, guild_id, req).await? {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }

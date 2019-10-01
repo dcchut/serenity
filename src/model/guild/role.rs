@@ -227,10 +227,8 @@ impl FromStrAndCache for Role {
     type Err = RoleParseError;
 
     fn from_str(cache: impl AsRef<CacheRwLock>, s: &str) -> StdResult<Self, Self::Err> {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
         match parse_role(s) {
-            Some(x) => match rt.block_on(RoleId(x).to_role_cached(&cache)) {
+            Some(x) => match futures::executor::block_on(RoleId(x).to_role_cached(&cache)) {
                 Some(role) => Ok(role),
                 _ => Err(RoleParseError::NotPresentInCache),
             },

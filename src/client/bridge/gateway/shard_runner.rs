@@ -254,6 +254,9 @@ impl ShardRunner {
     async fn handle_rx_value(&mut self, value: InterMessage) -> bool {
         match value {
             InterMessage::Client(value) => match *value {
+                    ShardClientMessage::Manager(ShardManagerMessage::Start(_,_)) => {
+                        true
+                    },
                     ShardClientMessage::Manager(ShardManagerMessage::Restart(id)) |
                     ShardClientMessage::Manager(ShardManagerMessage::Shutdown(id)) => {
                         self.checked_shutdown(id).await

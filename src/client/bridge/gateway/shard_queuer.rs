@@ -4,7 +4,7 @@ use crate::CacheAndHttp;
 use futures::lock::Mutex;
 use async_std::sync::RwLock;
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::VecDeque,
     sync::{
         Arc
     },
@@ -72,8 +72,6 @@ pub struct ShardQueuer {
     ///
     /// This will typically be filled with previously failed boots.
     pub queue: VecDeque<(u64, u64)>,
-    /// A copy of the map of shard runners.
-    pub runners: Arc<Mutex<HashMap<ShardId, ShardRunnerInfo>>>,
     /// A receiver channel for the shard queuer to be told to start shards.
     pub rx: UnboundedReceiver<ShardQueuerMessage>,
     /// A copy of the client's voice manager.
@@ -205,7 +203,7 @@ impl ShardQueuer {
             let _ = runner.run().await;
         });
 
-        self.runners.lock().await.insert(ShardId(shard_id), runner_info);
+        self.manager_tx.unbounded_send(ShardManagerMessage::Start(ShardId(shard_id), runner_info)).unwrap();
 
         Ok(())
     }

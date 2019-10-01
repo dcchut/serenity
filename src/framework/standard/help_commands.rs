@@ -397,117 +397,116 @@ async fn check_command_behaviour(
 
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::too_many_arguments)]
-fn nested_group_command_search<'a>(
-    cache: &CacheRwLock,
-    groups: &[&'static CommandGroup],
-    name: &mut String,
+fn nested_group_command_search<'b, 'a : 'b>(
+    cache: &'b CacheRwLock,
+    groups: &'b [&'static CommandGroup],
+    name: &'b mut String,
     help_options: &'a HelpOptions,
-    msg: &Message,
-    similar_commands: &mut Vec<SuggestedCommandName>,
-    owners: &HashSet<UserId>,
-) -> Result<CustomisedHelpData<'a>, ()> {
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+    msg: &'b Message,
+    similar_commands: &'b mut Vec<SuggestedCommandName>,
+    owners: &'b HashSet<UserId>,
+) -> BoxFuture<'b, Result<CustomisedHelpData<'a>, ()>> {
+    async move {
+        for group in groups {
+            let group = *group;
+            let mut found: Option<&'static InternalCommand> = None;
 
-    for group in groups {
-        let group = *group;
-        let mut found: Option<&'static InternalCommand> = None;
+            let group_behaviour = check_command_behaviour(
+                &msg,
+                &group.options,
+                &owners,
+                &help_options,
+                &cache,
+            ).await;
 
-        let group_behaviour = rt.block_on(check_command_behaviour(
-            &msg,
-            &group.options,
-            &owners,
-            &help_options,
-            &cache,
-        ));
-
-        match &group_behaviour {
-            HelpBehaviour::Nothing => (),
-            _ => {
-                continue;
+            match &group_behaviour {
+                HelpBehaviour::Nothing => (),
+                _ => {
+                    continue;
+                }
             }
-        }
 
-        let mut found_group_prefix: bool = false;
-        for command in group.options.commands {
-            let command = *command;
+            let mut found_group_prefix: bool = false;
+            for command in group.options.commands {
+                let command = *command;
 
-            let search_command_name_matched = if group.options.prefixes.is_empty() {
-                if starts_with_whole_word(&name, &group.name) {
-                    name.drain(..=group.name.len());
-                }
+                let search_command_name_matched = if group.options.prefixes.is_empty() {
+                    if starts_with_whole_word(&name, &group.help_name) {
+                        name.drain(..=group.help_name.len());
+                    }
 
-                command
-                    .options
-                    .names
-                    .iter()
-                    .find(|n| **n == name)
-                    .cloned()
-            } else {
-                find_any_command_matches(
-                    &command,
-                    &group,
-                    name,
-                    &mut found_group_prefix
-                )
-            };
-
-            if search_command_name_matched.is_some() {
-                if HelpBehaviour::Nothing == rt.block_on(check_command_behaviour(
-                    &msg,
-                    &command.options,
-                    &owners,
-                    &help_options,
-                    &cache,
-                )) {
-                    found = Some(command);
+                    command
+                        .options
+                        .names
+                        .iter()
+                        .find(|n| **n == name)
+                        .cloned()
                 } else {
-                    break;
-                }
-            } else if help_options.max_levenshtein_distance > 0 {
-                let command_name = if let Some(first_prefix) = group.options.prefixes.get(0) {
-                    format!("{} {}", &first_prefix, &command.options.names[0])
-                } else {
-                    command.options.names[0].to_string()
+                    find_any_command_matches(
+                        &command,
+                        &group,
+                        name,
+                        &mut found_group_prefix
+                    )
                 };
 
-                let levenshtein_distance = levenshtein_distance(&command_name, &name);
+                if search_command_name_matched.is_some() {
+                    if HelpBehaviour::Nothing == check_command_behaviour(
+                        &msg,
+                        &command.options,
+                        &owners,
+                        &help_options,
+                        &cache,
+                    ).await {
+                        found = Some(command);
+                    } else {
+                        break;
+                    }
+                } else if help_options.max_levenshtein_distance > 0 {
+                    let command_name = if let Some(first_prefix) = group.options.prefixes.get(0) {
+                        format!("{} {}", &first_prefix, &command.options.names[0])
+                    } else {
+                        command.options.names[0].to_string()
+                    };
 
-                if levenshtein_distance <= help_options.max_levenshtein_distance
-                    && HelpBehaviour::Nothing == rt.block_on(check_command_behaviour(
-                    &msg,
-                    &command.options,
-                    &owners,
-                    &help_options,
-                    &cache,
-                ))
-                {
-                    similar_commands.push(SuggestedCommandName {
-                        name: command_name,
-                        levenshtein_distance,
-                    });
+                    let levenshtein_distance = levenshtein_distance(&command_name, &name);
+
+                    if levenshtein_distance <= help_options.max_levenshtein_distance
+                        && HelpBehaviour::Nothing == check_command_behaviour(
+                        &msg,
+                        &command.options,
+                        &owners,
+                        &help_options,
+                        &cache,
+                    ).await
+                    {
+                        similar_commands.push(SuggestedCommandName {
+                            name: command_name,
+                            levenshtein_distance,
+                        });
+                    }
                 }
             }
-        }
 
-        if let Some(command) = found {
-            let options = &command.options;
+            if let Some(command) = found {
+                let options = &command.options;
 
-            if !options.help_available {
-                return Ok(CustomisedHelpData::NoCommandFound {
-                    help_error_message: &help_options.no_help_available_text,
-                });
-            }
+                if !options.help_available {
+                    return Ok(CustomisedHelpData::NoCommandFound {
+                        help_error_message: &help_options.no_help_available_text,
+                    });
+                }
 
-            let available_text = if options.only_in == OnlyIn::Dm {
-                &help_options.dm_only_text
-            } else if options.only_in == OnlyIn::Guild {
-                &help_options.guild_only_text
-            } else {
-                &help_options.dm_and_guild_text
-            };
+                let available_text = if options.only_in == OnlyIn::Dm {
+                    &help_options.dm_only_text
+                } else if options.only_in == OnlyIn::Guild {
+                    &help_options.guild_only_text
+                } else {
+                    &help_options.dm_and_guild_text
+                };
 
-            similar_commands
-                .sort_unstable_by(|a, b| a.levenshtein_distance.cmp(&b.levenshtein_distance));
+                similar_commands
+                    .sort_unstable_by(|a, b| a.levenshtein_distance.cmp(&b.levenshtein_distance));
 
             let check_names: Vec<String> = command
                 .options
@@ -546,13 +545,13 @@ fn nested_group_command_search<'a>(
             msg,
             similar_commands,
             owners,
-        ) {
+        ).await {
             Ok(found) => return Ok(found),
             Err(()) => (),
         }
-    }
 
-    Err(())
+        Err(())
+    }.boxed()
 }
 
 /// Tries to extract a single command matching searched command name otherwise
@@ -578,7 +577,7 @@ async fn fetch_single_command<'a>(
         &msg,
         &mut similar_commands,
         &owners,
-    ) {
+    ).await {
         Ok(found) => Ok(found),
         Err(()) => Err(similar_commands),
     }

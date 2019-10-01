@@ -1,11 +1,9 @@
 use futures::lock::Mutex;
 use std::sync::Arc;
 use super::{ShardManager, ShardManagerMessage};
-use super::super::gateway::ShardId;
 use log::{debug, warn};
-use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
+use futures::channel::mpsc::UnboundedReceiver;
 use futures::stream::StreamExt;
-use futures::sink::SinkExt;
 
 /// The shard manager monitor does what it says on the tin -- it monitors the
 /// shard manager and performs actions on it as received.
@@ -21,8 +19,8 @@ pub struct ShardManagerMonitor {
     pub manager: Arc<Mutex<ShardManager>>,
     /// The mpsc Receiver channel to receive shard manager messages over.
     pub rx: UnboundedReceiver<ShardManagerMessage>,
-    /// The mpsc Sender channel to inform the manager that a shard has just properly shut down
-    pub shutdown: UnboundedSender<ShardId>,
+    // The mpsc Sender channel to inform the manager that a shard has just properly shut down
+    //pub shutdown: UnboundedSender<ShardId>,
 }
 
 impl ShardManagerMonitor {
@@ -44,6 +42,10 @@ impl ShardManagerMonitor {
         while let Some(value) = self.rx.next().await {
             debug!("Received message");
             match value {
+                ShardManagerMessage::Start(shard_id, shard_runner_info) => {
+                    let guard = self.manager.lock().await;
+                    guard.runners.insert(shard_id, shard_runner_info);
+                }
                 ShardManagerMessage::Restart(shard_id) => {
                     {
                         let mut guard = self.manager.lock().await;
@@ -52,35 +54,33 @@ impl ShardManagerMonitor {
                 },
                 ShardManagerMessage::ShardUpdate { id, latency, stage } => {
                     let manager = self.manager.lock().await;
-                    let mut runners = manager.runners.lock().await;
 
-                    if let Some(runner) = runners.get_mut(&id) {
+                    if let Some(mut runner) = manager.runners.get_mut(&id) {
                         runner.latency = latency;
                         runner.stage = stage;
-                    }
+                    };
                 }
                 ShardManagerMessage::Shutdown(shard_id) => {
                     {
                         let mut guard = self.manager.lock().await;
-
-                        guard.shutdown(shard_id).await;
+                        guard.shutdown(shard_id);
                     }
                 },
                 ShardManagerMessage::ShutdownAll => {
                     {
                         let mut guard = self.manager.lock().await;
-                        guard.shutdown_all().await;
+                        guard.shutdown_all();
                     }
                 },
                 ShardManagerMessage::ShutdownInitiated => {},
                 ShardManagerMessage::ShutdownFinished(shard_id) => {
-                    if let Err(why) = self.shutdown.send(shard_id).await {
+                    /*if let Err(why) = self.shutdown.send(shard_id).await {
                         warn!(
                             "[ShardMonitor] Could not forward Shutdown signal to ShardManager for shard {}: {:#?}",
                             shard_id,
                             why
                         );
-                    }
+                    }*/
                 }
             }
         }

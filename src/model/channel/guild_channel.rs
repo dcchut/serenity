@@ -141,7 +141,7 @@ impl GuildChannel {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::CREATE_INVITE;
 
-                if !utils::user_has_perms(&cache, self.id, Some(self.guild_id), req)? {
+                if !utils::user_has_perms(&cache, self.id, Some(self.guild_id), req).await? {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -287,7 +287,7 @@ impl GuildChannel {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::MANAGE_CHANNELS;
 
-                if !utils::user_has_perms(&cache, self.id, Some(self.guild_id), req)? {
+                if !utils::user_has_perms(&cache, self.id, Some(self.guild_id), req).await? {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -370,7 +370,7 @@ impl GuildChannel {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::MANAGE_CHANNELS;
 
-                if !utils::user_has_perms(&cache, self.id, Some(self.guild_id), req)? {
+                if !utils::user_has_perms(&cache, self.id, Some(self.guild_id), req).await? {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -867,7 +867,7 @@ impl GuildChannel {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::SEND_MESSAGES;
 
-                if !utils::user_has_perms(&cache, self.id, Some(self.guild_id), req)? {
+                if !utils::user_has_perms(&cache, self.id, Some(self.guild_id), req).await? {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
                 }
             }
@@ -938,20 +938,20 @@ impl GuildChannel {
 
                     output
         }),
-            ChannelType::News | ChannelType::Text => Ok(guild
+            ChannelType::News | ChannelType::Text => Ok({
+                let guard = guild
                     .read()
-                    .await
-                    .members
-                    .iter()
-                    .filter_map(|e| {
-                        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+                    .await;
 
-                        if rt.block_on(self.permissions_for_user(&cache, e.0)).map(|p| p.contains(Permissions::READ_MESSAGES)).unwrap_or(false) {
-                            Some(e.1.clone())
-                        } else {
-                            None
-                        }
-                    }).collect()),
+                let mut output = Vec::new();
+                for e in guard.members.iter() {
+                    if self.permissions_for_user(&cache, e.0).await.map(|p| p.contains(Permissions::READ_MESSAGES)).unwrap_or(false) {
+                        output.push(e.1.clone());
+                    }
+                }
+
+                output
+            }),
             _ => Err(Error::from(ModelError::InvalidChannelType)),
         }
     }

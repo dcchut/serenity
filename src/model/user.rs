@@ -753,8 +753,7 @@ impl User {
                         if let Some(has_role) = has_role {
                             Ok(has_role)
                         } else {
-                            let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-                            rt.block_on(cache_http.http()
+                            futures::executor::block_on(cache_http.http()
                                 .get_member(guild_id.0, self.id.0))
                                 .map(|m| m.roles.contains(&role))
                         }

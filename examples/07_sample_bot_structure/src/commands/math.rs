@@ -1,18 +1,21 @@
 use serenity::prelude::*;
 use serenity::model::prelude::*;
 use serenity::framework::standard::{
-    Args, CommandResult,
+    Args, FutureCommandResult,
     macros::command,
 };
+use futures::FutureExt;
 
 #[command]
-pub fn multiply(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
-    let one = args.single::<f64>().unwrap();
-    let two = args.single::<f64>().unwrap();
+pub fn multiply(ctx: Context, msg: Message, mut args: Args) -> FutureCommandResult {
+    async move {
+        let one = args.single::<f64>().unwrap();
+        let two = args.single::<f64>().unwrap();
 
-    let product = one * two;
+        let product = one * two;
 
-    let _ = msg.channel_id.say(&ctx.http, product);
+        let _ = msg.channel_id.say(&ctx.http, product).await;
 
-    Ok(())
+        (ctx, msg, Ok(()))
+    }.boxed()
 }

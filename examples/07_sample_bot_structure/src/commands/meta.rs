@@ -1,13 +1,16 @@
 use serenity::prelude::*;
 use serenity::model::prelude::*;
 use serenity::framework::standard::{
-    CommandResult,
+    FutureCommandResult,
     macros::command,
 };
+use futures::FutureExt;
 
 #[command]
-fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
-    let _ = msg.channel_id.say(&ctx.http, "Pong!");
+fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
+    async move {
+        let _ = msg.channel_id.say(&ctx.http, "Pong!").await;
 
-    Ok(())
+        (ctx, msg, Ok(()))
+    }.boxed()
 }

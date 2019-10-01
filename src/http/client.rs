@@ -10,6 +10,7 @@ use reqwest::{
 };
 use crate::internal::prelude::*;
 use crate::model::prelude::*;
+use crate::utils::AsyncInto;
 use super::{
     ratelimiting::{Ratelimiter, RatelimitedRequest},
     request::Request,
@@ -1560,7 +1561,7 @@ impl Http {
             .multipart(multipart).send().await?;
 
         if !response.status().is_success() {
-            return Err(HttpError::UnsuccessfulRequest(response.into()).into());
+            return Err(HttpError::UnsuccessfulRequest(response.async_into().await).into());
         }
 
         response.json().await.map_err(From::from)
@@ -1757,7 +1758,7 @@ impl Http {
         if response.status().is_success() {
             Ok(response)
         } else {
-            Err(Error::Http(Box::new(HttpError::UnsuccessfulRequest(response.into()))))
+            Err(Error::Http(Box::new(HttpError::UnsuccessfulRequest(response.async_into().await))))
         }
     }
 
@@ -1776,7 +1777,7 @@ impl Http {
         debug!("Expected {}, got {}", expected, response.status());
         trace!("Unsuccessful response: {:?}", response);
 
-        Err(Error::Http(Box::new(HttpError::UnsuccessfulRequest(response.into()))))
+        Err(Error::Http(Box::new(HttpError::UnsuccessfulRequest(response.async_into().await))))
     }
 }
 

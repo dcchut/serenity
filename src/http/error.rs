@@ -37,14 +37,16 @@ pub struct ErrorResponse {
     pub error: DiscordJsonError,
 }
 
-impl From<Response> for ErrorResponse {
-    fn from(r: Response) -> Self {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+use async_trait::async_trait;
+use crate::utils::AsyncFrom;
 
+#[async_trait]
+impl AsyncFrom<Response> for ErrorResponse {
+    async fn async_from(r : Response) -> Self {
         ErrorResponse {
             status_code: r.status(),
             url: r.url().clone(),
-            error: rt.block_on(r.json()).unwrap_or_else(|_| DiscordJsonError {
+            error: r.json().await.unwrap_or_else(|_| DiscordJsonError {
                 code: -1,
                 message: "[Serenity] No correct json was received!".to_string(),
                 non_exhaustive: (),
@@ -52,7 +54,6 @@ impl From<Response> for ErrorResponse {
         }
     }
 }
-
 
 #[derive(Debug)]
 pub enum Error {

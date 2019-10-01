@@ -556,7 +556,7 @@ impl GuildId {
     ///         Ok(member) => println!(
     ///             "{} is {}",
     ///             member,
-    ///             member.display_name().await
+    ///             member.display_name()
     ///         ),
     ///         Err(error) => eprintln!("Uh oh!  Error: {}", error),
     ///     }

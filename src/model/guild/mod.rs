@@ -2260,7 +2260,7 @@ mod test {
                 .ymd(2016, 11, 08)
                 .and_hms(0, 0, 0);
             let vec1 = Vec::new();
-            let u = Arc::new(RwLock::new(gen_user()));
+            let u = Arc::new(gen_user());
 
             Member {
                 deaf: false,
@@ -2336,11 +2336,11 @@ mod test {
                 let lhs = guild
                     .member_named("test#1432")
                     .unwrap()
-                    .display_name().await;
+                    .display_name();
 
                 let rhs = gen_member();
 
-                assert_eq!(lhs, rhs.display_name().await);
+                assert_eq!(lhs, rhs.display_name());
             });
         }
 
@@ -2348,9 +2348,9 @@ mod test {
         fn member_named_nickname() {
             run_async_test(async move {
                 let guild = gen();
-                let lhs = guild.member_named("aaaa").unwrap().display_name().await;
+                let lhs = guild.member_named("aaaa").unwrap().display_name();
                 let rhs = gen_member();
-                assert_eq!(lhs, rhs.display_name().await);
+                assert_eq!(lhs, rhs.display_name());
             });
         }
     }

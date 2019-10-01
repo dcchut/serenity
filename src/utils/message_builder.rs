@@ -41,11 +41,14 @@ use std::{
 ///
 /// // assuming an `emoji` and `user` have already been bound
 ///
-/// let content = MessageBuilder::new()
+/// let mut builder = MessageBuilder::new();
+/// let content = builder
 ///     .push("You sent a message, ")
 ///     .mention(&user)
+///     .await
 ///     .push("! ")
 ///     .mention(&emoji)
+///     .await
 ///     .build();
 /// # }
 /// ```
@@ -84,14 +87,18 @@ impl MessageBuilder {
     /// use serenity::model::id::ChannelId;
     /// use serenity::utils::MessageBuilder;
     ///
-    /// let channel_id = ChannelId(81384788765712384);
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let channel_id = ChannelId(81384788765712384);
     ///
-    /// let content = MessageBuilder::new()
-    ///     .channel(channel_id)
-    ///     .push("!")
-    ///     .build();
+    ///     let content = MessageBuilder::new()
+    ///         .channel(channel_id)
+    ///         .await
+    ///         .push("!")
+    ///         .build();
     ///
-    /// assert_eq!(content, "<#81384788765712384>!");
+    ///     assert_eq!(content, "<#81384788765712384>!");
+    /// }
     /// ```
     ///
     /// This is equivalent to simply retrieving the tuple struct's first value:
@@ -121,15 +128,22 @@ impl MessageBuilder {
     /// ```rust
     /// use serenity::model::id::ChannelId;
     /// use serenity::utils::MessageBuilder;
+    /// use serde_json::error::ErrorCode::Message;
     ///
-    /// let channel_id = ChannelId(81384788765712384);
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let channel_id = ChannelId(81384788765712384);
     ///
-    /// let content = MessageBuilder::new()
-    ///     .push("The channel is: ")
-    ///     .channel(channel_id)
-    ///     .build();
+    ///     let mut builder = MessageBuilder::new();
     ///
-    /// assert_eq!(content, "The channel is: <#81384788765712384>");
+    ///     let content = builder
+    ///         .push("The channel is: ")
+    ///         .channel(channel_id)
+    ///         .await
+    ///         .build();
+    ///
+    ///     assert_eq!(content, "The channel is: <#81384788765712384>");
+    /// }
     /// ```
     ///
     /// [`Channel`]: ../model/channel/enum.Channel.html
@@ -1295,6 +1309,7 @@ mod test {
         ContentModifier::{Spoiler, Bold, Code, Italic},
         MessageBuilder,
     };
+    use crate::utils::run_async_test;
 
     macro_rules! gen {
         ($($fn:ident => [$($text:expr => $expected:expr),+]),+) => ({
@@ -1330,25 +1345,32 @@ mod test {
 
     #[test]
     fn mentions() {
-        let content_emoji = MessageBuilder::new()
-            .emoji(&Emoji {
-                animated: false,
-                id: EmojiId(32),
-                name: "Rohrkatze".to_string(),
-                managed: false,
-                require_colons: true,
-                roles: vec![],
-                _nonexhaustive: (),
-            })
-            .build();
-        let content_mentions = MessageBuilder::new()
-            .channel(1)
-            .mention(&UserId(2))
-            .role(3)
-            .user(4)
-            .build();
-        assert_eq!(content_mentions, "<#1><@2><@&3><@4>");
-        assert_eq!(content_emoji, "<:Rohrkatze:32>");
+        run_async_test(async move {
+            let content_emoji = MessageBuilder::new()
+                .emoji(&Emoji {
+                    animated: false,
+                    id: EmojiId(32),
+                    name: "Rohrkatze".to_string(),
+                    managed: false,
+                    require_colons: true,
+                    roles: vec![],
+                    _nonexhaustive: (),
+                })
+                .build();
+            let mut builder = MessageBuilder::new();
+            let content_mentions = builder
+                .channel(1)
+                .await
+                .mention(&UserId(2))
+                .await
+                .role(3)
+                .await
+                .user(4)
+                .await
+                .build();
+            assert_eq!(content_mentions, "<#1><@2><@&3><@4>");
+            assert_eq!(content_emoji, "<:Rohrkatze:32>");
+        });
     }
 
     #[test]

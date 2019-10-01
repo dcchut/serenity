@@ -177,9 +177,7 @@ impl Channel {
     /// match channel.private() {
     ///     Some(private_lock) => {
     ///         let private = private_lock.read().await;
-    ///         let recipient_lock = &private.recipient;
-    ///         let recipient = recipient_lock.read().await;
-    ///         println!("It's a private channel with {}!", recipient.name);
+    ///         println!("It's a private channel with {}!", &private.recipient.name);
     ///     },
     ///     None => { println!("It's not a private channel!"); },
     /// }
@@ -597,14 +595,14 @@ mod test {
                 last_message_id: None,
                 last_pin_timestamp: None,
                 kind: ChannelType::Private,
-                recipient: Arc::new(RwLock::new(User {
+                recipient: Arc::new(User {
                     id: UserId(2),
                     avatar: None,
                     bot: false,
                     discriminator: 1,
                     name: "ab".to_string(),
                     _nonexhaustive: (),
-                })),
+                }),
                 _nonexhaustive: (),
             }
         }

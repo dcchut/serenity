@@ -933,7 +933,7 @@ mod test {
                 mute: false,
                 nick: Some("Ferris".to_string()),
                 roles: Vec::new(),
-                user: Arc::new(RwLock::new(user.clone())),
+                user: Arc::new(user.clone()),
                 _nonexhaustive: (),
             };
 
@@ -973,7 +973,7 @@ mod test {
                 let mut cache = cache.try_write().unwrap();
                 guild.members.insert(user.id, member.clone());
                 guild.roles.insert(role.id, role.clone());
-                cache.users.insert(user.id, Arc::new(RwLock::new(user.clone())));
+                cache.users.insert(user.id, Arc::new(user.clone()));
                 cache.guilds.insert(guild.id, Arc::new(RwLock::new(guild.clone())));
                 cache.channels.insert(channel.id, Arc::new(RwLock::new(channel.clone())));
             }

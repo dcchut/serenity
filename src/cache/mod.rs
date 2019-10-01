@@ -678,7 +678,7 @@ impl Cache {
     ///
     /// if let Some(channel) = cache.private_channel(7) {
     ///     let channel_reader = channel.read().await;
-    ///     let user_reader = channel_reader.recipient.read().await;
+    ///     let user_reader = &channel_reader.recipient;
     ///
     ///     println!("The recipient is {}", user_reader.name);
     /// }
@@ -791,7 +791,7 @@ impl Cache {
     /// # #[command]
     /// # async fn test(context: &mut Context) -> CommandResult {
     /// if let Some(user) = context.cache.read().await.user(7) {
-    ///     println!("User with Id 7 is currently named {}", user.read().await.name);
+    ///     println!("User with Id 7 is currently named {}", user.name);
     /// }
     /// # Ok(())
     /// # }

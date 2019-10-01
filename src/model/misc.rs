@@ -342,74 +342,76 @@ mod test {
         use crate::model::prelude::*;
         use async_std::sync::RwLock;
         use std::sync::Arc;
-        use crate::utils::Colour;
+        use crate::utils::{Colour, run_async_test};
 
         #[test]
         fn test_mention() {
-            let channel = Channel::Guild(Arc::new(RwLock::new(GuildChannel {
-                bitrate: None,
-                category_id: None,
-                guild_id: GuildId(1),
-                kind: ChannelType::Text,
-                id: ChannelId(4),
-                last_message_id: None,
-                last_pin_timestamp: None,
-                name: "a".to_string(),
-                permission_overwrites: vec![],
-                position: 1,
-                topic: None,
-                user_limit: None,
-                nsfw: false,
-                slow_mode_rate: Some(0),
-                _nonexhaustive: (),
-            })));
-            let emoji = Emoji {
-                animated: false,
-                id: EmojiId(5),
-                name: "a".to_string(),
-                managed: true,
-                require_colons: true,
-                roles: vec![],
-                _nonexhaustive: (),
-            };
-            let role = Role {
-                id: RoleId(2),
-                colour: Colour::ROSEWATER,
-                hoist: false,
-                managed: false,
-                mentionable: false,
-                name: "fake role".to_string(),
-                permissions: Permissions::empty(),
-                position: 1,
-                _nonexhaustive: (),
-            };
-            let user = User {
-                id: UserId(6),
-                avatar: None,
-                bot: false,
-                discriminator: 4132,
-                name: "fake".to_string(),
-                _nonexhaustive: (),
-            };
-            let member = Member {
-                deaf: false,
-                guild_id: GuildId(2),
-                joined_at: None,
-                mute: false,
-                nick: None,
-                roles: vec![],
-                user: Arc::new(RwLock::new(user.clone())),
-                _nonexhaustive: (),
-            };
+            run_async_test(async move {
+                let channel = Channel::Guild(Arc::new(RwLock::new(GuildChannel {
+                    bitrate: None,
+                    category_id: None,
+                    guild_id: GuildId(1),
+                    kind: ChannelType::Text,
+                    id: ChannelId(4),
+                    last_message_id: None,
+                    last_pin_timestamp: None,
+                    name: "a".to_string(),
+                    permission_overwrites: vec![],
+                    position: 1,
+                    topic: None,
+                    user_limit: None,
+                    nsfw: false,
+                    slow_mode_rate: Some(0),
+                    _nonexhaustive: (),
+                })));
+                let emoji = Emoji {
+                    animated: false,
+                    id: EmojiId(5),
+                    name: "a".to_string(),
+                    managed: true,
+                    require_colons: true,
+                    roles: vec![],
+                    _nonexhaustive: (),
+                };
+                let role = Role {
+                    id: RoleId(2),
+                    colour: Colour::ROSEWATER,
+                    hoist: false,
+                    managed: false,
+                    mentionable: false,
+                    name: "fake role".to_string(),
+                    permissions: Permissions::empty(),
+                    position: 1,
+                    _nonexhaustive: (),
+                };
+                let user = User {
+                    id: UserId(6),
+                    avatar: None,
+                    bot: false,
+                    discriminator: 4132,
+                    name: "fake".to_string(),
+                    _nonexhaustive: (),
+                };
+                let member = Member {
+                    deaf: false,
+                    guild_id: GuildId(2),
+                    joined_at: None,
+                    mute: false,
+                    nick: None,
+                    roles: vec![],
+                    user: Arc::new(user.clone()),
+                    _nonexhaustive: (),
+                };
 
-            assert_eq!(ChannelId(1).mention(), "<#1>");
-            assert_eq!(channel.mention(), "<#4>");
-            assert_eq!(emoji.mention(), "<:a:5>");
-            assert_eq!(member.mention(), "<@6>");
-            assert_eq!(role.mention(), "<@&2>");
-            assert_eq!(role.id.mention(), "<@&2>");
-            assert_eq!(user.mention(), "<@6>");
-            assert_eq!(user.id.mention(), "<@6>");
+                assert_eq!(ChannelId(1).mention().await, "<#1>");
+                assert_eq!(channel.mention().await, "<#4>");
+                assert_eq!(emoji.mention().await, "<:a:5>");
+                assert_eq!(member.mention().await, "<@6>");
+                assert_eq!(role.mention().await, "<@&2>");
+                assert_eq!(role.id.mention().await, "<@&2>");
+                assert_eq!(user.mention().await, "<@6>");
+                assert_eq!(user.id.mention().await, "<@6>");
+            });
         }
     }
 }

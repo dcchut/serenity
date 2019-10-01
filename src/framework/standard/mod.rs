@@ -703,7 +703,7 @@ impl Framework for StandardFramework {
                 &self.groups,
                 &self.config,
                 self.help.as_ref().map(|h| h.options.names),
-            )
+            ).await
         };
 
         let invoke = match invocation {

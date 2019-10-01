@@ -920,25 +920,24 @@ impl GuildChannel {
         let guild = cache.read().await.guild(self.guild_id).unwrap();
 
         match self.kind {
-            ChannelType::Voice => Ok(guild
-                .read()
-                .await
-                .voice_states
-                .values()
-                .filter_map(|v| {
-                    v.channel_id.and_then(
-                        |c| {
-                            let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+            ChannelType::Voice => Ok(
+                {
+                    let guard = guild.read().await;
 
-                            if c == self.id {
-                                rt.block_on(guild.read()).members.get(&v.user_id).cloned()
-                            } else {
-                                None
+                    let mut output = Vec::new();
+
+                    for v in guard.voice_states.values() {
+                        if let Some(channel_id) = v.channel_id {
+                            if channel_id == self.id {
+                                if let Some(member) = guild.read().await.members.get(&v.user_id).cloned() {
+                                    output.push(member);
+                                }
                             }
-                        },
-                    )
-                })
-                .collect()),
+                        }
+                    }
+
+                    output
+        }),
             ChannelType::News | ChannelType::Text => Ok(guild
                     .read()
                     .await

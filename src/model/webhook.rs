@@ -262,8 +262,7 @@ impl WebhookId {
     /// [`Webhook`]: struct.Webhook.html
     /// [Manage Webhooks]: ../../model/permissions/struct.Permissions.html#associatedconstant.MANAGE_WEBHOOKS
     #[inline]
-    pub fn to_webhook(self, http: impl AsRef<Http>) -> Result<Webhook> {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-        rt.block_on(http.as_ref().get_webhook(self.0))
+    pub async fn to_webhook(self, http: impl AsRef<Http>) -> Result<Webhook> {
+        http.as_ref().get_webhook(self.0).await
     }
 }

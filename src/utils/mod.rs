@@ -16,7 +16,6 @@ pub use self::{
     },
 	custom_message::CustomMessage,
     async_test::run_async_test,
-    async_test::{AsyncFrom, AsyncInto},
 };
 
 use base64;

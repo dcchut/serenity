@@ -5,6 +5,7 @@ use crate::internal::prelude::*;
 use serde::de::{Deserialize, Deserializer};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use super::utils::U64Visitor;
+use crate::model::channel::Channel;
 
 macro_rules! id_u64 {
     ($($name:ident;)*) => {
@@ -94,6 +95,19 @@ pub struct ApplicationId(pub u64);
 /// An identifier for a Channel
 #[derive(Copy, Clone, Default, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize)]
 pub struct ChannelId(pub u64);
+
+impl ChannelId {
+    /// Gets the Id of a `Channel`.
+    pub async fn async_from<T : AsRef<Channel>>(channel: T) -> ChannelId {
+        match channel.as_ref() {
+            Channel::Group(group) => group.read().await.channel_id,
+            Channel::Guild(ch) => ch.read().await.id,
+            Channel::Private(ch) => ch.read().await.id,
+            Channel::Category(ch) => ch.read().await.id,
+            Channel::__Nonexhaustive => unreachable!(),
+        }
+    }
+}
 
 /// An identifier for an Emoji
 #[derive(Copy, Clone, Default, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize)]

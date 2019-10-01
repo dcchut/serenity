@@ -718,36 +718,6 @@ impl ChannelId {
     pub async fn webhooks(self, http: impl AsRef<Http>) -> Result<Vec<Webhook>> {http.as_ref().get_channel_webhooks(self.0).await }
 }
 
-impl From<Channel> for ChannelId {
-    /// Gets the Id of a `Channel`.
-    fn from(channel: Channel) -> ChannelId {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
-        rt.block_on(async {match channel {
-            Channel::Group(group) => group.read().await.channel_id,
-            Channel::Guild(ch) => ch.read().await.id,
-            Channel::Private(ch) => ch.read().await.id,
-            Channel::Category(ch) => ch.read().await.id,
-            Channel::__Nonexhaustive => unreachable!(),
-        }})
-    }
-}
-
-impl<'a> From<&'a Channel> for ChannelId {
-    /// Gets the Id of a `Channel`.
-    fn from(channel: &Channel) -> ChannelId {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
-        rt.block_on(async {match *channel {
-            Channel::Group(ref group) => group.read().await.channel_id,
-            Channel::Guild(ref ch) => ch.read().await.id,
-            Channel::Private(ref ch) => ch.read().await.id,
-            Channel::Category(ref ch) => ch.read().await.id,
-            Channel::__Nonexhaustive => unreachable!(),
-        }})
-    }
-}
-
 impl From<PrivateChannel> for ChannelId {
     /// Gets the Id of a private channel.
     fn from(private_channel: PrivateChannel) -> ChannelId { private_channel.id }

@@ -230,20 +230,13 @@ impl Guild {
         let name = name.as_ref();
         let cache = cache.as_ref().read().await;
         let guild = cache.guilds.get(&self.id)?.read().await;
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
-        guild.channels
-            .iter()
-            .find_map(|(id, c)| {
-                let f = async {
-                    if c.read().await.name == name {
-                        Some(*id)
-                    } else {
-                        None
-                    }
-                };
-                rt.block_on(f)
-            })
+        for (id, c) in guild.channels.iter() {
+            if c.read().await.name == name {
+                return Some(*id)
+            }
+        }
+        None
     }
 
     /// Ban a [`User`] from the guild. All messages by the

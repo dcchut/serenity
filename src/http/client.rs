@@ -10,7 +10,6 @@ use reqwest::{
 };
 use crate::internal::prelude::*;
 use crate::model::prelude::*;
-use crate::utils::AsyncInto;
 use super::{
     ratelimiting::{Ratelimiter, RatelimitedRequest},
     request::Request,
@@ -29,6 +28,7 @@ use std::{
     sync::Arc,
 };
 use std::io::Read;
+use crate::http::error::ErrorResponse;
 
 pub struct Http {
     client: Arc<Client>,
@@ -1561,7 +1561,7 @@ impl Http {
             .multipart(multipart).send().await?;
 
         if !response.status().is_success() {
-            return Err(HttpError::UnsuccessfulRequest(response.async_into().await).into());
+            return Err(HttpError::UnsuccessfulRequest(ErrorResponse::async_from_response(response).await).into())
         }
 
         response.json().await.map_err(From::from)
@@ -1758,7 +1758,7 @@ impl Http {
         if response.status().is_success() {
             Ok(response)
         } else {
-            Err(Error::Http(Box::new(HttpError::UnsuccessfulRequest(response.async_into().await))))
+            Err(Error::Http(Box::new(HttpError::UnsuccessfulRequest(ErrorResponse::async_from_response(response).await))))
         }
     }
 
@@ -1777,7 +1777,7 @@ impl Http {
         debug!("Expected {}, got {}", expected, response.status());
         trace!("Unsuccessful response: {:?}", response);
 
-        Err(Error::Http(Box::new(HttpError::UnsuccessfulRequest(response.async_into().await))))
+        Err(Error::Http(Box::new(HttpError::UnsuccessfulRequest(ErrorResponse::async_from_response(response).await))))
     }
 }
 

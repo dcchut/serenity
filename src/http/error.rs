@@ -37,12 +37,8 @@ pub struct ErrorResponse {
     pub error: DiscordJsonError,
 }
 
-use async_trait::async_trait;
-use crate::utils::AsyncFrom;
-
-#[async_trait]
-impl AsyncFrom<Response> for ErrorResponse {
-    async fn async_from(r : Response) -> Self {
+impl ErrorResponse {
+    pub(crate) async fn async_from_response(r : Response) -> Self {
         ErrorResponse {
             status_code: r.status(),
             url: r.url().clone(),

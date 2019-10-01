@@ -838,7 +838,7 @@ impl<H: AsRef<Http>> MembersIter<H> {
 
          //Get the last member.  If shorter than 1000, there are no more results anyway
         self.after = match self.buffer.get(grab_size as usize - 1) {
-            Some(member) => Some(member.user_id().await),
+            Some(member) => Some(member.user_id()),
             None => None,
         };
 

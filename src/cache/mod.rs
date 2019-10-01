@@ -41,7 +41,6 @@ use std::str::FromStr;
 use crate::model::prelude::*;
 use async_std::sync::RwLock;
 use std::collections::{
-    hash_map::Entry,
     HashMap,
     HashSet,
     VecDeque,
@@ -189,7 +188,7 @@ pub struct Cache {
     /// [`GuildMembersChunkEvent`]: ../model/event/struct.GuildMembersChunkEvent.html
     /// [`PresenceUpdateEvent`]: ../model/event/struct.PresenceUpdateEvent.html
     /// [`ReadyEvent`]: ../model/event/struct.ReadyEvent.html
-    pub users: HashMap<UserId, Arc<RwLock<User>>>,
+    pub users: HashMap<UserId, Arc<User>>,
     /// Queue of message IDs for each channel.
     ///
     /// This is simply a vecdeque so we can keep track of the order of messages
@@ -800,11 +799,11 @@ impl Cache {
     /// # fn main() {}
     /// ```
     #[inline]
-    pub fn user<U: Into<UserId>>(&self, user_id: U) -> Option<Arc<RwLock<User>>> {
+    pub fn user<U: Into<UserId>>(&self, user_id: U) -> Option<Arc<User>> {
         self._user(user_id.into())
     }
 
-    fn _user(&self, user_id: UserId) -> Option<Arc<RwLock<User>>> {
+    fn _user(&self, user_id: UserId) -> Option<Arc<User>> {
         self.users.get(&user_id).cloned()
     }
 
@@ -834,15 +833,8 @@ impl Cache {
         e.update(self).await
     }
 
-    pub(crate) async fn update_user_entry(&mut self, user: &User) {
-        match self.users.entry(user.id) {
-            Entry::Vacant(e) => {
-                e.insert(Arc::new(RwLock::new(user.clone())));
-            },
-            Entry::Occupied(mut e) => {
-                e.get_mut().write().await.clone_from(user);
-            },
-        }
+    pub(crate) fn update_user_entry(&mut self, user: &User) {
+        self.users.insert(user.id, Arc::new(user.clone()));
     }
 }
 

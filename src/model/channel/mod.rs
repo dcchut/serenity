@@ -383,9 +383,7 @@ impl Display for Channel {
         match *self {
             Channel::Group(ref group) => futures::executor::block_on(async move {
                 let guard = group.read().await;
-                let res = guard.name().await;
-
-                Display::fmt(&res, f)
+                Display::fmt(&guard.name(), f)
             }),
             Channel::Guild(ref ch) => Display::fmt(&futures::executor::block_on(async {
                 let guard = ch.read().await;
@@ -393,9 +391,8 @@ impl Display for Channel {
             }), f),
             Channel::Private(ref ch) => {
                 let channel = futures::executor::block_on(ch.read());
-                let recipient = futures::executor::block_on(channel.recipient.read());
 
-                Display::fmt(&recipient.name, f)
+                Display::fmt(&channel.recipient.name, f)
             },
             Channel::Category(ref category) => Display::fmt(&futures::executor::block_on(category.read()).name, f),
             Channel::__Nonexhaustive => unreachable!(),

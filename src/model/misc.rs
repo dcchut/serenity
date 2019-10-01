@@ -83,7 +83,7 @@ impl Mentionable for Group {
 #[async_trait]
 impl Mentionable for Member {
     async fn mention(&self) -> String {
-        format!("<@{}>", self.user.read().await.id.0)
+        format!("<@{}>", self.user.id.0)
     }
 }
 

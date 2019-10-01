@@ -37,7 +37,7 @@ pub struct Group {
     /// A map of the group's recipients.
     #[serde(deserialize_with = "deserialize_users",
             serialize_with = "serialize_users")]
-    pub recipients: HashMap<UserId, Arc<RwLock<User>>>,
+    pub recipients: HashMap<UserId, Arc<User>>,
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
 }
@@ -226,18 +226,18 @@ impl Group {
     /// If there are no recipients in the group, the name will be "Empty Group".
     /// Otherwise, the name is generated in a Comma Separated Value list, such
     /// as "person 1, person 2, person 3".
-    pub async fn name(&self) -> Cow<'_, str> {
+    pub fn name(&self) -> Cow<'_, str> {
         use std::fmt::Write;
         match self.name {
             Some(ref name) => Cow::Borrowed(name.as_str()),
             None => {
                 let mut name = match self.recipients.values().nth(0) {
-                    Some(recipient) => recipient.read().await.name.clone(),
+                    Some(recipient) => recipient.name.clone(),
                     None => return Cow::Borrowed("Empty Group"),
                 };
 
                 for recipient in self.recipients.values().skip(1) {
-                    let _ = write!(name, ", {}", recipient.read().await.name.clone());
+                    let _ = write!(name, ", {}", recipient.name.clone());
                 }
 
                 Cow::Owned(name) as Cow<'_, str>

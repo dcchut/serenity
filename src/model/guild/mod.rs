@@ -219,7 +219,7 @@ impl Guild {
     async fn has_perms(&self, cache: impl AsRef<CacheRwLock>, mut permissions: Permissions) -> bool {
         let user_id = cache.as_ref().read().await.user.id;
 
-        let perms = self.member_permissions(user_id).await;
+        let perms = self.member_permissions(user_id);
         permissions.remove(perms);
 
         permissions.is_empty()
@@ -961,9 +961,9 @@ impl Guild {
             .values()
             .find(|member| {
                 let matcher = async {
-                    let name_matches = member.user.read().await.name == name;
+                    let name_matches = member.user.name == name;
                     let discrim_matches = match discrim {
-                        Some(discrim) => member.user.read().await.discriminator == discrim,
+                        Some(discrim) => member.user.discriminator == discrim,
                         None => true,
                     };
 
@@ -989,21 +989,15 @@ impl Guild {
     /// - "zeya", "zeyaa", "zeyla", "zeyzey", "zeyzeyzey"
     ///
     /// [`Member`]: struct.Member.html
-    pub async fn members_starting_with(&self, prefix: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
-        async fn afilter(case_sensitive : bool, prefix: &str, member : &&Member) -> bool {
-            if case_sensitive {
-                member.user.read().await.name.starts_with(prefix)
-            } else {
-                contains_case_insensitive(&member.user.read().await.name, prefix)
-            }
-        }
-
+    pub fn members_starting_with(&self, prefix: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
         let mut members: Vec<&Member> = self.members
             .values()
             .filter(|member|
-                rt.block_on(afilter(case_sensitive, prefix, member))
+                if case_sensitive {
+                    member.user.name.starts_with(prefix)
+                } else {
+                    contains_case_insensitive(&member.user.name, prefix)
+                }
                 || member.nick.as_ref()
                     .map_or(false, |nick|
 
@@ -1014,34 +1008,30 @@ impl Guild {
                     })).collect();
 
         if sorted {
-            async fn acmp(a : &&Member, b : &&Member, prefix: &str) -> std::cmp::Ordering {
-                let name_a = match a.nick {
-                    Some(ref nick) => {
-                        if contains_case_insensitive(&a.user.read().await.name[..], prefix) {
-                            Cow::Owned(a.user.read().await.name.clone())
-                        } else {
-                            Cow::Borrowed(nick)
-                        }
-                    },
-                    None => Cow::Owned(a.user.read().await.name.clone()),
-                };
-
-                let name_b = match b.nick {
-                    Some(ref nick) => {
-                        if contains_case_insensitive(&b.user.read().await.name[..], prefix) {
-                            Cow::Owned(b.user.read().await.name.clone())
-                        } else {
-                            Cow::Borrowed(nick)
-                        }
-                    },
-                    None => Cow::Owned(b.user.read().await.name.clone()),
-                };
-                closest_to_origin(prefix, &name_a[..], &name_b[..])
-            }
-
             members
                 .sort_by(|a, b| {
-                    rt.block_on(acmp(a,b, prefix))
+                    let name_a = match a.nick {
+                        Some(ref nick) => {
+                            if contains_case_insensitive(&a.user.name[..], prefix) {
+                                Cow::Owned(a.user.name.clone())
+                            } else {
+                                Cow::Borrowed(nick)
+                            }
+                        },
+                        None => Cow::Owned(a.user.name.clone()),
+                    };
+
+                    let name_b = match b.nick {
+                        Some(ref nick) => {
+                            if contains_case_insensitive(&b.user.name[..], prefix) {
+                                Cow::Owned(b.user.name.clone())
+                            } else {
+                                Cow::Borrowed(nick)
+                            }
+                        },
+                        None => Cow::Owned(b.user.name.clone()),
+                    };
+                    closest_to_origin(prefix, &name_a[..], &name_b[..])
                 });
             members
         } else {
@@ -1071,21 +1061,15 @@ impl Guild {
     /// as both fields have to be considered again for sorting.
     ///
     /// [`Member`]: struct.Member.html
-    pub async fn members_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
-        async fn afilter(case_sensitive : bool, substring: &str, member : &&Member) -> bool {
-            if case_sensitive {
-                member.user.read().await.name.contains(substring)
-            } else {
-                contains_case_insensitive(&member.user.read().await.name, substring)
-            }
-        }
+    pub fn members_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
         let mut members: Vec<&Member> = self.members
             .values()
             .filter(|member|
-
-                rt.block_on(afilter(case_sensitive, substring, member))
+                if case_sensitive {
+                    member.user.name.contains(substring)
+                } else {
+                    contains_case_insensitive(&member.user.name, substring)
+                }
                 || member.nick.as_ref()
                     .map_or(false, |nick| {
 
@@ -1097,34 +1081,31 @@ impl Guild {
                     })).collect();
 
         if sorted {
-            async fn acmp(a : &&Member, b : &&Member, substring: &str) -> std::cmp::Ordering {
-                let name_a = match a.nick {
-                    Some(ref nick) => {
-                        if contains_case_insensitive(&a.user.read().await.name[..], substring) {
-                            Cow::Owned(a.user.read().await.name.clone())
-                        } else {
-                            Cow::Borrowed(nick)
-                        }
-                    },
-                    None => Cow::Owned(a.user.read().await.name.clone()),
-                };
-
-                let name_b = match b.nick {
-                    Some(ref nick) => {
-                        if contains_case_insensitive(&b.user.read().await.name[..], substring) {
-                            Cow::Owned(b.user.read().await.name.clone())
-                        } else {
-                            Cow::Borrowed(nick)
-                        }
-                    },
-                    None => Cow::Owned(b.user.read().await.name.clone()),
-                };
-
-                closest_to_origin(substring, &name_a[..], &name_b[..])
-            }
             members
                 .sort_by(|a, b| {
-                    rt.block_on(acmp(a,b,substring))
+                    let name_a = match a.nick {
+                        Some(ref nick) => {
+                            if contains_case_insensitive(&a.user.name[..], substring) {
+                                Cow::Owned(a.user.name.clone())
+                            } else {
+                                Cow::Borrowed(nick)
+                            }
+                        },
+                        None => Cow::Owned(a.user.name.clone()),
+                    };
+
+                    let name_b = match b.nick {
+                        Some(ref nick) => {
+                            if contains_case_insensitive(&b.user.name[..], substring) {
+                                Cow::Owned(b.user.name.clone())
+                            } else {
+                                Cow::Borrowed(nick)
+                            }
+                        },
+                        None => Cow::Owned(b.user.name.clone()),
+                    };
+
+                    closest_to_origin(substring, &name_a[..], &name_b[..])
                 });
             members
         } else {
@@ -1148,33 +1129,22 @@ impl Guild {
     /// - "zey", "azey", "zeyla", "zeylaa", "zeyzeyzey"
     ///
     /// [`Member`]: struct.Member.html
-    pub async fn members_username_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
-        async fn afilter(case_sensitive : bool, substring: &str, member : &&Member) -> bool {
-            if case_sensitive {
-                member.user.read().await.name.contains(substring)
-            } else {
-                contains_case_insensitive(&member.user.read().await.name, substring)
-            }
-        }
-
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
+    pub fn members_username_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
         let mut members: Vec<&Member> = self.members
             .values()
             .filter(|member| {
-                rt.block_on(afilter(case_sensitive, substring, member))
+                if case_sensitive {
+                    member.user.name.contains(substring)
+                } else {
+                    contains_case_insensitive(&member.user.name, substring)
+                }
             }).collect();
-
         if sorted {
-            async fn acmp(a : &&Member, b : &&Member, substring: &str) -> std::cmp::Ordering {
-                let name_a = &a.user.read().await.name;
-                let name_b = &b.user.read().await.name;
-                closest_to_origin(substring, &name_a[..], &name_b[..])
-            }
-
             members
                 .sort_by(|a, b| {
-                   rt.block_on(acmp(a,b,substring))
+                    let name_a = &a.user.name;
+                    let name_b = &b.user.name;
+                    closest_to_origin(substring, &name_a[..], &name_b[..])
                 });
             members
         } else {
@@ -1201,7 +1171,7 @@ impl Guild {
     /// a nick, the username will be used (this should never happen).
     ///
     /// [`Member`]: struct.Member.html
-    pub async fn members_nick_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
+    pub fn members_nick_containing(&self, substring: &str, case_sensitive: bool, sorted: bool) -> Vec<&Member> {
         let mut members: Vec<&Member> = self.members
             .values()
             .filter(|member|
@@ -1216,29 +1186,23 @@ impl Guild {
                     })).collect();
 
         if sorted {
-            async fn acmp(a : &&Member, b : &&Member, substring: &str) -> std::cmp::Ordering {
-                let name_a = match a.nick {
-                    Some(ref nick) => {
-                        Cow::Borrowed(nick)
-                    },
-                    None => Cow::Owned(a.user.read().await.name.clone()),
-                };
-
-                let name_b = match b.nick {
-                    Some(ref nick) => {
-                        Cow::Borrowed(nick)
-                    },
-                    None => Cow::Owned(b.user.read().await.name.clone()),
-                };
-
-                closest_to_origin(substring, &name_a[..], &name_b[..])
-            }
-
-            let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
             members
                 .sort_by(|a, b| {
-                    rt.block_on(acmp(a,b,substring))
+                    let name_a = match a.nick {
+                        Some(ref nick) => {
+                            Cow::Borrowed(nick)
+                        },
+                        None => Cow::Owned(a.user.name.clone()),
+                    };
+
+                    let name_b = match b.nick {
+                        Some(ref nick) => {
+                            Cow::Borrowed(nick)
+                        },
+                        None => Cow::Owned(b.user.name.clone()),
+                    };
+
+                    closest_to_origin(substring, &name_a[..], &name_b[..])
                 });
             members
         } else {
@@ -1250,12 +1214,12 @@ impl Guild {
     ///
     /// [`Member`]: struct.Member.html
     #[inline]
-    pub async fn member_permissions<U>(&self, user_id: U) -> Permissions
+    pub fn member_permissions<U>(&self, user_id: U) -> Permissions
         where U: Into<UserId> {
-        self._member_permissions(user_id.into()).await
+        self._member_permissions(user_id.into())
     }
 
-    async fn _member_permissions(&self, user_id: UserId) -> Permissions {
+    fn _member_permissions(&self, user_id: UserId) -> Permissions {
         if user_id == self.owner_id {
             return Permissions::all();
         }
@@ -1290,7 +1254,7 @@ impl Guild {
             } else {
                 warn!(
                     "(╯°□°）╯︵ ┻━┻ {} on {} has non-existent role {:?}",
-                    member.user.read().await.id,
+                    member.user.id,
                     self.id,
                     role,
                 );
@@ -1369,7 +1333,7 @@ impl Guild {
             } else {
                 warn!(
                     "(╯°□°）╯︵ ┻━┻ {} on {} has non-existent role {:?}",
-                    member.user.read().await.id,
+                    member.user.id,
                     self.id,
                     role
                 );

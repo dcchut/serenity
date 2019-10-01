@@ -71,8 +71,7 @@ impl CacheUpdate for ChannelCreateEvent {
                     let mut writer = group.write().await;
 
                     for (recipient_id, recipient) in &mut writer.recipients {
-                        let tmp = recipient.read().await.clone();
-                        cache.update_user_entry(&tmp).await;
+                        cache.update_user_entry(recipient);
 
                         *recipient = Arc::clone(&cache.users[recipient_id]);
                     }
@@ -110,12 +109,11 @@ impl CacheUpdate for ChannelCreateEvent {
                 let id = {
                     let mut guard = channel.write().await;
                     let user_id = {
-                        let user = guard.recipient.write().await;
-                        let c_user = user.clone();
+                        let c_user = guard.recipient.clone();
 
-                        cache.update_user_entry(&c_user).await;
+                        cache.update_user_entry(&c_user);
 
-                        user.id
+                        c_user.id
                     };
 
                     guard.recipient = Arc::clone(&cache.users[&user_id]);
@@ -251,7 +249,7 @@ impl CacheUpdate for ChannelRecipientAddEvent {
     type Output = ();
 
     async fn update(&mut self, cache: &mut Cache) -> Option<()> {
-        cache.update_user_entry(&self.user).await;
+        cache.update_user_entry(&self.user);
         let user = Arc::clone(&cache.users[&self.user.id]);
 
         if let Some(group) = cache.groups.get_mut(&self.channel_id) {
@@ -407,8 +405,7 @@ impl CacheUpdate for GuildCreateEvent {
         let mut guild = self.guild.clone();
 
         for (user_id, member) in &mut guild.members {
-            let tmp = member.user.read().await.clone();
-            cache.update_user_entry(&tmp).await;
+            cache.update_user_entry(&member.user);
             let user = Arc::clone(&cache.users[user_id]);
 
             member.user = Arc::clone(&user);
@@ -528,9 +525,8 @@ impl CacheUpdate for GuildMemberAddEvent {
     type Output = ();
 
     async fn update(&mut self, cache: &mut Cache) -> Option<()> {
-        let user_id = self.member.user.read().await.id;
-        let tmp = self.member.user.read().await.clone();
-        cache.update_user_entry(&tmp).await;
+        let user_id = self.member.user.id;
+        cache.update_user_entry(&self.member.user);
 
         // Always safe due to being inserted above.
         self.member.user = Arc::clone(&cache.users[&user_id]);
@@ -619,7 +615,7 @@ impl CacheUpdate for GuildMemberUpdateEvent {
     type Output = Member;
 
     async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
-        cache.update_user_entry(&self.user).await;
+        cache.update_user_entry(&self.user);
 
         if let Some(guild) = cache.guilds.get_mut(&self.guild_id) {
             let mut guild = guild.write().await;
@@ -631,7 +627,7 @@ impl CacheUpdate for GuildMemberUpdateEvent {
 
                 member.nick.clone_from(&self.nick);
                 member.roles.clone_from(&self.roles);
-                member.user.write().await.clone_from(&self.user);
+                member.user = Arc::new(self.user.clone());
 
                 found = true;
 
@@ -650,7 +646,7 @@ impl CacheUpdate for GuildMemberUpdateEvent {
                         mute: false,
                         nick: self.nick.clone(),
                         roles: self.roles.clone(),
-                        user: Arc::new(RwLock::new(self.user.clone())),
+                        user: Arc::new(self.user.clone()),
                         _nonexhaustive: (),
                     },
                 );
@@ -678,8 +674,7 @@ impl CacheUpdate for GuildMembersChunkEvent {
 
     async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         for member in self.members.values() {
-            let tmp = member.user.read().await.clone();
-            cache.update_user_entry(&tmp).await;
+            cache.update_user_entry(&member.user);
         }
 
         if let Some(guild) = cache.guilds.get_mut(&self.guild_id) {
@@ -717,11 +712,7 @@ impl<'de> Deserialize<'de> for GuildMembersChunkEvent {
             .map(|members| members
                 .into_iter()
                 .fold(HashMap::new(), |mut acc, member| {
-                    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-
-                    let id = rt.block_on(async {
-                        member.user.read().await.id
-                    });
+                    let id = member.user.id;
 
                     acc.insert(id, member);
 
@@ -1031,8 +1022,7 @@ impl CacheUpdate for PresenceUpdateEvent {
         let user_id = self.presence.user_id;
 
         if let Some(user) = self.presence.user.as_mut() {
-            let tmp = user.read().await.clone();
-            cache.update_user_entry(&tmp).await;
+            cache.update_user_entry(user);
             *user = Arc::clone(&cache.users[&user_id]);
         }
 
@@ -1062,7 +1052,7 @@ impl CacheUpdate for PresenceUpdateEvent {
                             joined_at: None,
                             mute: false,
                             nick: self.presence.nick.clone(),
-                            user: Arc::clone(&user),
+                            user: Arc::clone(user),
                             roles,
                             _nonexhaustive: (),
                         });
@@ -1244,11 +1234,10 @@ impl CacheUpdate for ReadyEvent {
 
         for (user_id, presence) in &mut ready.presences {
             if let Some(ref user) = presence.user {
-                let tmp = user.read().await.clone();
-                cache.update_user_entry(&tmp).await;
+                cache.update_user_entry(user);
             }
 
-            presence.user = cache.users.get(user_id).cloned();
+            presence.user = cache.user(user_id);
         }
 
         cache.presences.extend(ready.presences);

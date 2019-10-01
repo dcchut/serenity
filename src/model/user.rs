@@ -12,8 +12,8 @@ use crate::{internal::prelude::*, model::misc::Mentionable};
 use crate::builder::{CreateMessage, EditProfile};
 #[cfg(feature = "model")]
 use crate::http::GuildPagination;
-#[cfg(all(feature = "cache", feature = "model"))]
-use async_std::sync::RwLock;
+//#[cfg(all(feature = "cache", feature = "model"))]
+//use async_std::sync::RwLock;
 #[cfg(feature = "model")]
 use std::fmt::Write;
 #[cfg(feature = "model")]
@@ -591,7 +591,7 @@ impl User {
 
                 for channel in guard.values() {
                     let guard = channel.read().await;
-                    if guard.recipient.read().await.id == self.id {
+                    if guard.recipient.id == self.id {
                         private_channel_id = Some(guard.id);
                         break;
                     }
@@ -886,7 +886,7 @@ impl UserId {
     /// [`User`]: ../user/struct.User.html
     #[cfg(feature = "cache")]
     #[inline]
-    pub async fn to_user_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<User>>> {
+    pub async fn to_user_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<User>> {
         let guard = cache.as_ref().read().await;
         let res = guard.user(self);
 
@@ -908,7 +908,7 @@ impl UserId {
             if let Some(cache) = cache_http.cache() {
 
                 if let Some(user) = cache.read().await.user(self) {
-                    return Ok(user.read().await.clone());
+                    return Ok((*user).clone());
                 }
             }
         }
@@ -956,16 +956,14 @@ impl<'a> From<&'a CurrentUser> for UserId {
 impl From<Member> for UserId {
     /// Gets the Id of a `Member`.
     fn from(member: Member) -> UserId {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-        rt.block_on(member.user.read()).id
+        member.user.id
     }
 }
 
 impl<'a> From<&'a Member> for UserId {
     /// Gets the Id of a `Member`.
     fn from(member: &Member) -> UserId {
-        let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-        rt.block_on(member.user.read()).id
+        member.user.id
     }
 }
 

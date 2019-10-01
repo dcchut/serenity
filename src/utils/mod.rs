@@ -713,9 +713,9 @@ async fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: 
                         if let Some(member) = guild.read().await.members.get(&id) {
 
                             if show_discriminator {
-                                format!("@{}", member.distinct().await)
+                                format!("@{}", member.distinct())
                             } else {
-                                format!("@{}", member.display_name().await)
+                                format!("@{}", member.display_name())
                             }
                         } else {
                             "@invalid-user".to_string()
@@ -727,8 +727,6 @@ async fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: 
                     let user = cache.read().await.users.get(&id).cloned();
 
                     if let Some(user) = user {
-                        let user = user.read().await;
-
                         if show_discriminator {
                             format!("@{}#{:04}", user.name, user.discriminator)
                         } else {

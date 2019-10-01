@@ -76,7 +76,7 @@ pub struct Member {
     /// Attached User struct.
     #[serde(deserialize_with = "deserialize_sync_user",
             serialize_with = "serialize_sync_user")]
-    pub user: Arc<RwLock<User>>,
+    pub user: Arc<User>,
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
 }
@@ -102,7 +102,7 @@ impl Member {
             return Ok(());
         }
 
-        match http.as_ref().add_member_role(self.guild_id.0, self.user.read().await.id.0, role_id.0).await {
+        match http.as_ref().add_member_role(self.guild_id.0, self.user.id.0, role_id.0).await {
             Ok(()) => {
                 self.roles.push(role_id);
 
@@ -127,7 +127,7 @@ impl Member {
         builder.roles(&self.roles);
         let map = utils::hashmap_to_json_map(builder.0);
 
-        match http.as_ref().edit_member(self.guild_id.0, self.user.read().await.id.0, &map).await {
+        match http.as_ref().edit_member(self.guild_id.0, self.user.id.0, &map).await {
             Ok(()) => Ok(()),
             Err(why) => {
                 self.roles.retain(|r| !role_ids.contains(r));
@@ -167,7 +167,7 @@ impl Member {
 
         http.as_ref().ban_user(
             self.guild_id.0,
-            self.user.read().await.id.0,
+            self.user.id.0,
             dmd,
             &*reason,
         ).await
@@ -206,7 +206,7 @@ impl Member {
         let reader = guild.read().await;
 
         for (cid, channel) in &reader.channels {
-            if reader.user_permissions_in(*cid, self.user.read().await.id).await.read_messages() {
+            if reader.user_permissions_in(*cid, self.user.id).await.read_messages() {
                 return Some(Arc::clone(channel));
             }
         }
@@ -218,20 +218,20 @@ impl Member {
     ///
     /// The nickname takes priority over the member's username if it exists.
     #[inline]
-    pub async fn display_name(&self) -> Cow<'_, String> {
+    pub fn display_name(&self) -> Cow<'_, String> {
         match self.nick.as_ref().map(Cow::Borrowed)  {
             Some(x) => x,
-            None => Cow::Owned(self.user.read().await.name.clone()),
+            None => Cow::Owned(self.user.name.clone()),
         }
     }
 
     /// Returns the DiscordTag of a Member, taking possible nickname into account.
     #[inline]
-    pub async fn distinct(&self) -> String {
+    pub fn distinct(&self) -> String {
         format!(
             "{}#{}",
-            self.display_name().await,
-            self.user.read().await.discriminator
+            self.display_name(),
+            self.user.discriminator
         )
     }
 
@@ -249,7 +249,7 @@ impl Member {
         f(&mut edit_member);
         let map = utils::hashmap_to_json_map(edit_member.0);
 
-        http.as_ref().edit_member(self.guild_id.0, self.user.read().await.id.0, &map).await
+        http.as_ref().edit_member(self.guild_id.0, self.user.id.0, &map).await
     }
 
     /// Retrieves the ID and position of the member's highest role in the
@@ -338,12 +338,12 @@ impl Member {
                         return Err(Error::Model(ModelError::InvalidPermissions(req)));
                     }
 
-                    reader.check_hierarchy(cache, self.user.read().await.id).await?;
+                    reader.check_hierarchy(cache, self.user.id).await?;
                 }
             }
         }
 
-        self.guild_id.kick(cache_http.http(), self.user.read().await.id).await
+        self.guild_id.kick(cache_http.http(), self.user.id).await
     }
 
     /// Returns the guild-level permissions for the member.
@@ -375,7 +375,7 @@ impl Member {
 
         let reader = guild.read().await;
 
-        Ok(reader.member_permissions(self.user.read().await.id).await)
+        Ok(reader.member_permissions(self.user.id))
     }
 
     /// Removes a [`Role`] from the member, editing its roles in-place if the
@@ -397,7 +397,7 @@ impl Member {
             return Ok(());
         }
 
-        match http.as_ref().remove_member_role(self.guild_id.0, self.user.read().await.id.0, role_id.0).await {
+        match http.as_ref().remove_member_role(self.guild_id.0, self.user.id.0, role_id.0).await {
             Ok(()) => {
                 self.roles.retain(|r| r.0 != role_id.0);
 
@@ -421,7 +421,7 @@ impl Member {
         builder.roles(&self.roles);
         let map = utils::hashmap_to_json_map(builder.0);
 
-        match http.as_ref().edit_member(self.guild_id.0, self.user.read().await.id.0, &map).await {
+        match http.as_ref().edit_member(self.guild_id.0, self.user.id.0, &map).await {
             Ok(()) => Ok(()),
             Err(why) => {
                 self.roles.extend_from_slice(role_ids);
@@ -466,7 +466,7 @@ impl Member {
     /// [Ban Members]: ../permissions/struct.Permissions.html#associatedconstant.BAN_MEMBERS
     #[cfg(all(feature = "cache", feature = "http"))]
     pub async fn unban(&self, http: impl AsRef<Http>) -> Result<()> {
-        http.as_ref().remove_ban(self.guild_id.0, self.user.read().await.id.0).await
+        http.as_ref().remove_ban(self.guild_id.0, self.user.id.0).await
     }
 
     /// Retrieves the member's user ID.
@@ -479,8 +479,8 @@ impl Member {
     /// This function can deadlock while retrieving a read guard to the user
     /// object if your application infinitely holds a write lock elsewhere.
     #[cfg(feature = "cache")]
-    pub async fn user_id(&self) -> UserId {
-        self.user.read().await.id
+    pub fn user_id(&self) -> UserId {
+        self.user.id
     }
 }
 
@@ -497,7 +497,7 @@ impl Display for Member {
     // This is in the format of `<@USER_ID>`.
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Display::fmt(&futures::executor::block_on(async {
-            let guard = self.user.read().await;
+            let guard = &self.user;
             guard.mention().await
         }), f)
     }

@@ -68,7 +68,7 @@ pub fn deserialize_members<'de, D: Deserializer<'de>>(
     let mut members = HashMap::new();
 
     for member in vec {
-        let user_id = futures::executor::block_on(member.user.read()).id;
+        let user_id = member.user.id;
 
         members.insert(user_id, member);
     }
@@ -165,7 +165,7 @@ pub fn serialize_roles<S: Serializer>(
 
 pub fn deserialize_single_recipient<'de, D: Deserializer<'de>>(
     deserializer: D)
-    -> StdResult<Arc<RwLock<User>>, D::Error> {
+    -> StdResult<Arc<User>, D::Error> {
     let mut users: Vec<User> = Deserialize::deserialize(deserializer)?;
     let user = if users.is_empty() {
         return Err(DeError::custom("Expected a single recipient"));
@@ -173,56 +173,53 @@ pub fn deserialize_single_recipient<'de, D: Deserializer<'de>>(
         users.remove(0)
     };
 
-    Ok(Arc::new(RwLock::new(user)))
+    Ok(Arc::new(user))
 }
 
 pub fn serialize_single_recipient<S: Serializer>(
-    user: &Arc<RwLock<User>>,
+    user: &Arc<User>,
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(1))?;
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
-    seq.serialize_element(&*rt.block_on(user.read()))?;
+    seq.serialize_element(&**user)?;
 
     seq.end()
 }
 
 pub fn deserialize_sync_user<'de, D>(deserializer: D)
-    -> StdResult<Arc<RwLock<User>>, D::Error> where D: Deserializer<'de> {
-    Ok(Arc::new(RwLock::new(User::deserialize(deserializer)?)))
+    -> StdResult<Arc<User>, D::Error> where D: Deserializer<'de> {
+    Ok(Arc::new(User::deserialize(deserializer)?))
 }
 
 pub fn serialize_sync_user<S: Serializer>(
-    user: &Arc<RwLock<User>>,
+    user: &Arc<User>,
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-    User::serialize(&*rt.block_on(user.read()), serializer)
+    User::serialize(&*user, serializer)
 }
 
 pub fn deserialize_users<'de, D: Deserializer<'de>>(
     deserializer: D)
-    -> StdResult<HashMap<UserId, Arc<RwLock<User>>>, D::Error> {
+    -> StdResult<HashMap<UserId, Arc<User>>, D::Error> {
     let vec: Vec<User> = Deserialize::deserialize(deserializer)?;
     let mut users = HashMap::new();
 
     for user in vec {
-        users.insert(user.id, Arc::new(RwLock::new(user)));
+        users.insert(user.id, Arc::new(user));
     }
 
     Ok(users)
 }
 
 pub fn serialize_users<S: Serializer>(
-    users: &HashMap<UserId, Arc<RwLock<User>>>,
+    users: &HashMap<UserId, Arc<User>>,
     serializer: S
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(users.len()))?;
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 
     for user in users.values() {
-        seq.serialize_element(&*rt.block_on(user.read()))?;
+        seq.serialize_element(&**user)?;
     }
 
     seq.end()

@@ -433,7 +433,7 @@ impl ChannelId {
             Channel::Guild(channel) => channel.read().await.name().to_string(),
             Channel::Group(channel) => {
                 let guard = channel.read().await;
-                let res = guard.name().await;
+                let res = guard.name();
 
                 match res {
                     Cow::Borrowed(name) => name.to_string(),
@@ -443,7 +443,7 @@ impl ChannelId {
             Channel::Category(category) => category.read().await.name().to_string(),
             Channel::Private(channel) => {
                 let guard = channel.read().await;
-                let res = guard.name().await;
+                let res = guard.name();
 
                 res
             },

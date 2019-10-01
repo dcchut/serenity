@@ -181,8 +181,8 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
     propagate_err!(validate_declaration(&mut fun, DeclarFor::Command));
 
     let either = [
-        parse_quote!(CommandResult),
-        parse_quote!(serenity::framework::standard::CommandResult),
+        parse_quote!(FutureCommandResult),
+        parse_quote!(serenity::framework::standard::FutureCommandResult),
     ];
 
     propagate_err!(validate_return_type(&mut fun, either));
@@ -420,8 +420,8 @@ pub fn help(attr: TokenStream, input: TokenStream) -> TokenStream {
     propagate_err!(validate_declaration(&mut fun, DeclarFor::Help));
 
     let either = [
-        parse_quote!(CommandResult),
-        parse_quote!(serenity::framework::standard::CommandResult),
+        parse_quote!(FutureCommandResult),
+        parse_quote!(serenity::framework::standard::FutureCommandResult),
     ];
 
     propagate_err!(validate_return_type(&mut fun, either));
@@ -702,8 +702,8 @@ pub fn check(_attr: TokenStream, input: TokenStream) -> TokenStream {
     propagate_err!(validate_declaration(&mut fun, DeclarFor::Check));
 
     let either = [
-        parse_quote!(CheckResult),
-        parse_quote!(serenity::framework::standard::CheckResult),
+        parse_quote!(FutureCheckResult),
+        parse_quote!(serenity::framework::standard::FutureCheckResult),
     ];
 
     propagate_err!(validate_return_type(&mut fun, either));

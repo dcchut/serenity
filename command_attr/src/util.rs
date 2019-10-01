@@ -184,31 +184,31 @@ pub fn validate_declaration(fun: &mut CommandFun, dec_for: DeclarFor) -> Result<
         ));
     }
 
-    let context: Type = parse_quote!(&mut Context);
-    let message: Type = parse_quote!(&Message);
+    let context: Type = parse_quote!(Context);
+    let message: Type = parse_quote!(Message);
     let args: Type = parse_quote!(Args);
     let args2: Type = parse_quote!(&mut Args);
     let options: Type = parse_quote!(&CommandOptions);
     let hoptions: Type = parse_quote!(&'static HelpOptions);
-    let groups: Type = parse_quote!(&[&'static CommandGroup]);
+    let groups: Type = parse_quote!(Vec<&'static CommandGroup>);
     let owners: Type = parse_quote!(HashSet<UserId>);
 
-    let context_path: Type = parse_quote!(&mut serenity::prelude::Context);
-    let message_path: Type = parse_quote!(&serenity::model::channel::Message);
+    let context_path: Type = parse_quote!(serenity::prelude::Context);
+    let message_path: Type = parse_quote!(serenity::model::channel::Message);
     let args_path: Type = parse_quote!(serenity::framework::standard::Args);
     let args2_path: Type = parse_quote!(&mut serenity::framework::standard::Args);
     let options_path: Type = parse_quote!(&'static serenity::framework::standard::CommandOptions);
     let hoptions_path: Type = parse_quote!(&'static serenity::framework::standard::HelpOptions);
-    let groups_path: Type = parse_quote!(&[&'static serenity::framework::standard::CommandGroup]);
+    let groups_path: Type = parse_quote!(Vec<&'static serenity::framework::standard::CommandGroup>);
     let owners_path: Type = parse_quote!(std::collections::HashSet<serenity::model::id::UserId, std::hash::BuildHasher>);
 
-    let ctx_error = "first argument's type should be `&mut Context`";
-    let msg_error = "second argument's type should be `&Message`";
+    let ctx_error = "first argument's type should be `Context`";
+    let msg_error = "second argument's type should be `Message`";
     let args_error = "third argument's type should be `Args`";
     let args2_error = "third argument's type should be `&mut Args`";
     let options_error = "fourth argument's type should be `&'static CommandOptions`";
     let hoptions_error = "fourth argument's type should be `&'static HelpOptions`";
-    let groups_error = "fifth argument's type should be `&[&'static CommandGroup]`";
+    let groups_error = "fifth argument's type should be `Vec<&'static CommandGroup>`";
     let owners_error = "sixth argument's type should be `HashSet<UserId>`";
 
     #[allow(unused_assignments)]
@@ -262,7 +262,7 @@ pub fn validate_declaration(fun: &mut CommandFun, dec_for: DeclarFor) -> Result<
         spoof_or_check! {
             ()     []    context,  "_ctx",     ctx_error,      context_path;
             ()     []    message,  "_msg",     msg_error,      message_path;
-            ()     [mut] args,     "_args",    args_error,     args_path;
+            ()     [mut]    args,     "_args",    args_error,     args_path;
             (help) []    hoptions, "_hoptions", hoptions_error, hoptions_path;
             (help) []    groups,   "_groups",  groups_error,   groups_path;
             (help) []    owners,   "_owners",  owners_error,   owners_path

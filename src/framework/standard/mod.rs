@@ -28,6 +28,10 @@ use crate::model::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use async_std::sync::RwLock;
+use std::future::Future;
+use futures::FutureExt;
+use std::pin::Pin;
 use async_trait::async_trait;
 use uwl::{UnicodeStream, StrExt};
 
@@ -78,9 +82,19 @@ pub enum DispatchError {
     __Nonexhaustive,
 }
 
+#[async_trait]
+pub trait BeforeHandler : Send {
+    async fn before_handler(&self, ctx : &mut Context, msg : &Message, command_name : &str) -> bool;
+}
+
+#[async_trait]
+pub trait AfterHandler : Send {
+    async fn after_handler(&self, ctx : &mut Context, msg : &Message, command_name : &str, error : Result<(), CommandError>);
+}
+
 pub type DispatchHook = dyn Fn(&mut Context, &Message, DispatchError) + Send + Sync + 'static;
-type BeforeHook = dyn Fn(&mut Context, &Message, &str) -> bool + Send + Sync + 'static;
-type AfterHook = dyn Fn(&mut Context, &Message, &str, Result<(), CommandError>) + Send + Sync + 'static;
+//type BeforeHook = dyn Send + Sync + 'static + Fn(&mut Context, &Message, &str) -> Pin<Box<dyn Future<Output = bool> + Send>>;
+//type AfterHook = dyn Fn(&mut Context, &Message, &str, Result<(), CommandError>) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync + 'static;
 type UnrecognisedHook = dyn Fn(&mut Context, &Message, &str) + Send + Sync + 'static;
 type NormalMessageHook = dyn Fn(&mut Context, &Message) + Send + Sync + 'static;
 type PrefixOnlyHook = dyn Fn(&mut Context, &Message) + Send + Sync + 'static;
@@ -94,8 +108,8 @@ type PrefixOnlyHook = dyn Fn(&mut Context, &Message) + Send + Sync + 'static;
 pub struct StandardFramework {
     groups: Vec<(&'static CommandGroup, Map)>,
     buckets: HashMap<String, Bucket>,
-    before: Option<Arc<BeforeHook>>,
-    after: Option<Arc<AfterHook>>,
+    before: Option<Arc<RwLock<Box<dyn BeforeHandler>>>>,
+    after: Option<Arc<RwLock<Box<dyn AfterHandler>>>>,
     dispatch: Option<Arc<DispatchHook>>,
     unrecognised_command: Option<Arc<UnrecognisedHook>>,
     normal_message: Option<Arc<NormalMessageHook>>,
@@ -243,39 +257,39 @@ impl StandardFramework {
 
     fn should_fail<'a>(
         &'a mut self,
-        ctx: &'a mut Context,
-        msg: &'a Message,
+        mut ctx: Context,
+        mut msg: Message,
         args: &'a mut Args,
         command: &'static CommandOptions,
         group: &'static GroupOptions,
-    ) -> impl std::future::Future<Output = Option<DispatchError>> + 'a {
+    ) -> Pin<Box<dyn Future<Output = (Context, Message, Option<DispatchError>)> + 'a + Send>> {
         async move {
             if let Some(min) = command.min_args {
                 if args.len() < min as usize {
-                    return Some(DispatchError::NotEnoughArguments {
+                    return (ctx, msg, Some(DispatchError::NotEnoughArguments {
                         min,
                         given: args.len(),
-                    });
+                    }));
                 }
             }
 
             if let Some(max) = command.max_args {
                 if args.len() > max as usize {
-                    return Some(DispatchError::TooManyArguments {
+                    return (ctx, msg, Some(DispatchError::TooManyArguments {
                         max,
                         given: args.len(),
-                    });
+                    }));
                 }
             }
 
             if (group.owner_privilege && command.owner_privilege)
                 && self.config.owners.contains(&msg.author.id)
             {
-                return None;
+                return (ctx, msg, None);
             }
 
             if self.config.blocked_users.contains(&msg.author.id) {
-                return Some(DispatchError::BlockedUser);
+                return (ctx, msg, Some(DispatchError::BlockedUser));
             }
 
             #[cfg(feature = "cache")]
@@ -285,13 +299,13 @@ impl StandardFramework {
                         let guild_id = chan.guild_id;
 
                         if self.config.blocked_guilds.contains(&guild_id) {
-                            return Some(DispatchError::BlockedGuild);
+                            return (ctx, msg, Some(DispatchError::BlockedGuild));
                         }
 
                         if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
                             let guild = guild.read().await;
                             if self.config.blocked_users.contains(&guild.owner_id) {
-                                return Some(DispatchError::BlockedGuild);
+                                return (ctx, msg, Some(DispatchError::BlockedGuild));
                             }
                         }
                     }
@@ -299,31 +313,33 @@ impl StandardFramework {
 
             if !self.config.allowed_channels.is_empty() &&
                 !self.config.allowed_channels.contains(&msg.channel_id) {
-                return Some(DispatchError::BlockedChannel);
+                return (ctx, msg, Some(DispatchError::BlockedChannel));
             }
 
             if let Some(ref mut bucket) = command.bucket.as_ref().and_then(|b| self.buckets.get_mut(*b)) {
                 let rate_limit = bucket.take(msg.author.id.0);
 
                 let apply = bucket.check.as_ref().map_or(true, |check| {
-                    (check)(ctx, msg.guild_id, msg.channel_id, msg.author.id)
+                    (check)(&mut ctx, msg.guild_id, msg.channel_id, msg.author.id)
                 });
 
                 if apply && rate_limit > 0 {
-                    return Some(DispatchError::Ratelimited(rate_limit));
+                    return (ctx, msg, Some(DispatchError::Ratelimited(rate_limit)));
                 }
             }
 
             for check in group.checks.iter().chain(command.checks.iter()) {
-                let res = (check.function)(ctx, msg, args, command);
+                let (inner_ctx, inner_msg, res) = (check.function)(ctx, msg, args, command).await;
+                ctx = inner_ctx;
+                msg = inner_msg;
 
                 if let CheckResult::Failure(r) = res {
-                    return Some(DispatchError::CheckFailed(check.name, r));
+                    return (ctx, msg, Some(DispatchError::CheckFailed(check.name, r)));
                 }
             }
 
-            None
-        }
+            (ctx, msg, None)
+        }.boxed()
     }
 
     /// Adds a group which can organize several related commands.
@@ -526,11 +542,11 @@ impl StandardFramework {
     /// # }
     /// ```
     ///
-    pub fn before<F>(mut self, f: F) -> Self
-    where
-        F: Fn(&mut Context, &Message, &str) -> bool + Send + Sync + 'static,
+    pub fn before(mut self, f: Box<dyn BeforeHandler>) -> Self
+    //where
+    //    F: Send + Sync + 'static + Fn(&mut Context, &Message, &str) -> Pin<Box<dyn Future<Output = bool> + Send>>,
     {
-        self.before = Some(Arc::new(f));
+        self.before = Some(Arc::new(RwLock::new(f)));
 
         self
     }
@@ -562,11 +578,9 @@ impl StandardFramework {
     ///     }));
     /// # }
     /// ```
-    pub fn after<F>(mut self, f: F) -> Self
-    where
-        F: Fn(&mut Context, &Message, &str, Result<(), CommandError>) + Send + Sync + 'static,
+    pub fn after(mut self, f: Box<dyn AfterHandler>) -> Self
     {
-        self.after = Some(Arc::new(f));
+        self.after = Some(Arc::new(RwLock::new(f)));
 
         self
     }
@@ -744,31 +758,33 @@ impl Framework for StandardFramework {
             Invoke::Help(name) => {
                 let args = Args::new(stream.rest(), &self.config.delimiters);
 
-                let before = self.before.clone();
-                let after = self.after.clone();
+
                 let owners = self.config.owners.clone();
-
                 let groups = self.groups.iter().map(|(g, _)| *g).collect::<Vec<_>>();
-
-                let msg = msg.clone();
 
                 // `parse_command` promises to never return a help invocation if `StandardFramework::help` is `None`.
                 let help = self.help.unwrap();
 
+                let before = self.before.clone();
+                let after = self.after.clone();
+                let msg = msg.clone();
+
                 tokio::spawn(async move {
                     if let Some(before) = before {
-                        if !before(&mut ctx, &msg, name) {
+                        let guard = before.read().await;
+                        if !guard.before_handler(&mut ctx, &msg, &name).await {
                             return;
                         }
-                    }
+                    };
 
-                    let res = (help.fun)(&mut ctx, &msg, args, help.options, &groups, owners);
+                    let (mut ctx, msg, res) = (help.fun)(ctx, msg, args, help.options, groups, owners).await;
 
                     if let Some(after) = after {
-                        after(&mut ctx, &msg, name, res);
-                    }
+                        let guard = after.read().await;
+                        guard.after_handler(&mut ctx, &msg, name, res).await;
+                    };
                 });
-            }
+            },
             Invoke::Command { command, group } => {
                 let mut args = {
                     use std::borrow::Cow;
@@ -795,9 +811,9 @@ impl Framework for StandardFramework {
                     Args::new(stream.rest(), &delims)
                 };
 
-                if let Some(error) =
-                    self.should_fail(&mut ctx, &msg, &mut args, &command.options, &group.options).await
-                {
+                let (mut ctx, msg, should_fail) = self.should_fail(ctx, msg, &mut args, &command.options, &group.options).await;
+
+                if let Some(error) = should_fail {
                     if let Some(dispatch) = &self.dispatch {
                         dispatch(&mut ctx, &msg, error);
                     }
@@ -809,18 +825,21 @@ impl Framework for StandardFramework {
                 let after = self.after.clone();
                 let msg = msg.clone();
                 let name = &command.options.names[0];
+
                 tokio::spawn(async move {
                     if let Some(before) = before {
-                        if !before(&mut ctx, &msg, name) {
+                        let guard = before.read().await;
+                        if !guard.before_handler(&mut ctx, &msg, name).await {
                             return;
                         }
                     }
 
-                    let res = (command.fun)(&mut ctx, &msg, args);
+                    let (mut ctx, msg, res) = (command.fun)(ctx, msg, args).await;
 
                     if let Some(after) = after {
-                        after(&mut ctx, &msg, name, res);
-                    }
+                        let guard = after.read().await;
+                        guard.after_handler(&mut ctx, &msg, name, res).await;
+                    };
                 });
             }
         }

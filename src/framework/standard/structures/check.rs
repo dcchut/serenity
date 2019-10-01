@@ -3,6 +3,8 @@ use std::fmt;
 use crate::model::channel::Message;
 use crate::client::Context;
 use crate::framework::standard::{Args, CommandOptions};
+use std::pin::Pin;
+use std::future::Future;
 
 /// This type describes why a check has failed and occurs on
 /// [`CheckResult::Failure`].
@@ -41,6 +43,8 @@ pub enum CheckResult {
    Success,
    Failure(Reason),
 }
+
+pub type FutureCheckResult = Pin<Box<dyn Future<Output = (Context, Message, CheckResult)> + Send>>;
 
 impl CheckResult {
     /// Creates a new [`CheckResult::Failure`] with [`Reason::User`].
@@ -111,7 +115,7 @@ impl From<Reason> for CheckResult {
     }
 }
 
-pub type CheckFunction = fn(&mut Context, &Message, &mut Args, &CommandOptions) -> CheckResult;
+pub type CheckFunction = fn(Context, Message, &mut Args, &CommandOptions) -> FutureCheckResult;
 
 /// A check can be part of a command or group and will be executed to
 /// determine whether a user is permitted to use related item.

@@ -1,7 +1,7 @@
 use futures::lock::Mutex;
 use std::sync::Arc;
 use super::{ShardManager, ShardManagerMessage};
-use log::{debug, warn};
+use log::debug;
 use futures::channel::mpsc::UnboundedReceiver;
 use futures::stream::StreamExt;
 
@@ -73,8 +73,10 @@ impl ShardManagerMonitor {
                     }
                 },
                 ShardManagerMessage::ShutdownInitiated => {},
-                ShardManagerMessage::ShutdownFinished(shard_id) => {
-                    /*if let Err(why) = self.shutdown.send(shard_id).await {
+                ShardManagerMessage::ShutdownFinished(_shard_id) => {
+                    /*
+                    TODO: figure out why I care about this
+                    if let Err(why) = self.shutdown.send(shard_id).await {
                         warn!(
                             "[ShardMonitor] Could not forward Shutdown signal to ShardManager for shard {}: {:#?}",
                             shard_id,

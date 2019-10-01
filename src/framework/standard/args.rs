@@ -1,9 +1,9 @@
 use uwl::UnicodeStream;
 
-use std::cell::Cell;
 use std::error::Error as StdError;
 use std::marker::PhantomData;
 use std::{fmt, str::FromStr};
+use std::sync::{Arc, RwLock};
 
 /// Defines how an operation on an `Args` method failed.
 #[derive(Debug)]
@@ -280,7 +280,7 @@ pub struct Args {
     message: String,
     args: Vec<Token>,
     offset: usize,
-    state: Cell<State>,
+    state: Arc<RwLock<State>>,
 }
 
 impl Args {
@@ -348,7 +348,7 @@ impl Args {
             args,
             message: message.to_string(),
             offset: 0,
-            state: Cell::new(State::None),
+            state: Arc::new(RwLock::new(State::None)),
         }
     }
 
@@ -412,7 +412,7 @@ impl Args {
 
         let mut s = s;
 
-        match self.state.get() {
+        match &*self.state.read().unwrap() {
             State::None => {}
             State::Quoted => {
                 s = remove_quotes(s);
@@ -430,7 +430,7 @@ impl Args {
             }
         }
 
-        self.state.set(State::None);
+        self.update_state(State::None);
 
         s
     }
@@ -490,9 +490,9 @@ impl Args {
             return self;
         }
 
-        match self.state.get() {
-            State::None => self.state.set(State::Trimmed),
-            State::Quoted => self.state.set(State::QuotedTrimmed),
+        match &*self.state.read().unwrap() {
+            State::None => self.update_state(State::Trimmed),
+            State::Quoted => self.update_state(State::QuotedTrimmed),
             _ => {}
         }
 
@@ -523,9 +523,9 @@ impl Args {
         let is_quoted = self.args[self.offset].kind == TokenKind::QuotedArgument;
 
         if is_quoted {
-            match self.state.get() {
-                State::None => self.state.set(State::Quoted),
-                State::Trimmed => self.state.set(State::TrimmedQuoted),
+            match &*self.state.read().unwrap() {
+                State::None => self.update_state(State::Quoted),
+                State::Trimmed => self.update_state(State::TrimmedQuoted),
                 _ => {}
             }
         }
@@ -816,6 +816,11 @@ impl Args {
 
         self.len() - self.offset
     }
+
+    /// Update the current state
+    fn update_state(&self, state: State) {
+        *self.state.write().unwrap() = state;
+    }
 }
 
 /// Parse each argument individually, as an iterator.
@@ -828,13 +833,13 @@ pub struct Iter<'a, T: FromStr> {
 impl<'a, T: FromStr> Iter<'a, T> {
     /// Retrieve the current argument.
     pub fn current(&self) -> Option<&str> {
-        self.args.state.set(self.state);
+        self.args.update_state(self.state);
         self.args.current()
     }
 
     /// Parse the current argument independently.
     pub fn parse(&self) -> Result<T, T::Err> {
-        self.args.state.set(self.state);
+        self.args.update_state(self.state);
         self.args.parse::<T>()
     }
 

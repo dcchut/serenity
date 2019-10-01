@@ -1,6 +1,8 @@
 use std::{
     collections::HashSet,
     fmt,
+    future::Future,
+    pin::Pin,
 };
 use crate::client::Context;
 use crate::model::{
@@ -73,8 +75,9 @@ impl<T: fmt::Display> From<T> for CommandError {
     }
 }
 
+pub type FutureCommandResult = Pin<Box<dyn Future<Output = (Context, Message, CommandResult)> + Send>>;
 pub type CommandResult = ::std::result::Result<(), CommandError>;
-pub type CommandFn = fn(&mut Context, &Message, Args) -> CommandResult;
+pub type CommandFn = fn(Context, Message, Args) -> FutureCommandResult;
 
 pub struct Command {
     pub fun: CommandFn,
@@ -97,13 +100,13 @@ impl PartialEq for Command {
 }
 
 pub type HelpCommandFn = fn(
-    &mut Context,
-    &Message,
+    Context,
+    Message,
     Args,
     &'static HelpOptions,
-    &[&'static CommandGroup],
+    Vec<&'static CommandGroup>,
     HashSet<UserId>,
-) -> CommandResult;
+) -> Pin<Box<dyn Future<Output = (Context, Message, CommandResult)> + Send>>;
 
 pub struct HelpCommand {
     pub fun: HelpCommandFn,

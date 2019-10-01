@@ -120,11 +120,8 @@ impl Parse for CommandFun {
 
         let visibility = input.parse()?;
 
-        // ASYNC
-        input.parse::<Token![async]>()?;
         input.parse::<Token![fn]>()?;
         let name = input.parse()?;
-
         // (...)
         let Parenthesised(args) = input.parse::<Parenthesised<FnArg>>()?;
 
@@ -173,11 +170,7 @@ impl ToTokens for CommandFun {
         stream.extend(quote! {
             #(#cooked)*
             #visibility fn #name (#(#args),*) -> #ret {
-                let _inner = async move || {
-                    #(#body)*
-                };
-
-                tokio::runtime::current_thread::Runtime::new().unwrap().block_on(_inner())
+                #(#body)*
             }
         });
     }

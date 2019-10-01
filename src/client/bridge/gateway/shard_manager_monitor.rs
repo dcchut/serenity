@@ -72,7 +72,7 @@ impl ShardManagerMonitor {
                         guard.shutdown_all();
                     }
                 },
-                ShardManagerMessage::ShutdownInitiated => {},
+                ShardManagerMessage::ShutdownInitiated => break,
                 ShardManagerMessage::ShutdownFinished(_shard_id) => {
                     /*
                     TODO: figure out why I care about this

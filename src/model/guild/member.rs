@@ -2,11 +2,6 @@
 use crate::http::CacheHttp;
 use crate::{model::prelude::*};
 use chrono::{DateTime, FixedOffset};
-use std::fmt::{
-    Display,
-    Formatter,
-    Result as FmtResult
-};
 use super::deserialize_sync_user;
 
 #[cfg(all(feature = "builder", feature = "cache", feature = "model"))]
@@ -482,8 +477,13 @@ impl Member {
     pub fn user_id(&self) -> UserId {
         self.user.id
     }
+
+    pub async fn async_to_string(&self) -> String {
+        self.user.mention().await
+    }
 }
 
+/*
 impl Display for Member {
     /// Mentions the user so that they receive a notification.
     ///
@@ -501,7 +501,7 @@ impl Display for Member {
             guard.mention().await
         }), f)
     }
-}
+}*/
 
 /// A partial amount of data for a member.
 ///

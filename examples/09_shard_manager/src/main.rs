@@ -22,17 +22,21 @@
 //!
 //! Note that it may take a minute or more for a latency to be recorded or to
 //! update, depending on how often Discord tells the client to send a heartbeat.
-use std::{env, thread, time::Duration};
+//!
+use std::{env, time::Duration};
 
 use serenity::{
     model::gateway::Ready,
     prelude::*,
 };
 
+use async_trait::async_trait;
+
 struct Handler;
 
+#[async_trait]
 impl EventHandler for Handler {
-    fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, _: Context, ready: Ready) {
         if let Some(shard) = ready.shard {
             // Note that array index 0 is 0-indexed, while index 1 is 1-indexed.
             //
@@ -47,26 +51,27 @@ impl EventHandler for Handler {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN")
         .expect("Expected a token in the environment");
 
-    let mut client = Client::new(&token, Handler).expect("Err creating client");
+    let mut client = Client::new(&token, Handler).await.expect("Err creating client");
 
     // Here we clone a lock to the Shard Manager, and then move it into a new
     // thread. The thread will unlock the manager and print shards' status on a
     // loop.
     let manager = client.shard_manager.clone();
 
-    thread::spawn(move || {
+    tokio::spawn(async move {
         loop {
-            thread::sleep(Duration::from_secs(30));
+            tokio::timer::delay_for(Duration::from_secs(30)).await;
 
-            let lock = manager.lock();
-            let shard_runners = lock.runners.lock();
+            let lock = manager.lock().await;
 
-            for (id, runner) in shard_runners.iter() {
+            for entry in lock.runners.iter() {
+                let (id, runner) = (entry.key(), &*entry);
                 println!(
                     "Shard ID {} is {} with a latency of {:?}",
                     id,
@@ -79,7 +84,7 @@ fn main() {
 
     // Start two shards. Note that there is an ~5 second ratelimit period
     // between when one shard can start after another.
-    if let Err(why) = client.start_shards(2) {
+    if let Err(why) = client.start_shards(2).await {
         println!("Client error: {:?}", why);
     }
 }

@@ -18,6 +18,7 @@ pub use self::{
     async_test::run_async_test,
 };
 pub use futures::lock::Mutex as Mutex;
+pub use async_std::sync::RwLock as RwLock;
 
 use base64;
 use crate::internal::prelude::*;
@@ -42,8 +43,7 @@ use std::{
     io::Read,
     path::Path,
 };
-#[cfg(feature = "cache")]
-use async_std::sync::RwLock;
+
 #[cfg(feature = "cache")]
 use crate::model::channel::Channel;
 #[cfg(feature = "cache")]

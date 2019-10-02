@@ -28,9 +28,6 @@ use serde::ser::{SerializeStruct, Serialize, Serializer};
 use serde_json;
 use super::utils::deserialize_u64;
 
-#[cfg(feature = "model")]
-use std::fmt::{Display, Formatter, Result as FmtResult};
-
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
 use crate::cache::FromStrAndCache;
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
@@ -312,6 +309,23 @@ impl Channel {
             _ => None
         }
     }
+
+    pub async fn async_to_string(&self) -> String {
+        match *self {
+            Channel::Group(ref group) => {
+                group.read().await.name().to_string()
+            },
+            Channel::Guild(ref ch) => {
+                let guard = ch.read().await;
+                guard.mention().await
+            },
+            Channel::Private(ref ch) => {
+                ch.read().await.recipient.name.to_string()
+            },
+            Channel::Category(ref category) => category.read().await.name.to_string(),
+            Channel::__Nonexhaustive => unreachable!(),
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for Channel {
@@ -362,6 +376,7 @@ impl Serialize for Channel {
     }
 }
 
+/*
 #[cfg(feature = "model")]
 impl Display for Channel {
     /// Formats the channel into a "mentioned" string.
@@ -396,7 +411,7 @@ impl Display for Channel {
             Channel::__Nonexhaustive => unreachable!(),
         }
     }
-}
+}*/
 
 /// A representation of a type of channel.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]

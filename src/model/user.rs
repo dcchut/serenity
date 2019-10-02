@@ -3,7 +3,6 @@
 #[cfg(feature = "http")]
 use crate::http::CacheHttp;
 use serde_json;
-use std::fmt;
 use super::utils::deserialize_u16;
 use super::prelude::*;
 use crate::{internal::prelude::*, model::misc::Mentionable};
@@ -855,8 +854,15 @@ impl User {
 
         guild_id.member(cache_http, &self.id).await.ok().and_then(|member| member.nick.clone())
     }
+
+    /// Returns a string representing the user.
+    /// This is in the format of: `<@USER_ID>`
+    pub async fn async_display(&self) -> String {
+        self.id.mention().await
+    }
 }
 
+/*
 impl fmt::Display for User {
     /// Formats a string which will mention the user.
     // This is in the format of: `<@USER_ID>`
@@ -864,6 +870,7 @@ impl fmt::Display for User {
         fmt::Display::fmt(&futures::executor::block_on(self.id.mention()), f)
     }
 }
+*/
 
 #[cfg(feature = "model")]
 impl UserId {

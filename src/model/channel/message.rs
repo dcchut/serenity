@@ -281,7 +281,7 @@ impl Message {
             MessageType::PinsAdd => {
                 self.content = format!(
                     "{} pinned a message to this channel. See all the pins.",
-                    self.author
+                    self.author.async_display().await
                 );
             },
             MessageType::MemberJoin => {

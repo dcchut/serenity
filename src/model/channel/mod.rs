@@ -43,6 +43,8 @@ use crate::cache::CacheRwLock;
 use std::sync::Arc;
 #[cfg(feature = "cache")]
 use async_std::sync::RwLock;
+#[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
+use async_trait::async_trait;
 
 /// A container for any channel.
 #[derive(Clone, Debug)]
@@ -643,13 +645,14 @@ mod test {
 }
 
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
+#[async_trait]
 impl FromStrAndCache for Channel {
     type Err = ChannelParseError;
 
-    fn from_str(cache: impl AsRef<CacheRwLock>, s: &str) -> StdResult<Self, Self::Err> {
+    async fn from_str(cache: &CacheRwLock, s: &str) -> StdResult<Self, Self::Err> {
         match parse_channel(s) {
             Some(x) => {
-                match futures::executor::block_on(ChannelId(x).to_channel_cached(&cache)) {
+                match ChannelId(x).to_channel_cached(&cache).await {
                     Some(channel) => Ok(channel),
                     _ => Err(ChannelParseError::NotPresentInCache),
                 }

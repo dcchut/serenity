@@ -56,29 +56,34 @@ mod settings;
 
 pub use self::cache_update::CacheUpdate;
 pub use self::settings::Settings;
+use async_trait::async_trait;
 
 type MessageCache = HashMap<ChannelId, HashMap<MessageId, Message>>;
 
+#[async_trait]
 pub trait FromStrAndCache: Sized {
     type Err;
 
-    fn from_str(cache: impl AsRef<CacheRwLock>, s: &str) -> Result<Self, Self::Err>;
+    async fn from_str(cache: &CacheRwLock, s: &str) -> Result<Self, Self::Err>;
 }
 
+#[async_trait]
 pub trait StrExt: Sized {
-    fn parse_cached<F: FromStrAndCache>(&self, cache: impl AsRef<CacheRwLock>) -> Result<F, F::Err>;
+    async fn parse_cached<F: FromStrAndCache>(&self, cache: &CacheRwLock) -> Result<F, F::Err>;
 }
 
+#[async_trait]
 impl<'a> StrExt for &'a str {
-    fn parse_cached<F: FromStrAndCache>(&self, cache: impl AsRef<CacheRwLock>) -> Result<F, F::Err> {
-        F::from_str(&cache, &self)
+    async fn parse_cached<F: FromStrAndCache>(&self, cache: &CacheRwLock) -> Result<F, F::Err> {
+        F::from_str(&cache, &self).await
     }
 }
 
+#[async_trait]
 impl<F: FromStr> FromStrAndCache for F {
     type Err = F::Err;
 
-    fn from_str(_cache: impl AsRef<CacheRwLock>, s: &str) -> Result<Self, Self::Err> {
+    async fn from_str(_cache: &CacheRwLock, s: &str) -> Result<Self, Self::Err> {
         s.parse::<F>()
     }
 }

@@ -20,12 +20,6 @@ use crate::builder::{
 use crate::http::AttachmentType;
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::internal::prelude::*;
-#[cfg(feature = "model")]
-use std::fmt::{
-    Display,
-    Formatter,
-    Result as FmtResult
-};
 #[cfg(all(feature = "model", feature = "utils"))]
 use crate::utils as serenity_utils;
 #[cfg(all(feature = "model", feature = "builder"))]
@@ -957,8 +951,17 @@ impl GuildChannel {
     }
 }
 
+/*
+TODO: refactor this
+#[cfg(feature = "model")]
+use std::fmt::{
+    Display,
+    Formatter,
+    Result as FmtResult
+};
+
 #[cfg(feature = "model")]
 impl Display for GuildChannel {
     /// Formats the channel, creating a mention of it.
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult { Display::fmt(&futures::executor::block_on(self.id.mention()), f) }
-}
+}*/

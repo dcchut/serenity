@@ -1,6 +1,8 @@
 use crate::model::prelude::*;
 use std::cmp::Ordering;
 
+#[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
+use async_trait::async_trait;
 #[cfg(all(feature = "builder", feature = "cache", feature = "model"))]
 use crate::builder::EditRole;
 #[cfg(all(feature = "cache", feature = "model"))]
@@ -223,12 +225,13 @@ impl<'a> From<&'a Role> for RoleId {
 }
 
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
+#[async_trait]
 impl FromStrAndCache for Role {
     type Err = RoleParseError;
 
-    fn from_str(cache: impl AsRef<CacheRwLock>, s: &str) -> StdResult<Self, Self::Err> {
+    async fn from_str(cache: &CacheRwLock, s: &str) -> StdResult<Self, Self::Err> {
         match parse_role(s) {
-            Some(x) => match futures::executor::block_on(RoleId(x).to_role_cached(&cache)) {
+            Some(x) => match RoleId(x).to_role_cached(&cache).await {
                 Some(role) => Ok(role),
                 _ => Err(RoleParseError::NotPresentInCache),
             },

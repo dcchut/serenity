@@ -1,9 +1,8 @@
 use std::{
     collections::HashSet,
     fmt,
-    future::Future,
-    pin::Pin,
 };
+use async_trait::async_trait;
 use crate::client::Context;
 use crate::model::{
     channel::Message,
@@ -75,12 +74,16 @@ impl<T: fmt::Display> From<T> for CommandError {
     }
 }
 
-pub type FutureCommandResult = Pin<Box<dyn Future<Output = (Context, Message, CommandResult)> + Send>>;
+#[async_trait]
+pub trait AsyncCommand : Send + Sync {
+    async fn command(&self, ctx: &mut Context, msg: &Message, args: &mut Args) -> CommandResult;
+}
+
 pub type CommandResult = ::std::result::Result<(), CommandError>;
-pub type CommandFn = fn(Context, Message, Args) -> FutureCommandResult;
+// TODO: remove pub type CommandFn = fn(Context, Message, Args) -> FutureCommandResult;
 
 pub struct Command {
-    pub fun: CommandFn,
+    pub fun: Box<dyn AsyncCommand>,
     pub options: &'static CommandOptions,
 }
 
@@ -95,21 +98,29 @@ impl fmt::Debug for Command {
 impl PartialEq for Command {
     #[inline]
     fn eq(&self, other: &Command) -> bool {
-        (self.fun as usize == other.fun as usize) && (self.options == other.options)
+        // TODO: does this even make sense?
+        (self.fun.as_ref() as *const _) == (other.fun.as_ref() as *const _) && (self.options == other.options)
     }
 }
 
-pub type HelpCommandFn = fn(
-    Context,
-    Message,
-    Args,
-    &'static HelpOptions,
-    Vec<&'static CommandGroup>,
-    HashSet<UserId>,
-) -> Pin<Box<dyn Future<Output = (Context, Message, CommandResult)> + Send>>;
+#[async_trait]
+pub trait AsyncHelpCommand : Send + Sync {
+    async fn command(&self, ctx: &mut Context, msg: &Message, args: Args, options: &'static HelpOptions, groups: &[&'static CommandGroup], owners: HashSet<UserId>) -> CommandResult;
+}
+
+//let res = (help.fun)(&mut ctx, &msg, args, help.options, &groups, owners);
+
+// TODO: remove pub type HelpCommandFn = fn(
+//    Context,
+//    Message,
+//    Args,
+//    &'static HelpOptions,
+//    Vec<&'static CommandGroup>,
+//    HashSet<UserId>,
+//) -> Pin<Box<dyn Future<Output = (Context, Message, CommandResult)> + Send>>;
 
 pub struct HelpCommand {
-    pub fun: HelpCommandFn,
+    pub fun: Box<dyn AsyncHelpCommand>,
     pub options: &'static HelpOptions,
 }
 
@@ -125,7 +136,8 @@ impl fmt::Debug for HelpCommand {
 impl PartialEq for HelpCommand {
     #[inline]
     fn eq(&self, other: &HelpCommand) -> bool {
-        (self.fun as usize == other.fun as usize) && (self.options == other.options)
+        // TODO: does this even make sense?
+        (self.fun.as_ref() as *const _) == (other.fun.as_ref() as *const _) && (self.options == other.options)
     }
 }
 

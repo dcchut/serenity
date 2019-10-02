@@ -3,8 +3,7 @@ use std::fmt;
 use crate::model::channel::Message;
 use crate::client::Context;
 use crate::framework::standard::{Args, CommandOptions};
-use std::pin::Pin;
-use std::future::Future;
+use async_trait::async_trait;
 
 /// This type describes why a check has failed and occurs on
 /// [`CheckResult::Failure`].
@@ -43,8 +42,6 @@ pub enum CheckResult {
    Success,
    Failure(Reason),
 }
-
-pub type FutureCheckResult = Pin<Box<dyn Future<Output = (Context, Message, CheckResult)> + Send>>;
 
 impl CheckResult {
     /// Creates a new [`CheckResult::Failure`] with [`Reason::User`].
@@ -115,7 +112,12 @@ impl From<Reason> for CheckResult {
     }
 }
 
-pub type CheckFunction = fn(Context, Message, &mut Args, &CommandOptions) -> FutureCheckResult;
+#[async_trait]
+pub trait AsyncCheckFunction : Send + Sync {
+    async fn check(&self, ctx: &mut Context, msg: &Message, args: &mut Args, options: &'static CommandOptions) -> CheckResult;
+}
+
+// TODO: remove pub type CheckFunction = fn(Context, Message, &mut Args, &CommandOptions) -> CheckResult;
 
 /// A check can be part of a command or group and will be executed to
 /// determine whether a user is permitted to use related item.
@@ -125,7 +127,7 @@ pub struct Check {
     /// Name listed in help-system.
     pub name: &'static str,
     /// Function that will be executed.
-    pub function: CheckFunction,
+    pub function: Box<dyn AsyncCheckFunction>,
     /// Whether a check should be evaluated in the help-system.
     /// `false` will ignore check and won't fail execution.
     pub check_in_help: bool,

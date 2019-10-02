@@ -47,7 +47,6 @@ use serde::de::Visitor;
 use std::{
     collections::HashMap,
     fmt::{
-        Display,
         Formatter,
         Result as FmtResult
     },

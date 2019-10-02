@@ -120,6 +120,7 @@ impl Parse for CommandFun {
 
         let visibility = input.parse()?;
 
+        input.parse::<Token![async]>()?;
         input.parse::<Token![fn]>()?;
         let name = input.parse()?;
         // (...)
@@ -170,7 +171,9 @@ impl ToTokens for CommandFun {
         stream.extend(quote! {
             #(#cooked)*
             #visibility fn #name (#(#args),*) -> #ret {
-                #(#body)*
+                ::std::boxed::Box::pin(async move {
+                    #(#body)*
+                })
             }
         });
     }

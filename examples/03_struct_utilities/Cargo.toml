@@ -8,7 +8,7 @@ edition = "2018"
 serenity = { path = "../../" }
 
 [dependencies.tokio]
-version = "0.2.0-alpha.5"
+version = "0.2.0-alpha.6"
 
 [dependencies.async-trait]
 version = "0.1"

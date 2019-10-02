@@ -23,10 +23,10 @@ use serenity::{
     },
     model::{event::ResumedEvent, gateway::Ready},
     prelude::*,
+    utils::Mutex,
 };
 use async_trait::async_trait;
 use log::{error, info};
-use futures::lock::Mutex;
 
 use commands::{
     math::*,

@@ -9,7 +9,6 @@ env_logger = "0.6"
 kankyo = "0.2"
 log = "0.4"
 async-trait = "0.1"
-futures-preview = { version = "=0.3.0-alpha.19", features = ["async-await"] }
 
 [dependencies.serenity]
 features = ["cache", "framework", "standard_framework"]

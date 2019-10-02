@@ -18,15 +18,13 @@ use serenity::{
         macros::{command, group, help, check},
     },
     model::{channel::{Channel, Message}, gateway::Ready, id::UserId},
-    utils::{content_safe, ContentSafeOptions},
+    utils::{content_safe, ContentSafeOptions, Mutex},
 };
-use futures::lock::Mutex;
 use async_trait::async_trait;
 
 // This imports `typemap`'s `Key` as `TypeMapKey`.
 use serenity::prelude::*;
 use serenity::framework::standard::{CommandError, BeforeHandler, AfterHandler};
-use futures::FutureExt;
 
 // A container type is created for inserting into the Client's `data`, which
 // allows for data to be accessible across all events and framework commands, or
@@ -120,7 +118,7 @@ If you want more information about a specific command, just pass the command as 
 // `strikethrough_commands_tip(Some(""))` keeps `Some()` wrapping an empty `String`, which is the default value.
 // If the `String` is not empty, your given `String` will be used instead.
 // If you pass in a `None`, no hint will be displayed at all.
-fn my_help(
+async fn my_help(
     mut context: Context,
     msg: Message,
     args: Args,
@@ -128,10 +126,8 @@ fn my_help(
     groups: Vec<&'static CommandGroup>,
     owners: HashSet<UserId>
 ) -> FutureCommandResult {
-    async move {
-        let res = help_commands::with_embeds(&mut context, &msg, args, help_options, &groups, owners).await;
-        (context, msg, res)
-    }.boxed()
+    let res = help_commands::with_embeds(&mut context, &msg, args, help_options, &groups, owners).await;
+    (context, msg, res)
 }
 
 struct ClientHandler {}
@@ -274,57 +270,53 @@ async fn main() {
 // Options are passed via subsequent attributes.
 // Make this command use the "complicated" bucket.
 #[bucket = "complicated"]
-fn commands(ctx: Context, msg: Message) -> FutureCommandResult {
-    async move {
-        let mut contents = "Commands used:\n".to_string();
+async fn commands(ctx: Context, msg: Message) -> FutureCommandResult {
+    let mut contents = "Commands used:\n".to_string();
 
-        {
-            let data = ctx.data.read().await;
-            let counter = data.get::<CommandCounter>().expect("Expected CommandCounter in ShareMap.");
+    {
+        let data = ctx.data.read().await;
+        let counter = data.get::<CommandCounter>().expect("Expected CommandCounter in ShareMap.");
 
-            for (k, v) in counter {
-                let _ = write!(contents, "- {name}: {amount}\n", name = k, amount = v);
-            }
-
-            if let Err(why) = msg.channel_id.say(&ctx.http, &contents).await {
-                println!("Error sending message: {:?}", why);
-            }
+        for (k, v) in counter {
+            let _ = write!(contents, "- {name}: {amount}\n", name = k, amount = v);
         }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+        if let Err(why) = msg.channel_id.say(&ctx.http, &contents).await {
+            println!("Error sending message: {:?}", why);
+        }
+    }
+
+    (ctx, msg, Ok(()))
 }
 
 // Repeats what the user passed as argument but ensures that user and role
 // mentions are replaced with a safe textual alternative.
 // In this example channel mentions are excluded via the `ContentSafeOptions`.
 #[command]
-fn say(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
-    async move {
-        let settings = if let Some(guild_id) = msg.guild_id {
-            // By default roles, users, and channel mentions are cleaned.
-            ContentSafeOptions::default()
-                // We do not want to clean channal mentions as they
-                // do not ping users.
-                .clean_channel(false)
-                // If it's a guild channel, we want mentioned users to be displayed
-                // as their display name.
-                .display_as_member_from(guild_id)
-        } else {
-            ContentSafeOptions::default()
-                .clean_channel(false)
-                .clean_role(false)
-        };
+async fn say(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
+    let settings = if let Some(guild_id) = msg.guild_id {
+        // By default roles, users, and channel mentions are cleaned.
+        ContentSafeOptions::default()
+            // We do not want to clean channal mentions as they
+            // do not ping users.
+            .clean_channel(false)
+            // If it's a guild channel, we want mentioned users to be displayed
+            // as their display name.
+            .display_as_member_from(guild_id)
+    } else {
+        ContentSafeOptions::default()
+            .clean_channel(false)
+            .clean_role(false)
+    };
 
-        let rest = &args.rest();
-        let content = content_safe(&ctx.cache, rest, &settings).await;
+    let rest = &args.rest();
+    let content = content_safe(&ctx.cache, rest, &settings).await;
 
-        if let Err(why) = msg.channel_id.say(&ctx.http, &content).await {
-            println!("Error sending message: {:?}", why);
-        }
+    if let Err(why) = msg.channel_id.say(&ctx.http, &content).await {
+        println!("Error sending message: {:?}", why);
+    }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+    (ctx, msg, Ok(()))
 }
 
 // A function which acts as a "check", to determine whether to call a command.
@@ -334,8 +326,7 @@ fn say(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
 // not called.
 #[check]
 #[name = "Owner"]
-fn owner_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOptions) -> FutureCheckResult {
-    async move {
+async fn owner_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOptions) -> FutureCheckResult {
         // Replace 7 with your ID to make this check pass.
         //
         // `true` will convert into `CheckResult::Success`,
@@ -352,7 +343,6 @@ fn owner_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOptions) -> 
         // `CheckResult::new_unknown()`
         let res = msg.author.id == 7;
         (ctx, msg, res.into())
-    }.boxed()
 }
 
 // A function which acts as a "check", to determine whether to call a command.
@@ -365,144 +355,130 @@ fn owner_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOptions) -> 
 #[check_in_help(true)]
 // Whether the check shall be displayed in the help-system.
 #[display_in_help(true)]
-fn admin_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOptions) -> FutureCheckResult {
-    async move {
-        if let Some(member) = msg.member(&ctx.cache).await {
-            if let Ok(permissions) = member.permissions(&ctx.cache).await {
-                return (ctx, msg, permissions.administrator().into());
-            }
+async fn admin_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOptions) -> FutureCheckResult {
+    if let Some(member) = msg.member(&ctx.cache).await {
+        if let Ok(permissions) = member.permissions(&ctx.cache).await {
+            return (ctx, msg, permissions.administrator().into());
         }
+    }
 
-        (ctx, msg, false.into())
-    }.boxed()
+    (ctx, msg, false.into())
 }
 
 #[command]
-fn some_long_command(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
-    async move {
-        let res = format!("Arguments: {:?}", args.rest());
-        if let Err(why) = msg.channel_id.say(&ctx.http, &res).await {
-            println!("Error sending message: {:?}", why);
-        }
+async fn some_long_command(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
+    let res = format!("Arguments: {:?}", args.rest());
+    if let Err(why) = msg.channel_id.say(&ctx.http, &res).await {
+        println!("Error sending message: {:?}", why);
+    }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+    (ctx, msg, Ok(()))
 }
 
 #[command]
 // Limits the usage of this command to roles named:
 #[allowed_roles("mods", "ultimate neko")]
-fn about_role(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
-    async move {
-        let potential_role_name = args.rest();
+async fn about_role(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
+    let potential_role_name = args.rest();
 
-        if let Some(guild) = msg.guild(&ctx.cache).await {
-            // `role_by_name()` allows us to attempt attaining a reference to a role
-            // via its name.
-            if let Some(role) = guild.read().await.role_by_name(&potential_role_name) {
-                let res = format!("Role-ID: {}", role.id);
-                if let Err(why) = msg.channel_id.say(&ctx.http, &res).await {
-                    println!("Error sending message: {:?}", why);
-                }
-
-                return (ctx, msg, Ok(()));
+    if let Some(guild) = msg.guild(&ctx.cache).await {
+        // `role_by_name()` allows us to attempt attaining a reference to a role
+        // via its name.
+        if let Some(role) = guild.read().await.role_by_name(&potential_role_name) {
+            let res = format!("Role-ID: {}", role.id);
+            if let Err(why) = msg.channel_id.say(&ctx.http, &res).await {
+                println!("Error sending message: {:?}", why);
             }
-        }
 
-        if let Err(why) = msg.channel_id.say(&ctx.http, format!("Could not find role named: {:?}", potential_role_name)).await {
-            println!("Error sending message: {:?}", why);
+            return (ctx, msg, Ok(()));
         }
+    }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+    if let Err(why) = msg.channel_id.say(&ctx.http, format!("Could not find role named: {:?}", potential_role_name)).await {
+        println!("Error sending message: {:?}", why);
+    }
+
+    (ctx, msg, Ok(()))
 }
 
 #[command]
 // Lets us also call `~math *` instead of just `~math multiply`.
 #[aliases("*")]
-fn multiply(ctx: Context, msg: Message, mut args: Args) -> FutureCommandResult {
-    async move {
-            let first = args.single::<f64>();
-            let second = args.single::<f64>();
+async fn multiply(ctx: Context, msg: Message, mut args: Args) -> FutureCommandResult {
+        let first = args.single::<f64>();
+        let second = args.single::<f64>();
 
-            if let (Ok(first), Ok(second)) = (first, second) {
-                let res = (first * second).to_string();
+        if let (Ok(first), Ok(second)) = (first, second) {
+            let res = (first * second).to_string();
 
-                if let Err(why) = msg.channel_id.say(&ctx.http, &res).await {
-                    println!("Err sending product of {} and {}: {:?}", first, second, why);
-                }
-            } else {
-                println!("Err computing product");
+            if let Err(why) = msg.channel_id.say(&ctx.http, &res).await {
+                println!("Err sending product of {} and {}: {:?}", first, second, why);
             }
-
-        (ctx, msg, Ok(()))
-    }.boxed()
-}
-
-#[command]
-fn about(ctx: Context, msg: Message) -> FutureCommandResult {
-    async move {
-        if let Err(why) = msg.channel_id.say(&ctx.http, "This is a small test-bot! : )").await {
-            println!("Error sending message: {:?}", why);
+        } else {
+            println!("Err computing product");
         }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+    (ctx, msg, Ok(()))
 }
 
 #[command]
-fn latency(ctx: Context, msg: Message) -> FutureCommandResult {
-    async move {
-        // The shard manager is an interface for mutating, stopping, restarting, and
-        // retrieving information about shards.
-        {
-            let data = ctx.data.read().await;
+async fn about(ctx: Context, msg: Message) -> FutureCommandResult {
+    if let Err(why) = msg.channel_id.say(&ctx.http, "This is a small test-bot! : )").await {
+        println!("Error sending message: {:?}", why);
+    }
 
-            let shard_manager = match data.get::<ShardManagerContainer>() {
-                Some(v) => Some(v),
+    (ctx, msg, Ok(()))
+}
+
+#[command]
+async fn latency(ctx: Context, msg: Message) -> FutureCommandResult {
+    // The shard manager is an interface for mutating, stopping, restarting, and
+    // retrieving information about shards.
+    {
+        let data = ctx.data.read().await;
+
+        let shard_manager = match data.get::<ShardManagerContainer>() {
+            Some(v) => Some(v),
+            None => {
+                let _ = msg.reply(&ctx, "There was a problem getting the shard manager").await;
+                None
+            },
+        };
+
+        if let Some(shard_manager) = shard_manager {
+            let manager = shard_manager.lock().await;
+
+            // Shards are backed by a "shard runner" responsible for processing events
+            // over the shard, so we'll get the information about the shard runner for
+            // the shard this command was sent over.
+            let runner = match manager.runners.async_get(ShardId(ctx.shard_id)).await {
+                Some(runner) => Some(runner),
                 None => {
-                    let _ = msg.reply(&ctx, "There was a problem getting the shard manager").await;
+                    let _ = msg.reply(&ctx, "No shard found").await;
                     None
                 },
             };
 
-            if let Some(shard_manager) = shard_manager {
-                let manager = shard_manager.lock().await;
-
-                // Shards are backed by a "shard runner" responsible for processing events
-                // over the shard, so we'll get the information about the shard runner for
-                // the shard this command was sent over.
-                let runner = match manager.runners.async_get(ShardId(ctx.shard_id)).await {
-                    Some(runner) => Some(runner),
-                    None => {
-                        let _ = msg.reply(&ctx, "No shard found").await;
-                        None
-                    },
-                };
-
-                if let Some(runner) = runner {
-                    let content = format!("The shard latency is {:?}", runner.latency);
-                    let _ = msg.reply(&ctx, &content).await;
-                }
+            if let Some(runner) = runner {
+                let content = format!("The shard latency is {:?}", runner.latency);
+                let _ = msg.reply(&ctx, &content).await;
             }
         }
+    }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+    (ctx, msg, Ok(()))
 }
 
 #[command]
 // Limit command usage to guilds.
 #[only_in(guilds)]
 #[checks(Owner)]
-fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
-    async move {
-        if let Err(why) = msg.channel_id.say(&ctx.http, "Pong! : )").await {
-            println!("Error sending message: {:?}", why);
-        }
+async fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
+    if let Err(why) = msg.channel_id.say(&ctx.http, "Pong! : )").await {
+        println!("Error sending message: {:?}", why);
+    }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+    (ctx, msg, Ok(()))
 }
 
 #[command]
@@ -512,79 +488,69 @@ fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
 #[bucket = "emoji"]
 // Allow only administrators to call this:
 #[required_permissions("ADMINISTRATOR")]
-fn cat(ctx: Context, msg: Message) -> FutureCommandResult {
-    async move {
-        if let Err(why) = msg.channel_id.say(&ctx.http, ":cat:").await {
-            println!("Error sending message: {:?}", why);
-        }
+async fn cat(ctx: Context, msg: Message) -> FutureCommandResult {
+    if let Err(why) = msg.channel_id.say(&ctx.http, ":cat:").await {
+        println!("Error sending message: {:?}", why);
+    }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+    (ctx, msg, Ok(()))
 }
 
 #[command]
 #[description = "Sends an emoji with a dog."]
 #[bucket = "emoji"]
-fn dog(ctx: Context, msg: Message) -> FutureCommandResult {
-    async move {
-        if let Err(why) = msg.channel_id.say(&ctx.http, ":dog:").await {
-            println!("Error sending message: {:?}", why);
-        }
+async fn dog(ctx: Context, msg: Message) -> FutureCommandResult {
+    if let Err(why) = msg.channel_id.say(&ctx.http, ":dog:").await {
+        println!("Error sending message: {:?}", why);
+    }
 
-        (ctx, msg, Ok(()))
-    }.boxed()
+    (ctx, msg, Ok(()))
 }
 
 #[command]
-fn bird(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
-    async move {
-        let say_content = if args.is_empty() {
-            ":bird: can find animals for you.".to_string()
+async fn bird(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
+    let say_content = if args.is_empty() {
+        ":bird: can find animals for you.".to_string()
+    } else {
+        format!(":bird: could not find animal named: `{}`.", args.rest())
+    };
+
+    if let Err(why) = msg.channel_id.say(&ctx.http, say_content).await {
+        println!("Error sending message: {:?}", why);
+    }
+
+    (ctx, msg, Ok(()))
+}
+
+#[command]
+async fn am_i_admin(ctx: Context, msg: Message) -> FutureCommandResult {
+    if let Err(why) = msg.channel_id.say(&ctx.http, "Yes you are.").await {
+        println!("Error sending message: {:?}", why);
+    }
+
+    (ctx, msg, Ok(()))
+}
+
+
+#[command]
+async fn slow_mode(ctx: Context, msg: Message, mut args: Args) -> FutureCommandResult {
+    let say_content = if let Ok(slow_mode_rate_seconds) = args.single::<u64>() {
+        if let Err(why) = msg.channel_id.edit(&ctx.http, |c| c.slow_mode_rate(slow_mode_rate_seconds)).await {
+            println!("Error setting channel's slow mode rate: {:?}", why);
+
+            format!("Failed to set slow mode to `{}` seconds.", slow_mode_rate_seconds)
         } else {
-            format!(":bird: could not find animal named: `{}`.", args.rest())
-        };
-
-        if let Err(why) = msg.channel_id.say(&ctx.http, say_content).await {
-            println!("Error sending message: {:?}", why);
+            format!("Successfully set slow mode rate to `{}` seconds.", slow_mode_rate_seconds)
         }
+    } else if let Some(Channel::Guild(channel)) = msg.channel_id.to_channel_cached(&ctx.cache).await {
+        format!("Current slow mode rate is `{}` seconds.", channel.read().await.slow_mode_rate.unwrap_or(0))
+    } else {
+        "Failed to find channel in cache.".to_string()
+    };
 
-        (ctx, msg, Ok(()))
-    }.boxed()
-}
+    if let Err(why) = msg.channel_id.say(&ctx.http, say_content).await {
+        println!("Error sending message: {:?}", why);
+    }
 
-#[command]
-fn am_i_admin(ctx: Context, msg: Message) -> FutureCommandResult {
-    async move {
-        if let Err(why) = msg.channel_id.say(&ctx.http, "Yes you are.").await {
-            println!("Error sending message: {:?}", why);
-        }
-
-        (ctx, msg, Ok(()))
-    }.boxed()
-}
-
-
-#[command]
-fn slow_mode(ctx: Context, msg: Message, mut args: Args) -> FutureCommandResult {
-    async move {
-        let say_content = if let Ok(slow_mode_rate_seconds) = args.single::<u64>() {
-            if let Err(why) = msg.channel_id.edit(&ctx.http, |c| c.slow_mode_rate(slow_mode_rate_seconds)).await {
-                println!("Error setting channel's slow mode rate: {:?}", why);
-
-                format!("Failed to set slow mode to `{}` seconds.", slow_mode_rate_seconds)
-            } else {
-                format!("Successfully set slow mode rate to `{}` seconds.", slow_mode_rate_seconds)
-            }
-        } else if let Some(Channel::Guild(channel)) = msg.channel_id.to_channel_cached(&ctx.cache).await {
-            format!("Current slow mode rate is `{}` seconds.", channel.read().await.slow_mode_rate.unwrap_or(0))
-        } else {
-            "Failed to find channel in cache.".to_string()
-        };
-
-        if let Err(why) = msg.channel_id.say(&ctx.http, say_content).await {
-            println!("Error sending message: {:?}", why);
-        }
-
-        (ctx, msg, Ok(()))
-    }.boxed()
+    (ctx, msg, Ok(()))
 }

@@ -18,6 +18,7 @@ use crate::http::Http;
 use crate::builder::CreateChannel;
 #[cfg(feature = "model")]
 use serde_json::json;
+use futures::Stream;
 
 #[cfg(feature = "model")]
 impl GuildId {
@@ -852,6 +853,27 @@ impl<H: AsRef<Http>> MembersIter<H> {
 }
 
 #[cfg(all(feature = "http", feature = "cache"))]
+use async_stream::try_stream;
+
+#[cfg(all(feature = "http", feature = "cache"))]
+pub fn members_iter_to_stream<H : AsRef<Http>>(mut iter : MembersIter<H>)
+    -> impl Stream<Item = Result<Member>> {
+    try_stream! {
+        loop {
+            if iter.buffer.is_empty() && iter.after.is_some() || !iter.tried_fetch {
+                iter.refresh().await?;
+            }
+
+            match iter.buffer.pop() {
+                Some(member) => yield member,
+                None => break,
+            }
+        }
+    }
+}
+
+/*
+#[cfg(all(feature = "http", feature = "cache"))]
 impl<H: AsRef<Http>> Iterator for MembersIter<H> {
     type Item = Result<Member>;
 
@@ -878,3 +900,4 @@ impl<H: AsRef<Http>> Iterator for MembersIter<H> {
 
 #[cfg(all(feature = "http", feature = "cache"))]
 impl<H: AsRef<Http>> std::iter::FusedIterator for MembersIter<H> {}
+*/

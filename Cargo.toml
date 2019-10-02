@@ -25,6 +25,9 @@ dashmap = "1.0"
 git = "https://github.com/async-rs/async-std"
 #version = "0.99.8"
 
+[dependencies.async-stream]
+git = "https://github.com/tokio-rs/async-stream"
+
 [dependencies.tokio]
 version = "0.2.0-alpha.6"
 

@@ -71,12 +71,12 @@ impl Emoji {
     /// # extern crate serenity;
     /// #
     /// # use serde_json::json;
-    /// # use serenity::framework::standard::{CommandResult, macros::command};
+    /// # use serenity::framework::standard::{FutureCommandResult, macros::command};
     /// # use serenity::client::Context;
     /// # use serenity::model::prelude::{EmojiId, Emoji, Role};
     /// #
     /// # #[command]
-    /// # async fn example(ctx: &mut Context) -> CommandResult {
+    /// # async fn example(ctx: Context) -> FutureCommandResult {
     /// #     let mut emoji = serde_json::from_value::<Emoji>(json!({
     /// #         "animated": false,
     /// #         "id": EmojiId(7),
@@ -91,7 +91,7 @@ impl Emoji {
     ///     Ok(()) => println!("Emoji deleted."),
     ///     Err(_) => println!("Could not delete emoji.")
     /// }
-    /// #    Ok(())
+    /// #    (ctx, Ok(()))
     /// # }
     /// #
     /// # fn main() { }

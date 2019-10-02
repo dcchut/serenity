@@ -2232,6 +2232,7 @@ mod test {
     mod model {
         use chrono::prelude::*;
         use crate::model::prelude::*;
+        use crate::internal::SyncRwLock;
         use std::collections::*;
         use std::sync::Arc;
         use crate::utils::run_async_test;
@@ -2252,7 +2253,7 @@ mod test {
                 .ymd(2016, 11, 08)
                 .and_hms(0, 0, 0);
             let vec1 = Vec::new();
-            let u = Arc::new(gen_user());
+            let u = Arc::new(SyncRwLock::new(gen_user()));
 
             Member {
                 deaf: false,

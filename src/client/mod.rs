@@ -486,12 +486,12 @@ impl Client {
     /// use serenity::framework::StandardFramework;
     /// use serenity::client::{Client, Context};
     /// use serenity::model::channel::Message;
-    /// use serenity::framework::standard::{CommandResult, macros::{group, command}};
+    /// use serenity::framework::standard::{FutureCommandResult, macros::{group, command}};
     ///
     /// #[command]
-    /// async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
+    /// async fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
     ///     msg.channel_id.say(&ctx.http, "Pong!").await?;
-    ///     Ok(())
+    ///     (ctx, msg, Ok(()))
     /// }
     ///
     /// // Commands must be intermediately handled through groups.

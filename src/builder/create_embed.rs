@@ -278,7 +278,7 @@ impl CreateEmbed {
     ///                 .find(|c| c.name == "join-log");
     ///
     ///             if let Some(channel) = channel_search {
-    ///                 let user = &member.user;
+    ///                 let user = &member.user.read();
     ///
     ///                 let _ = channel.send_message(&context, |m| {
     ///                     m.embed(|e| {

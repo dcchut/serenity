@@ -340,7 +340,7 @@ mod test {
     #[cfg(feature = "utils")]
     mod utils {
         use crate::model::prelude::*;
-        use crate::internal::AsyncRwLock;
+        use crate::internal::{SyncRwLock, AsyncRwLock};
         use std::sync::Arc;
         use crate::utils::{Colour, run_async_test};
 
@@ -399,7 +399,7 @@ mod test {
                     mute: false,
                     nick: None,
                     roles: vec![],
-                    user: Arc::new(user.clone()),
+                    user: Arc::new(SyncRwLock::new(user.clone())),
                     _nonexhaustive: (),
                 };
 

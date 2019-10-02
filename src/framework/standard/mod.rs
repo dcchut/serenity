@@ -199,12 +199,12 @@ impl StandardFramework {
     /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::standard::macros::command;
-    /// use serenity::framework::standard::{StandardFramework, CommandResult};
+    /// use serenity::framework::standard::{StandardFramework, FutureCommandResult};
     ///
     /// #[command]
     /// // Registers the bucket `basic` to this command.
     /// #[bucket = "basic"]
-    /// async fn nothing() -> CommandResult {
+    /// async fn nothing() -> FutureCommandResult {
     ///     Ok(())
     /// }
     ///
@@ -362,23 +362,23 @@ impl StandardFramework {
     /// use serenity::model::channel::Message;
     /// use serenity::framework::standard::{
     ///     StandardFramework,
-    ///     CommandResult,
+    ///     FutureCommandResult,
     ///     macros::{command, group},
     /// };
     ///
     /// // For information regarding this macro, learn more about it in its documentation in `command_attr`.
     /// #[command]
-    /// async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
+    /// async fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
     ///     msg.channel_id.say(&ctx.http, "pong!").await?;
     ///
-    ///     Ok(())
+    ///     (ctx, msg, Ok(()))
     /// }
     ///
     /// #[command]
-    /// async fn pong(ctx: &mut Context, msg: &Message) -> CommandResult {
+    /// async fn pong(ctx: Context, msg: Message) -> FutureCommandResult {
     ///     msg.channel_id.say(&ctx.http, "ping!").await?;
     ///
-    ///     Ok(())
+    ///     (ctx, msg, Ok(()))
     /// }
     ///
     /// #[group("bingbong")]

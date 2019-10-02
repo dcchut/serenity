@@ -349,16 +349,16 @@ impl From<char> for ReactionType {
     /// # #[cfg(feature = "client")]
     /// # use serenity::client::Context;
     /// # #[cfg(feature = "framework")]
-    /// # use serenity::framework::standard::{CommandResult, macros::command};
+    /// # use serenity::framework::standard::{FutureCommandResult, macros::command};
     /// # use serenity::model::id::ChannelId;
     /// #
     /// # #[cfg(all(feature = "client", feature = "framework", feature = "http"))]
     /// # #[command]
-    /// # async fn example(ctx: &mut Context) -> CommandResult {
+    /// # async fn example(ctx: Context) -> FutureCommandResult {
     /// #   let message = ChannelId(0).message(&ctx.http, 0).await?;
     /// #
     /// message.react(ctx, '🍎').await?;
-    /// # Ok(())
+    /// # (ctx, Ok(()))
     /// # }
     /// #
     /// # fn main() {}

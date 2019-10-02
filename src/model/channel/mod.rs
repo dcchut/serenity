@@ -176,7 +176,7 @@ impl Channel {
     /// match channel.private() {
     ///     Some(private_lock) => {
     ///         let private = private_lock.read().await;
-    ///         println!("It's a private channel with {}!", &private.recipient.name);
+    ///         println!("It's a private channel with {}!", &private.recipient.read().name);
     ///     },
     ///     None => { println!("It's not a private channel!"); },
     /// }

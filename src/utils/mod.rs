@@ -826,6 +826,7 @@ mod test {
     #[cfg(feature = "cache")]
     use crate::cache::CacheRwLock;
 
+    use crate::internal::{AsyncRwLock, SyncRwLock};
     use super::*;
 
     #[test]
@@ -935,7 +936,7 @@ mod test {
                 mute: false,
                 nick: Some("Ferris".to_string()),
                 roles: Vec::new(),
-                user: Arc::new(user.clone()),
+                user: Arc::new(SyncRwLock::new(user.clone())),
                 _nonexhaustive: (),
             };
 
@@ -975,7 +976,7 @@ mod test {
                 let mut cache = cache.try_write().unwrap();
                 guild.members.insert(user.id, member.clone());
                 guild.roles.insert(role.id, role.clone());
-                cache.users.insert(user.id, Arc::new(user.clone()));
+                cache.users.insert(user.id, Arc::new(SyncRwLock::new(user.clone())));
                 cache.guilds.insert(guild.id, Arc::new(AsyncRwLock::new(guild.clone())));
                 cache.channels.insert(channel.id, Arc::new(AsyncRwLock::new(channel.clone())));
             }

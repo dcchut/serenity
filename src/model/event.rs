@@ -71,7 +71,7 @@ impl CacheUpdate for ChannelCreateEvent {
                     let mut writer = group.write().await;
 
                     for (recipient_id, recipient) in &mut writer.recipients {
-                        cache.update_user_entry(recipient);
+                        cache.update_user_entry(&*recipient.read());
 
                         *recipient = Arc::clone(&cache.users[recipient_id]);
                     }
@@ -109,9 +109,8 @@ impl CacheUpdate for ChannelCreateEvent {
                 let id = {
                     let mut guard = channel.write().await;
                     let user_id = {
-                        let c_user = guard.recipient.clone();
-
-                        cache.update_user_entry(&c_user);
+                        let c_user = guard.recipient.read();
+                        cache.update_user_entry(&*c_user);
 
                         c_user.id
                     };
@@ -405,7 +404,7 @@ impl CacheUpdate for GuildCreateEvent {
         let mut guild = self.guild.clone();
 
         for (user_id, member) in &mut guild.members {
-            cache.update_user_entry(&member.user);
+            cache.update_user_entry(&*member.user.read());
             let user = Arc::clone(&cache.users[user_id]);
 
             member.user = Arc::clone(&user);
@@ -525,8 +524,9 @@ impl CacheUpdate for GuildMemberAddEvent {
     type Output = ();
 
     async fn update(&mut self, cache: &mut Cache) -> Option<()> {
-        let user_id = self.member.user.id;
-        cache.update_user_entry(&self.member.user);
+
+        let user_id = self.member.user.read().id;
+        cache.update_user_entry(&*self.member.user.read());
 
         // Always safe due to being inserted above.
         self.member.user = Arc::clone(&cache.users[&user_id]);
@@ -627,7 +627,7 @@ impl CacheUpdate for GuildMemberUpdateEvent {
 
                 member.nick.clone_from(&self.nick);
                 member.roles.clone_from(&self.roles);
-                member.user = Arc::new(self.user.clone());
+                member.user = Arc::new(parking_lot::RwLock::new(self.user.clone()));
 
                 found = true;
 
@@ -646,7 +646,7 @@ impl CacheUpdate for GuildMemberUpdateEvent {
                         mute: false,
                         nick: self.nick.clone(),
                         roles: self.roles.clone(),
-                        user: Arc::new(self.user.clone()),
+                        user: Arc::new(parking_lot::RwLock::new(self.user.clone())),
                         _nonexhaustive: (),
                     },
                 );
@@ -674,7 +674,7 @@ impl CacheUpdate for GuildMembersChunkEvent {
 
     async fn update(&mut self, cache: &mut Cache) -> Option<()> {
         for member in self.members.values() {
-            cache.update_user_entry(&member.user);
+            cache.update_user_entry(&*member.user.read());
         }
 
         if let Some(guild) = cache.guilds.get_mut(&self.guild_id) {
@@ -712,7 +712,7 @@ impl<'de> Deserialize<'de> for GuildMembersChunkEvent {
             .map(|members| members
                 .into_iter()
                 .fold(HashMap::new(), |mut acc, member| {
-                    let id = member.user.id;
+                    let id = member.user.read().id;
 
                     acc.insert(id, member);
 
@@ -1022,7 +1022,7 @@ impl CacheUpdate for PresenceUpdateEvent {
         let user_id = self.presence.user_id;
 
         if let Some(user) = self.presence.user.as_mut() {
-            cache.update_user_entry(user);
+            cache.update_user_entry(&*user.read());
             *user = Arc::clone(&cache.users[&user_id]);
         }
 
@@ -1234,9 +1234,8 @@ impl CacheUpdate for ReadyEvent {
 
         for (user_id, presence) in &mut ready.presences {
             if let Some(ref user) = presence.user {
-                cache.update_user_entry(user);
+                cache.update_user_entry(&*user.read());
             }
-
             presence.user = cache.user(user_id);
         }
 

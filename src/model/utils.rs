@@ -68,7 +68,7 @@ pub fn deserialize_members<'de, D: Deserializer<'de>>(
     let mut members = HashMap::new();
 
     for member in vec {
-        let user_id = member.user.id;
+        let user_id = member.user.read().id;
 
         members.insert(user_id, member);
     }
@@ -164,7 +164,7 @@ pub fn serialize_roles<S: Serializer>(
 
 pub fn deserialize_single_recipient<'de, D: Deserializer<'de>>(
     deserializer: D)
-    -> StdResult<Arc<User>, D::Error> {
+    -> StdResult<Arc<parking_lot::RwLock<User>>, D::Error> {
     let mut users: Vec<User> = Deserialize::deserialize(deserializer)?;
     let user = if users.is_empty() {
         return Err(DeError::custom("Expected a single recipient"));
@@ -172,53 +172,53 @@ pub fn deserialize_single_recipient<'de, D: Deserializer<'de>>(
         users.remove(0)
     };
 
-    Ok(Arc::new(user))
+    Ok(Arc::new(parking_lot::RwLock::new(user)))
 }
 
 pub fn serialize_single_recipient<S: Serializer>(
-    user: &Arc<User>,
+    user: &Arc<parking_lot::RwLock<User>>,
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(1))?;
 
-    seq.serialize_element(&**user)?;
+    seq.serialize_element(&*user.read())?;
 
     seq.end()
 }
 
 pub fn deserialize_sync_user<'de, D>(deserializer: D)
-    -> StdResult<Arc<User>, D::Error> where D: Deserializer<'de> {
-    Ok(Arc::new(User::deserialize(deserializer)?))
+    -> StdResult<Arc<parking_lot::RwLock<User>>, D::Error> where D: Deserializer<'de> {
+    Ok(Arc::new(parking_lot::RwLock::new(User::deserialize(deserializer)?)))
 }
 
 pub fn serialize_sync_user<S: Serializer>(
-    user: &Arc<User>,
+    user: &Arc<parking_lot::RwLock<User>>,
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
-    User::serialize(&*user, serializer)
+    User::serialize(&*user.read(), serializer)
 }
 
 pub fn deserialize_users<'de, D: Deserializer<'de>>(
     deserializer: D)
-    -> StdResult<HashMap<UserId, Arc<User>>, D::Error> {
+    -> StdResult<HashMap<UserId, Arc<parking_lot::RwLock<User>>>, D::Error> {
     let vec: Vec<User> = Deserialize::deserialize(deserializer)?;
     let mut users = HashMap::new();
 
     for user in vec {
-        users.insert(user.id, Arc::new(user));
+        users.insert(user.id, Arc::new(parking_lot::RwLock::new(user)));
     }
 
     Ok(users)
 }
 
 pub fn serialize_users<S: Serializer>(
-    users: &HashMap<UserId, Arc<User>>,
+    users: &HashMap<UserId, Arc<parking_lot::RwLock<User>>>,
     serializer: S
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(users.len()))?;
 
     for user in users.values() {
-        seq.serialize_element(&**user)?;
+        seq.serialize_element(&*user.read())?;
     }
 
     seq.end()

@@ -71,7 +71,8 @@ pub struct Member {
     /// Attached User struct.
     #[serde(deserialize_with = "deserialize_sync_user",
             serialize_with = "serialize_sync_user")]
-    pub user: Arc<User>,
+    pub user: Arc<parking_lot::RwLock<User>>,
+
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
 }
@@ -97,7 +98,7 @@ impl Member {
             return Ok(());
         }
 
-        match http.as_ref().add_member_role(self.guild_id.0, self.user.id.0, role_id.0).await {
+        match http.as_ref().add_member_role(self.guild_id.0, self.user.read().id.0, role_id.0).await {
             Ok(()) => {
                 self.roles.push(role_id);
 
@@ -122,7 +123,7 @@ impl Member {
         builder.roles(&self.roles);
         let map = utils::hashmap_to_json_map(builder.0);
 
-        match http.as_ref().edit_member(self.guild_id.0, self.user.id.0, &map).await {
+        match http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await {
             Ok(()) => Ok(()),
             Err(why) => {
                 self.roles.retain(|r| !role_ids.contains(r));
@@ -162,7 +163,7 @@ impl Member {
 
         http.as_ref().ban_user(
             self.guild_id.0,
-            self.user.id.0,
+            self.user.read().id.0,
             dmd,
             &*reason,
         ).await
@@ -192,7 +193,7 @@ impl Member {
     /// (This returns the first channel that can be read by the member, if there isn't
     /// one returns `None`)
     #[cfg(feature = "cache")]
-    pub async fn default_channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<GuildChannel>>> {
+    pub async fn default_channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<async_std::sync::RwLock<GuildChannel>>> {
         let guild = match self.guild_id.to_guild_cached(&cache).await {
             Some(guild) => guild,
             None => return None,
@@ -201,7 +202,7 @@ impl Member {
         let reader = guild.read().await;
 
         for (cid, channel) in reader.channels.iter() {
-            if reader.user_permissions_in(*cid, self.user.id).await.read_messages() {
+            if reader.user_permissions_in(*cid, self.user.read().id).await.read_messages() {
                 return Some(Arc::clone(channel));
             }
         }
@@ -216,7 +217,7 @@ impl Member {
     pub fn display_name(&self) -> Cow<'_, String> {
         match self.nick.as_ref().map(Cow::Borrowed)  {
             Some(x) => x,
-            None => Cow::Owned(self.user.name.clone()),
+            None => Cow::Owned(self.user.read().name.clone()),
         }
     }
 
@@ -226,7 +227,7 @@ impl Member {
         format!(
             "{}#{}",
             self.display_name(),
-            self.user.discriminator
+            self.user.read().discriminator
         )
     }
 
@@ -244,7 +245,7 @@ impl Member {
         f(&mut edit_member);
         let map = utils::hashmap_to_json_map(edit_member.0);
 
-        http.as_ref().edit_member(self.guild_id.0, self.user.id.0, &map).await
+        http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await
     }
 
     /// Retrieves the ID and position of the member's highest role in the
@@ -333,12 +334,12 @@ impl Member {
                         return Err(Error::Model(ModelError::InvalidPermissions(req)));
                     }
 
-                    reader.check_hierarchy(cache, self.user.id).await?;
+                    reader.check_hierarchy(cache, self.user.read().id).await?;
                 }
             }
         }
 
-        self.guild_id.kick(cache_http.http(), self.user.id).await
+        self.guild_id.kick(cache_http.http(), self.user.read().id).await
     }
 
     /// Returns the guild-level permissions for the member.
@@ -370,7 +371,7 @@ impl Member {
 
         let reader = guild.read().await;
 
-        Ok(reader.member_permissions(self.user.id))
+        Ok(reader.member_permissions(self.user.read().id))
     }
 
     /// Removes a [`Role`] from the member, editing its roles in-place if the
@@ -392,7 +393,7 @@ impl Member {
             return Ok(());
         }
 
-        match http.as_ref().remove_member_role(self.guild_id.0, self.user.id.0, role_id.0).await {
+        match http.as_ref().remove_member_role(self.guild_id.0, self.user.read().id.0, role_id.0).await {
             Ok(()) => {
                 self.roles.retain(|r| r.0 != role_id.0);
 
@@ -416,7 +417,7 @@ impl Member {
         builder.roles(&self.roles);
         let map = utils::hashmap_to_json_map(builder.0);
 
-        match http.as_ref().edit_member(self.guild_id.0, self.user.id.0, &map).await {
+        match http.as_ref().edit_member(self.guild_id.0, self.user.read().id.0, &map).await {
             Ok(()) => Ok(()),
             Err(why) => {
                 self.roles.extend_from_slice(role_ids);
@@ -461,7 +462,7 @@ impl Member {
     /// [Ban Members]: ../permissions/struct.Permissions.html#associatedconstant.BAN_MEMBERS
     #[cfg(all(feature = "cache", feature = "http"))]
     pub async fn unban(&self, http: impl AsRef<Http>) -> Result<()> {
-        http.as_ref().remove_ban(self.guild_id.0, self.user.id.0).await
+        http.as_ref().remove_ban(self.guild_id.0, self.user.read().id.0).await
     }
 
     /// Retrieves the member's user ID.
@@ -475,16 +476,13 @@ impl Member {
     /// object if your application infinitely holds a write lock elsewhere.
     #[cfg(feature = "cache")]
     pub fn user_id(&self) -> UserId {
-        self.user.id
-    }
-
-    pub async fn async_to_string(&self) -> String {
-        self.user.mention().await
+        self.user.read().id
     }
 }
 
 /*
-impl Display for Member {
+TODO: async to_string
+impl std::fmt::Display for Member {
     /// Mentions the user so that they receive a notification.
     ///
     /// # Examples
@@ -495,11 +493,8 @@ impl Display for Member {
     /// ```
     ///
     // This is in the format of `<@USER_ID>`.
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        Display::fmt(&futures::executor::block_on(async {
-            let guard = &self.user;
-            guard.mention().await
-        }), f)
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> FmtResult {
+        std::fmt::Display::fmt(&self.user.read().mention(), f)
     }
 }*/
 

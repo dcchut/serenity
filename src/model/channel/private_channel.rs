@@ -42,7 +42,7 @@ pub struct PrivateChannel {
     #[serde(deserialize_with = "deserialize_single_recipient",
             serialize_with = "serialize_single_recipient",
             rename = "recipients")]
-    pub recipient: Arc<User>,
+    pub recipient: Arc<parking_lot::RwLock<User>>,
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
 }
@@ -192,7 +192,7 @@ impl PrivateChannel {
     }
 
     /// Returns "DM with $username#discriminator".
-    pub fn name(&self) -> String { format!("DM with {}", self.recipient.tag()) }
+    pub fn name(&self) -> String { format!("DM with {}", self.recipient.read().tag()) }
 
     /// Gets the list of [`User`]s who have reacted to a [`Message`] with a
     /// certain [`Emoji`].
@@ -310,6 +310,6 @@ impl PrivateChannel {
 impl Display for PrivateChannel {
     /// Formats the private channel, displaying the recipient's username.
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.write_str(&self.recipient.name)
+        f.write_str(&self.recipient.read().name)
     }
 }

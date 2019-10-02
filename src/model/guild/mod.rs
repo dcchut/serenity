@@ -951,9 +951,9 @@ impl Guild {
         self.members
             .values()
             .find(|member| {
-                let name_matches = member.user.name == name;
+                let name_matches = member.user.read().name == name;
                 let discrim_matches = match discrim {
-                    Some(discrim) => member.user.discriminator == discrim,
+                    Some(discrim) => member.user.read().discriminator == discrim,
                     None => true,
                 };
 
@@ -981,9 +981,9 @@ impl Guild {
             .values()
             .filter(|member|
                 if case_sensitive {
-                    member.user.name.starts_with(prefix)
+                    member.user.read().name.starts_with(prefix)
                 } else {
-                    contains_case_insensitive(&member.user.name, prefix)
+                    contains_case_insensitive(&member.user.read().name, prefix)
                 }
                 || member.nick.as_ref()
                     .map_or(false, |nick|
@@ -999,24 +999,24 @@ impl Guild {
                 .sort_by(|a, b| {
                     let name_a = match a.nick {
                         Some(ref nick) => {
-                            if contains_case_insensitive(&a.user.name[..], prefix) {
-                                Cow::Owned(a.user.name.clone())
+                            if contains_case_insensitive(&a.user.read().name[..], prefix) {
+                                Cow::Owned(a.user.read().name.clone())
                             } else {
                                 Cow::Borrowed(nick)
                             }
                         },
-                        None => Cow::Owned(a.user.name.clone()),
+                        None => Cow::Owned(a.user.read().name.clone()),
                     };
 
                     let name_b = match b.nick {
                         Some(ref nick) => {
-                            if contains_case_insensitive(&b.user.name[..], prefix) {
-                                Cow::Owned(b.user.name.clone())
+                            if contains_case_insensitive(&b.user.read().name[..], prefix) {
+                                Cow::Owned(b.user.read().name.clone())
                             } else {
                                 Cow::Borrowed(nick)
                             }
                         },
-                        None => Cow::Owned(b.user.name.clone()),
+                        None => Cow::Owned(b.user.read().name.clone()),
                     };
                     closest_to_origin(prefix, &name_a[..], &name_b[..])
                 });
@@ -1053,9 +1053,9 @@ impl Guild {
             .values()
             .filter(|member|
                 if case_sensitive {
-                    member.user.name.contains(substring)
+                    member.user.read().name.contains(substring)
                 } else {
-                    contains_case_insensitive(&member.user.name, substring)
+                    contains_case_insensitive(&member.user.read().name, substring)
                 }
                 || member.nick.as_ref()
                     .map_or(false, |nick| {
@@ -1072,24 +1072,24 @@ impl Guild {
                 .sort_by(|a, b| {
                     let name_a = match a.nick {
                         Some(ref nick) => {
-                            if contains_case_insensitive(&a.user.name[..], substring) {
-                                Cow::Owned(a.user.name.clone())
+                            if contains_case_insensitive(&a.user.read().name[..], substring) {
+                                Cow::Owned(a.user.read().name.clone())
                             } else {
                                 Cow::Borrowed(nick)
                             }
                         },
-                        None => Cow::Owned(a.user.name.clone()),
+                        None => Cow::Owned(a.user.read().name.clone()),
                     };
 
                     let name_b = match b.nick {
                         Some(ref nick) => {
-                            if contains_case_insensitive(&b.user.name[..], substring) {
-                                Cow::Owned(b.user.name.clone())
+                            if contains_case_insensitive(&b.user.read().name[..], substring) {
+                                Cow::Owned(b.user.read().name.clone())
                             } else {
                                 Cow::Borrowed(nick)
                             }
                         },
-                        None => Cow::Owned(b.user.name.clone()),
+                        None => Cow::Owned(b.user.read().name.clone()),
                     };
 
                     closest_to_origin(substring, &name_a[..], &name_b[..])
@@ -1121,16 +1121,16 @@ impl Guild {
             .values()
             .filter(|member| {
                 if case_sensitive {
-                    member.user.name.contains(substring)
+                    member.user.read().name.contains(substring)
                 } else {
-                    contains_case_insensitive(&member.user.name, substring)
+                    contains_case_insensitive(&member.user.read().name, substring)
                 }
             }).collect();
         if sorted {
             members
                 .sort_by(|a, b| {
-                    let name_a = &a.user.name;
-                    let name_b = &b.user.name;
+                    let name_a = &a.user.read().name;
+                    let name_b = &b.user.read().name;
                     closest_to_origin(substring, &name_a[..], &name_b[..])
                 });
             members
@@ -1179,14 +1179,14 @@ impl Guild {
                         Some(ref nick) => {
                             Cow::Borrowed(nick)
                         },
-                        None => Cow::Owned(a.user.name.clone()),
+                        None => Cow::Owned(a.user.read().name.clone()),
                     };
 
                     let name_b = match b.nick {
                         Some(ref nick) => {
                             Cow::Borrowed(nick)
                         },
-                        None => Cow::Owned(b.user.name.clone()),
+                        None => Cow::Owned(b.user.read().name.clone()),
                     };
 
                     closest_to_origin(substring, &name_a[..], &name_b[..])
@@ -1241,7 +1241,7 @@ impl Guild {
             } else {
                 warn!(
                     "(╯°□°）╯︵ ┻━┻ {} on {} has non-existent role {:?}",
-                    member.user.id,
+                    member.user.read().id,
                     self.id,
                     role,
                 );
@@ -1320,7 +1320,7 @@ impl Guild {
             } else {
                 warn!(
                     "(╯°□°）╯︵ ┻━┻ {} on {} has non-existent role {:?}",
-                    member.user.id,
+                    member.user.read().id,
                     self.id,
                     role
                 );

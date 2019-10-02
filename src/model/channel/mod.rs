@@ -320,7 +320,9 @@ impl Channel {
                 guard.mention().await
             },
             Channel::Private(ref ch) => {
-                ch.read().await.recipient.name.to_string()
+                let ch = ch.read().await;
+                let guard = ch.recipient.read();
+                guard.name.to_string()
             },
             Channel::Category(ref category) => category.read().await.name.to_string(),
             Channel::__Nonexhaustive => unreachable!(),

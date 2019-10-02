@@ -590,7 +590,7 @@ impl User {
 
                 for channel in guard.values() {
                     let guard = channel.read().await;
-                    if guard.recipient.id == self.id {
+                    if guard.recipient.read().id == self.id {
                         private_channel_id = Some(guard.id);
                         break;
                     }
@@ -892,7 +892,7 @@ impl UserId {
     /// [`User`]: ../user/struct.User.html
     #[cfg(feature = "cache")]
     #[inline]
-    pub async fn to_user_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<User>> {
+    pub async fn to_user_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<parking_lot::RwLock<User>>> {
         let guard = cache.as_ref().read().await;
         let res = guard.user(self);
 
@@ -914,7 +914,7 @@ impl UserId {
             if let Some(cache) = cache_http.cache() {
 
                 if let Some(user) = cache.read().await.user(self) {
-                    return Ok((*user).clone());
+                    return Ok(user.read().clone());
                 }
             }
         }
@@ -962,14 +962,14 @@ impl<'a> From<&'a CurrentUser> for UserId {
 impl From<Member> for UserId {
     /// Gets the Id of a `Member`.
     fn from(member: Member) -> UserId {
-        member.user.id
+        member.user.read().id
     }
 }
 
 impl<'a> From<&'a Member> for UserId {
     /// Gets the Id of a `Member`.
     fn from(member: &Member) -> UserId {
-        member.user.id
+        member.user.read().id
     }
 }
 

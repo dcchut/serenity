@@ -37,7 +37,7 @@ pub struct Group {
     /// A map of the group's recipients.
     #[serde(deserialize_with = "deserialize_users",
             serialize_with = "serialize_users")]
-    pub recipients: HashMap<UserId, Arc<User>>,
+    pub recipients: HashMap<UserId, Arc<parking_lot::RwLock<User>>>,
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
 }
@@ -232,12 +232,12 @@ impl Group {
             Some(ref name) => Cow::Borrowed(name.as_str()),
             None => {
                 let mut name = match self.recipients.values().nth(0) {
-                    Some(recipient) => recipient.name.clone(),
+                    Some(recipient) => recipient.read().name.clone(),
                     None => return Cow::Borrowed("Empty Group"),
                 };
 
                 for recipient in self.recipients.values().skip(1) {
-                    let _ = write!(name, ", {}", recipient.name.clone());
+                    let _ = write!(name, ", {}", recipient.read().name.clone());
                 }
 
                 Cow::Owned(name) as Cow<'_, str>

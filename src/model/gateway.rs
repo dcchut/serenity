@@ -403,7 +403,7 @@ pub struct Presence {
     /// date.
     pub user_id: UserId,
     /// The associated user instance.
-    pub user: Option<Arc<User>>,
+    pub user: Option<Arc<parking_lot::RwLock<User>>>,
     pub(crate) _nonexhaustive: (),
 }
 
@@ -419,7 +419,7 @@ impl<'de> Deserialize<'de> for Presence {
             let user = User::deserialize(Value::Object(user_map))
                 .map_err(DeError::custom)?;
 
-            (user.id, Some(Arc::new(user)))
+            (user.id, Some(Arc::new(parking_lot::RwLock::new(user))))
         } else {
             let user_id = user_map
                 .remove("id")
@@ -477,7 +477,7 @@ impl Serialize for Presence {
         state.serialize_field("status", &self.status)?;
 
         if let Some(ref user) = self.user {
-            state.serialize_field("user", &**user)?;
+            state.serialize_field("user", &*user.read())?;
         } else {
             state.serialize_field("user", &UserId {
                 id: self.user_id.0,

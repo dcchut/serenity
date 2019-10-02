@@ -193,7 +193,7 @@ pub struct Cache {
     /// [`GuildMembersChunkEvent`]: ../model/event/struct.GuildMembersChunkEvent.html
     /// [`PresenceUpdateEvent`]: ../model/event/struct.PresenceUpdateEvent.html
     /// [`ReadyEvent`]: ../model/event/struct.ReadyEvent.html
-    pub users: HashMap<UserId, Arc<User>>,
+    pub users: HashMap<UserId, Arc<parking_lot::RwLock<User>>>,
     /// Queue of message IDs for each channel.
     ///
     /// This is simply a vecdeque so we can keep track of the order of messages
@@ -804,11 +804,11 @@ impl Cache {
     /// # fn main() {}
     /// ```
     #[inline]
-    pub fn user<U: Into<UserId>>(&self, user_id: U) -> Option<Arc<User>> {
+    pub fn user<U: Into<UserId>>(&self, user_id: U) -> Option<Arc<parking_lot::RwLock<User>>> {
         self._user(user_id.into())
     }
 
-    fn _user(&self, user_id: UserId) -> Option<Arc<User>> {
+    fn _user(&self, user_id: UserId) -> Option<Arc<parking_lot::RwLock<User>>> {
         self.users.get(&user_id).cloned()
     }
 
@@ -839,7 +839,7 @@ impl Cache {
     }
 
     pub(crate) fn update_user_entry(&mut self, user: &User) {
-        self.users.insert(user.id, Arc::new(user.clone()));
+        self.users.insert(user.id, Arc::new(parking_lot::RwLock::new(user.clone())));
     }
 }
 

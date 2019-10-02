@@ -857,7 +857,7 @@ impl User {
 
     /// Returns a string representing the user.
     /// This is in the format of: `<@USER_ID>`
-    pub async fn async_display(&self) -> String {
+    pub async fn async_to_string(&self) -> String {
         self.id.mention().await
     }
 }

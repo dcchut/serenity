@@ -4,12 +4,12 @@ version = "0.1.0"
 authors = ["my name <my@email.address>"]
 edition = "2018"
 
-[dependencies]
-async-trait = "0.1"
-
 [dependencies.serenity]
 features = ["framework", "standard_framework"]
 path = "../../"
 
 [dependencies.tokio]
 version = "0.2.0-alpha.6"
+
+[dependencies]
+async-trait = "0.1"

@@ -6,6 +6,7 @@ use serde_json;
 use std::sync::Arc;
 use super::utils::*;
 use super::prelude::*;
+use crate::internal::SyncRwLock;
 use bitflags::bitflags;
 
 /// A representation of the data retrieved from the bot gateway endpoint.
@@ -403,7 +404,7 @@ pub struct Presence {
     /// date.
     pub user_id: UserId,
     /// The associated user instance.
-    pub user: Option<Arc<parking_lot::RwLock<User>>>,
+    pub user: Option<Arc<SyncRwLock<User>>>,
     pub(crate) _nonexhaustive: (),
 }
 
@@ -419,7 +420,7 @@ impl<'de> Deserialize<'de> for Presence {
             let user = User::deserialize(Value::Object(user_map))
                 .map_err(DeError::custom)?;
 
-            (user.id, Some(Arc::new(parking_lot::RwLock::new(user))))
+            (user.id, Some(Arc::new(SyncRwLock::new(user))))
         } else {
             let user_id = user_map
                 .remove("id")

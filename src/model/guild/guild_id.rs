@@ -16,6 +16,8 @@ use crate::utils;
 use crate::http::Http;
 #[cfg(feature = "model")]
 use crate::builder::CreateChannel;
+#[cfg(feature = "cache")]
+use crate::internal::AsyncRwLock;
 #[cfg(feature = "model")]
 use serde_json::json;
 use futures::Stream;
@@ -442,7 +444,7 @@ impl GuildId {
     /// [`Guild`]: ../guild/struct.Guild.html
     #[cfg(feature = "cache")]
     #[inline]
-    pub async fn to_guild_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> {
+    pub async fn to_guild_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<AsyncRwLock<Guild>>> {
         let guard = cache.as_ref().read().await;
         let res = guard.guild(self);
         res

@@ -39,7 +39,7 @@
 
 use std::str::FromStr;
 use crate::model::prelude::*;
-use async_std::sync::RwLock;
+use crate::internal::{AsyncRwLock, SyncRwLock};
 use std::collections::{
     HashMap,
     HashSet,
@@ -112,21 +112,21 @@ pub struct Cache {
     /// [`Event::GuildDelete`]: ../model/event/struct.GuildDeleteEvent.html
     /// [`Event::GuildUnavailable`]: ../model/event/struct.GuildUnavailableEvent.html
     /// [`Guild`]: ../model/guild/struct.Guild.html
-    pub channels: HashMap<ChannelId, Arc<RwLock<GuildChannel>>>,
+    pub channels: HashMap<ChannelId, Arc<AsyncRwLock<GuildChannel>>>,
     /// A map of channel categories.
-    pub categories: HashMap<ChannelId, Arc<RwLock<ChannelCategory>>>,
+    pub categories: HashMap<ChannelId, Arc<AsyncRwLock<ChannelCategory>>>,
     /// A map of the groups that the current user is in.
     ///
     /// For bot users this will always be empty, except for in [special cases].
     ///
     /// [special cases]: index.html#special-cases-in-the-cache
-    pub groups: HashMap<ChannelId, Arc<RwLock<Group>>>,
+    pub groups: HashMap<ChannelId, Arc<AsyncRwLock<Group>>>,
     /// A map of guilds with full data available. This includes data like
     /// [`Role`]s and [`Emoji`]s that are not available through the REST API.
     ///
     /// [`Emoji`]: ../model/guild/struct.Emoji.html
     /// [`Role`]: ../model/guild/struct.Role.html
-    pub guilds: HashMap<GuildId, Arc<RwLock<Guild>>>,
+    pub guilds: HashMap<GuildId, Arc<AsyncRwLock<Guild>>>,
     /// A map of channels to messages.
     ///
     /// This is a map of channel IDs to another map of message IDs to messages.
@@ -146,7 +146,7 @@ pub struct Cache {
     pub presences: HashMap<UserId, Presence>,
     /// A map of direct message channels that the current user has open with
     /// other users.
-    pub private_channels: HashMap<ChannelId, Arc<RwLock<PrivateChannel>>>,
+    pub private_channels: HashMap<ChannelId, Arc<AsyncRwLock<PrivateChannel>>>,
     /// The total number of shards being used by the bot.
     pub shard_count: u64,
     /// A list of guilds which are "unavailable". Refer to the documentation for
@@ -193,7 +193,7 @@ pub struct Cache {
     /// [`GuildMembersChunkEvent`]: ../model/event/struct.GuildMembersChunkEvent.html
     /// [`PresenceUpdateEvent`]: ../model/event/struct.PresenceUpdateEvent.html
     /// [`ReadyEvent`]: ../model/event/struct.ReadyEvent.html
-    pub users: HashMap<UserId, Arc<parking_lot::RwLock<User>>>,
+    pub users: HashMap<UserId, Arc<SyncRwLock<User>>>,
     /// Queue of message IDs for each channel.
     ///
     /// This is simply a vecdeque so we can keep track of the order of messages
@@ -441,11 +441,11 @@ impl Cache {
     /// # }
     /// ```
     #[inline]
-    pub fn guild<G: Into<GuildId>>(&self, id: G) -> Option<Arc<RwLock<Guild>>> {
+    pub fn guild<G: Into<GuildId>>(&self, id: G) -> Option<Arc<AsyncRwLock<Guild>>> {
         self._guild(id.into())
     }
 
-    fn _guild(&self, id: GuildId) -> Option<Arc<RwLock<Guild>>> {
+    fn _guild(&self, id: GuildId) -> Option<Arc<AsyncRwLock<Guild>>> {
         self.guilds.get(&id).cloned()
     }
 
@@ -504,11 +504,11 @@ impl Cache {
     /// [`Guild`]: ../model/guild/struct.Guild.html
     /// [`channel`]: #method.channel
     #[inline]
-    pub fn guild_channel<C: Into<ChannelId>>(&self, id: C) -> Option<Arc<RwLock<GuildChannel>>> {
+    pub fn guild_channel<C: Into<ChannelId>>(&self, id: C) -> Option<Arc<AsyncRwLock<GuildChannel>>> {
         self._guild_channel(id.into())
     }
 
-    fn _guild_channel(&self, id: ChannelId) -> Option<Arc<RwLock<GuildChannel>>> {
+    fn _guild_channel(&self, id: ChannelId) -> Option<Arc<AsyncRwLock<GuildChannel>>> {
         self.channels.get(&id).cloned()
     }
 
@@ -539,11 +539,11 @@ impl Cache {
     /// # }
     /// ```
     #[inline]
-    pub fn group<C: Into<ChannelId>>(&self, id: C) -> Option<Arc<RwLock<Group>>> {
+    pub fn group<C: Into<ChannelId>>(&self, id: C) -> Option<Arc<AsyncRwLock<Group>>> {
         self._group(id.into())
     }
 
-    fn _group(&self, id: ChannelId) -> Option<Arc<RwLock<Group>>> {
+    fn _group(&self, id: ChannelId) -> Option<Arc<AsyncRwLock<Group>>> {
         self.groups.get(&id).cloned()
     }
 
@@ -696,11 +696,11 @@ impl Cache {
     #[inline]
     pub fn private_channel<C: Into<ChannelId>>(&self,
                                                channel_id: C)
-                                               -> Option<Arc<RwLock<PrivateChannel>>> {
+                                               -> Option<Arc<AsyncRwLock<PrivateChannel>>> {
         self._private_channel(channel_id.into())
     }
 
-    fn _private_channel(&self, channel_id: ChannelId) -> Option<Arc<RwLock<PrivateChannel>>> {
+    fn _private_channel(&self, channel_id: ChannelId) -> Option<Arc<AsyncRwLock<PrivateChannel>>> {
         self.private_channels.get(&channel_id).cloned()
     }
 
@@ -804,22 +804,22 @@ impl Cache {
     /// # fn main() {}
     /// ```
     #[inline]
-    pub fn user<U: Into<UserId>>(&self, user_id: U) -> Option<Arc<parking_lot::RwLock<User>>> {
+    pub fn user<U: Into<UserId>>(&self, user_id: U) -> Option<Arc<SyncRwLock<User>>> {
         self._user(user_id.into())
     }
 
-    fn _user(&self, user_id: UserId) -> Option<Arc<parking_lot::RwLock<User>>> {
+    fn _user(&self, user_id: UserId) -> Option<Arc<SyncRwLock<User>>> {
         self.users.get(&user_id).cloned()
     }
 
     #[inline]
     pub fn categories<C: Into<ChannelId>>(&self,
                                           channel_id: C)
-                                          -> Option<Arc<RwLock<ChannelCategory>>> {
+                                          -> Option<Arc<AsyncRwLock<ChannelCategory>>> {
         self._categories(channel_id.into())
     }
 
-    fn _categories(&self, channel_id: ChannelId) -> Option<Arc<RwLock<ChannelCategory>>> {
+    fn _categories(&self, channel_id: ChannelId) -> Option<Arc<AsyncRwLock<ChannelCategory>>> {
         self.categories.get(&channel_id).cloned()
     }
 
@@ -839,7 +839,7 @@ impl Cache {
     }
 
     pub(crate) fn update_user_entry(&mut self, user: &User) {
-        self.users.insert(user.id, Arc::new(parking_lot::RwLock::new(user.clone())));
+        self.users.insert(user.id, Arc::new(SyncRwLock::new(user.clone())));
     }
 }
 
@@ -879,7 +879,7 @@ mod test {
         utils::run_async_test,
     };
     use crate::model::guild::PremiumTier::Tier2;
-    use async_std::sync::RwLock;
+    use crate::internal::AsyncRwLock;
 
     #[test]
     fn test_cache_messages() {
@@ -977,7 +977,7 @@ mod test {
             // Add a channel delete event to the cache, the cached messages for that
             // channel should now be gone.
             let mut delete = ChannelDeleteEvent {
-                channel: Channel::Guild(Arc::new(RwLock::new(guild_channel.clone()))),
+                channel: Channel::Guild(Arc::new(AsyncRwLock::new(guild_channel.clone()))),
                 _nonexhaustive: (),
             };
             assert!(cache.update(&mut delete).await.is_none());
@@ -987,7 +987,7 @@ mod test {
             // is received.
             let mut guild_create = {
                 let mut channels = HashMap::new();
-                channels.insert(ChannelId(2), Arc::new(RwLock::new(guild_channel.clone())));
+                channels.insert(ChannelId(2), Arc::new(AsyncRwLock::new(guild_channel.clone())));
 
                 GuildCreateEvent {
                     guild: Guild {
@@ -1070,10 +1070,10 @@ mod test {
 /// A neworphantype to allow implementing `AsRef<CacheRwLock>`
 /// for the automatically dereferenced underlying type.
 #[derive(Clone)]
-pub struct CacheRwLock(Arc<RwLock<Cache>>);
+pub struct CacheRwLock(Arc<AsyncRwLock<Cache>>);
 
-impl From<Arc<RwLock<Cache>>> for CacheRwLock {
-    fn from(cache: Arc<RwLock<Cache>>) -> Self {
+impl From<Arc<AsyncRwLock<Cache>>> for CacheRwLock {
+    fn from(cache: Arc<AsyncRwLock<Cache>>) -> Self {
         Self(cache)
     }
 }
@@ -1091,9 +1091,9 @@ impl Default for CacheRwLock {
 }
 
 impl Deref for CacheRwLock {
-    type Target = Arc<RwLock<Cache>>;
+    type Target = Arc<AsyncRwLock<Cache>>;
 
-    fn deref(&self) -> &Arc<RwLock<Cache>> {
+    fn deref(&self) -> &Arc<AsyncRwLock<Cache>> {
         &self.0
     }
 }

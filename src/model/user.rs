@@ -5,7 +5,7 @@ use crate::http::CacheHttp;
 use serde_json;
 use super::utils::deserialize_u16;
 use super::prelude::*;
-use crate::{internal::prelude::*, model::misc::Mentionable};
+use crate::{internal::prelude::*, model::misc::Mentionable, internal::SyncRwLock};
 
 #[cfg(feature = "model")]
 use crate::builder::{CreateMessage, EditProfile};
@@ -892,7 +892,7 @@ impl UserId {
     /// [`User`]: ../user/struct.User.html
     #[cfg(feature = "cache")]
     #[inline]
-    pub async fn to_user_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<parking_lot::RwLock<User>>> {
+    pub async fn to_user_cached(self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<SyncRwLock<User>>> {
         let guard = cache.as_ref().read().await;
         let res = guard.user(self);
 

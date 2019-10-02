@@ -1,5 +1,6 @@
 use chrono::{DateTime, FixedOffset};
 use crate::model::prelude::*;
+use crate::internal::SyncRwLock;
 use std::fmt::{
     Display,
     Formatter,
@@ -42,7 +43,7 @@ pub struct PrivateChannel {
     #[serde(deserialize_with = "deserialize_single_recipient",
             serialize_with = "serialize_single_recipient",
             rename = "recipients")]
-    pub recipient: Arc<parking_lot::RwLock<User>>,
+    pub recipient: Arc<SyncRwLock<User>>,
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
 }

@@ -340,14 +340,14 @@ mod test {
     #[cfg(feature = "utils")]
     mod utils {
         use crate::model::prelude::*;
-        use async_std::sync::RwLock;
+        use crate::internal::AsyncRwLock;
         use std::sync::Arc;
         use crate::utils::{Colour, run_async_test};
 
         #[test]
         fn test_mention() {
             run_async_test(async move {
-                let channel = Channel::Guild(Arc::new(RwLock::new(GuildChannel {
+                let channel = Channel::Guild(Arc::new(AsyncRwLock::new(GuildChannel {
                     bitrate: None,
                     category_id: None,
                     guild_id: GuildId(1),

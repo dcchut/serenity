@@ -1,7 +1,7 @@
 use crate::client::bridge::gateway::ShardMessenger;
 use crate::gateway::InterMessage;
 use crate::model::prelude::*;
-use async_std::sync::RwLock;
+use crate::internal::AsyncRwLock;
 use std::sync::Arc;
 use typemap::ShareMap;
 
@@ -33,7 +33,7 @@ pub struct Context {
     /// information.
     ///
     /// [`Client::data`]: struct.Client.html#structfield.data
-    pub data: Arc<RwLock<ShareMap>>,
+    pub data: Arc<AsyncRwLock<ShareMap>>,
     /// The messenger to communicate with the shard runner.
     pub shard: ShardMessenger,
     /// The ID of the shard this context is related to.
@@ -47,11 +47,11 @@ impl Context {
     /// Create a new Context to be passed to an event handler.
     #[cfg(feature = "cache")]
     pub(crate) fn new(
-        data: Arc<RwLock<ShareMap>>,
+        data: Arc<AsyncRwLock<ShareMap>>,
         runner_tx: UnboundedSender<InterMessage>,
         shard_id: u64,
         http: Arc<Http>,
-        cache: Arc<RwLock<Cache>>,
+        cache: Arc<AsyncRwLock<Cache>>,
     ) -> Context {
         Context {
             shard: ShardMessenger::new(runner_tx),
@@ -65,7 +65,7 @@ impl Context {
     /// Create a new Context to be passed to an event handler.
     #[cfg(not(feature = "cache"))]
     pub(crate) fn new(
-        data: Arc<RwLock<ShareMap>>,
+        data: Arc<AsyncRwLock<ShareMap>>,
         runner_tx: UnboundedSender<InterMessage>,
         shard_id: u64,
         http: Arc<Http>,

@@ -87,14 +87,13 @@ pub mod voice;
 mod error;
 
 pub use crate::error::{Error, Result};
+pub use crate::internal::{AsyncRwLock, SyncRwLock};
 
 #[cfg(feature = "client")]
 pub use crate::client::Client;
 
 #[cfg(feature = "cache")]
 use crate::cache::CacheRwLock;
-#[cfg(feature = "cache")]
-use async_std::sync::RwLock;
 #[cfg(feature = "cache")]
 use std::time::Duration;
 #[cfg(feature = "client")]

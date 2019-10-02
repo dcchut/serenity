@@ -1,8 +1,8 @@
 use crate::gateway::Shard;
 use crate::internal::prelude::*;
+use crate::internal::AsyncRwLock;
 use crate::CacheAndHttp;
 use futures::lock::Mutex;
-use async_std::sync::RwLock;
 use std::{
     collections::VecDeque,
     sync::{
@@ -45,7 +45,7 @@ pub struct ShardQueuer {
     /// dispatching.
     ///
     /// [`Client::data`]: ../../struct.Client.html#structfield.data
-    pub data: Arc<RwLock<ShareMap>>,
+    pub data: Arc<AsyncRwLock<ShareMap>>,
     /// A reference to an `EventHandler`, such as the one given to the
     /// [`Client`].
     ///

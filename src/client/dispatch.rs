@@ -5,7 +5,6 @@ use crate::model::{
     guild::Member,
 };
 use std::sync::Arc;
-use async_std::sync::RwLock;
 use futures::lock::Mutex;
 use super::{
     bridge::gateway::event::ClientEvent,
@@ -28,6 +27,7 @@ use crate::cache::{Cache, CacheUpdate};
 use std::fmt;
 #[cfg(feature = "cache")]
 use log::warn;
+use crate::internal::AsyncRwLock;
 
 #[inline]
 #[cfg(feature = "cache")]
@@ -56,18 +56,19 @@ fn update<E>(_cache_and_http: &Arc<CacheAndHttp>, _event: &mut E) -> Option<()> 
 
 #[cfg(feature = "cache")]
 fn context(
-    data: &Arc<RwLock<ShareMap>>,
+    data: &Arc<AsyncRwLock<ShareMap>>,
     runner_tx: &UnboundedSender<InterMessage>,
     shard_id: u64,
     http: &Arc<Http>,
-    cache: &Arc<RwLock<Cache>>,
+    cache: &Arc<AsyncRwLock<Cache>>,
 ) -> Context {
-    Context::new(Arc::clone(data), runner_tx.clone(), shard_id, Arc::clone(http), Arc::clone(cache))
+    Context::new(Arc::clone(data), runner_tx.clone(), shard_id, cache.clone(), Arc::clone(http))
 }
+
 
 #[cfg(not(feature = "cache"))]
 fn context(
-    data: &Arc<RwLock<ShareMap>>,
+    data: &Arc<AsyncRwLock<ShareMap>>,
     runner_tx: &UnboundedSender<InterMessage>,
     shard_id: u64,
     http: &Arc<Http>,
@@ -90,7 +91,7 @@ pub(crate) enum DispatchEvent {
 pub(crate) async fn dispatch(
     event: DispatchEvent,
     framework: &Arc<Mutex<Option<Box<dyn Framework + Send>>>>,
-    data: &Arc<RwLock<ShareMap>>,
+    data: &Arc<AsyncRwLock<ShareMap>>,
     event_handler: &Option<Arc<dyn EventHandler>>,
     raw_event_handler: &Option<Arc<dyn RawEventHandler>>,
     runner_tx: &UnboundedSender<InterMessage>,
@@ -268,7 +269,7 @@ async fn dispatch_message(
 #[allow(clippy::too_many_arguments)]
 async fn handle_event(
     event: DispatchEvent,
-    data: &Arc<RwLock<ShareMap>>,
+    data: &Arc<AsyncRwLock<ShareMap>>,
     event_handler: &Arc<dyn EventHandler>,
     runner_tx: &UnboundedSender<InterMessage>,
     shard_id: u64,

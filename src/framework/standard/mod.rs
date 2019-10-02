@@ -24,11 +24,11 @@ use crate::model::{
     channel::{Channel, Message},
     permissions::Permissions,
 };
+use crate::internal::AsyncRwLock;
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use async_std::sync::RwLock;
 use std::future::Future;
 use futures::FutureExt;
 use std::pin::Pin;
@@ -108,8 +108,8 @@ type PrefixOnlyHook = dyn Fn(&mut Context, &Message) + Send + Sync + 'static;
 pub struct StandardFramework {
     groups: Vec<(&'static CommandGroup, Map)>,
     buckets: HashMap<String, Bucket>,
-    before: Option<Arc<RwLock<Box<dyn BeforeHandler>>>>,
-    after: Option<Arc<RwLock<Box<dyn AfterHandler>>>>,
+    before: Option<Arc<AsyncRwLock<Box<dyn BeforeHandler>>>>,
+    after: Option<Arc<AsyncRwLock<Box<dyn AfterHandler>>>>,
     dispatch: Option<Arc<DispatchHook>>,
     unrecognised_command: Option<Arc<UnrecognisedHook>>,
     normal_message: Option<Arc<NormalMessageHook>>,
@@ -546,7 +546,7 @@ impl StandardFramework {
     //where
     //    F: Send + Sync + 'static + Fn(&mut Context, &Message, &str) -> Pin<Box<dyn Future<Output = bool> + Send>>,
     {
-        self.before = Some(Arc::new(RwLock::new(f)));
+        self.before = Some(Arc::new(AsyncRwLock::new(f)));
 
         self
     }
@@ -580,7 +580,7 @@ impl StandardFramework {
     /// ```
     pub fn after(mut self, f: Box<dyn AfterHandler>) -> Self
     {
-        self.after = Some(Arc::new(RwLock::new(f)));
+        self.after = Some(Arc::new(AsyncRwLock::new(f)));
 
         self
     }

@@ -39,7 +39,7 @@ use crate::cache::CacheRwLock;
 #[cfg(feature = "cache")]
 use std::sync::Arc;
 #[cfg(feature = "cache")]
-use async_std::sync::RwLock;
+use crate::internal::AsyncRwLock;
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
 use async_trait::async_trait;
 
@@ -47,22 +47,22 @@ use async_trait::async_trait;
 #[derive(Clone, Debug)]
 pub enum Channel {
     /// A group. A group comprises of only one channel.
-    Group(Arc<RwLock<Group>>),
+    Group(Arc<AsyncRwLock<Group>>),
     /// A [text] or [voice] channel within a [`Guild`].
     ///
     /// [`Guild`]: ../guild/struct.Guild.html
     /// [text]: enum.ChannelType.html#variant.Text
     /// [voice]: enum.ChannelType.html#variant.Voice
-    Guild(Arc<RwLock<GuildChannel>>),
+    Guild(Arc<AsyncRwLock<GuildChannel>>),
     /// A private channel to another [`User`]. No other users may access the
     /// channel. For multi-user "private channels", use a group.
     ///
     /// [`User`]: ../user/struct.User.html
-    Private(Arc<RwLock<PrivateChannel>>),
+    Private(Arc<AsyncRwLock<PrivateChannel>>),
     /// A category of [`GuildChannel`]s
     ///
     /// [`GuildChannel`]: struct.GuildChannel.html
-    Category(Arc<RwLock<ChannelCategory>>),
+    Category(Arc<AsyncRwLock<ChannelCategory>>),
     #[doc(hidden)]
     __Nonexhaustive,
 }
@@ -105,7 +105,7 @@ impl Channel {
     /// # #[cfg(not(all(feature = "model", feature = "cache")))]
     /// fn main() {}
     /// ```
-    pub fn group(self) -> Option<Arc<RwLock<Group>>> {
+    pub fn group(self) -> Option<Arc<AsyncRwLock<Group>>> {
         match self {
             Channel::Group(lock) => Some(lock),
             _ => None,
@@ -145,7 +145,7 @@ impl Channel {
     /// # #[cfg(not(all(feature = "model", feature = "cache")))]
     /// fn main() {}
     /// ```
-    pub fn guild(self) -> Option<Arc<RwLock<GuildChannel>>> {
+    pub fn guild(self) -> Option<Arc<AsyncRwLock<GuildChannel>>> {
         match self {
             Channel::Guild(lock) => Some(lock),
             _ => None,
@@ -186,7 +186,7 @@ impl Channel {
     /// # #[cfg(not(all(feature = "model", feature = "cache")))]
     /// fn main() {}
     /// ```
-    pub fn private(self) -> Option<Arc<RwLock<PrivateChannel>>> {
+    pub fn private(self) -> Option<Arc<AsyncRwLock<PrivateChannel>>> {
         match self {
             Channel::Private(lock) => Some(lock),
             _ => None,
@@ -226,7 +226,7 @@ impl Channel {
     /// # #[cfg(not(all(feature = "model", feature = "cache")))]
     /// fn main() {}
     /// ```
-    pub fn category(self) -> Option<Arc<RwLock<ChannelCategory>>> {
+    pub fn category(self) -> Option<Arc<AsyncRwLock<ChannelCategory>>> {
         match self {
             Channel::Category(lock) => Some(lock),
             _ => None,
@@ -341,16 +341,16 @@ impl<'de> Deserialize<'de> for Channel {
 
         match kind {
             0 | 2 | 5 | 6 => serde_json::from_value::<GuildChannel>(Value::Object(v))
-                .map(|x| Channel::Guild(Arc::new(RwLock::new(x))))
+                .map(|x| Channel::Guild(Arc::new(AsyncRwLock::new(x))))
                 .map_err(DeError::custom),
             1 => serde_json::from_value::<PrivateChannel>(Value::Object(v))
-                .map(|x| Channel::Private(Arc::new(RwLock::new(x))))
+                .map(|x| Channel::Private(Arc::new(AsyncRwLock::new(x))))
                 .map_err(DeError::custom),
             3 => serde_json::from_value::<Group>(Value::Object(v))
-                .map(|x| Channel::Group(Arc::new(RwLock::new(x))))
+                .map(|x| Channel::Group(Arc::new(AsyncRwLock::new(x))))
                 .map_err(DeError::custom),
             4 => serde_json::from_value::<ChannelCategory>(Value::Object(v))
-                .map(|x| Channel::Category(Arc::new(RwLock::new(x))))
+                .map(|x| Channel::Category(Arc::new(AsyncRwLock::new(x))))
                 .map_err(DeError::custom),
             _ => Err(DeError::custom("Unknown channel type")),
         }
@@ -568,7 +568,7 @@ mod test {
     #[cfg(all(feature = "model", feature = "utils"))]
     mod model_utils {
         use crate::model::prelude::*;
-        use async_std::sync::RwLock;
+        use crate::internal::{SyncRwLock, AsyncRwLock};
         use std::collections::HashMap;
         use std::sync::Arc;
         use crate::utils::run_async_test;
@@ -612,14 +612,14 @@ mod test {
                 last_message_id: None,
                 last_pin_timestamp: None,
                 kind: ChannelType::Private,
-                recipient: Arc::new(User {
+                recipient: Arc::new(SyncRwLock::new(User {
                     id: UserId(2),
                     avatar: None,
                     bot: false,
                     discriminator: 1,
                     name: "ab".to_string(),
                     _nonexhaustive: (),
-                }),
+                })),
                 _nonexhaustive: (),
             }
         }
@@ -648,7 +648,7 @@ mod test {
                 channel.nsfw = false;
                 assert!(!channel.is_nsfw());
 
-                let channel = Channel::Guild(Arc::new(RwLock::new(channel)));
+                let channel = Channel::Guild(Arc::new(AsyncRwLock::new(channel)));
                 assert!(!channel.is_nsfw().await);
 
                 let group = group();

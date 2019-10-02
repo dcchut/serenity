@@ -1,8 +1,8 @@
 use crate::gateway::InterMessage;
 use crate::internal::prelude::*;
+use crate::internal::AsyncRwLock;
 use crate::CacheAndHttp;
 use futures::lock::Mutex;
-use async_std::sync::RwLock;
 use std::{
     collections::VecDeque,
     sync::Arc,
@@ -376,7 +376,7 @@ impl Drop for ShardManager {
 }
 
 pub struct ShardManagerOptions<'a> {
-    pub data: &'a Arc<RwLock<ShareMap>>,
+    pub data: &'a Arc<AsyncRwLock<ShareMap>>,
     pub event_handler: &'a Option<Arc<dyn EventHandler>>,
     pub raw_event_handler: &'a Option<Arc<dyn RawEventHandler>>,
     #[cfg(feature = "framework")]

@@ -16,6 +16,10 @@ use crate::utils::Colour;
 use crate::{cache::CacheRwLock, utils};
 #[cfg(all(feature = "http", feature = "cache"))]
 use crate::http::Http;
+#[cfg(feature = "cache")]
+use crate::internal::AsyncRwLock;
+
+use crate::internal::SyncRwLock;
 
 /// A trait for allowing both u8 or &str or (u8, &str) to be passed into the `ban` methods in `Guild` and `Member`.
 pub trait BanOptions {
@@ -71,7 +75,7 @@ pub struct Member {
     /// Attached User struct.
     #[serde(deserialize_with = "deserialize_sync_user",
             serialize_with = "serialize_sync_user")]
-    pub user: Arc<parking_lot::RwLock<User>>,
+    pub user: Arc<SyncRwLock<User>>,
 
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
@@ -193,7 +197,7 @@ impl Member {
     /// (This returns the first channel that can be read by the member, if there isn't
     /// one returns `None`)
     #[cfg(feature = "cache")]
-    pub async fn default_channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<async_std::sync::RwLock<GuildChannel>>> {
+    pub async fn default_channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<AsyncRwLock<GuildChannel>>> {
         let guild = match self.guild_id.to_guild_cached(&cache).await {
             Some(guild) => guild,
             None => return None,

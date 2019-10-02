@@ -1,5 +1,6 @@
 use chrono::{DateTime, FixedOffset};
 use crate::model::prelude::*;
+use crate::internal::SyncRwLock;
 
 #[cfg(feature = "model")]
 use crate::builder::{
@@ -37,7 +38,7 @@ pub struct Group {
     /// A map of the group's recipients.
     #[serde(deserialize_with = "deserialize_users",
             serialize_with = "serialize_users")]
-    pub recipients: HashMap<UserId, Arc<parking_lot::RwLock<User>>>,
+    pub recipients: HashMap<UserId, Arc<SyncRwLock<User>>>,
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
 }

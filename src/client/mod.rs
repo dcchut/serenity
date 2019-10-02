@@ -42,8 +42,8 @@ pub use crate::cache::{Cache, CacheRwLock};
 use std::time::Duration;
 
 use crate::internal::prelude::*;
+use crate::internal::AsyncRwLock;
 use futures::lock::Mutex;
-use async_std::sync::RwLock;
 use self::bridge::gateway::{ShardManager, ShardManagerMonitor, ShardManagerOptions};
 use std::sync::Arc;
 use typemap::ShareMap;
@@ -185,7 +185,7 @@ pub struct Client {
     /// [`Event::MessageDeleteBulk`]: ../model/event/enum.Event.html#variant.MessageDeleteBulk
     /// [`Event::MessageUpdate`]: ../model/event/enum.Event.html#variant.MessageUpdate
     /// [example 05]: https://github.com/serenity-rs/serenity/tree/current/examples/05_command_framework
-    pub data: Arc<RwLock<ShareMap>>,
+    pub data: Arc<AsyncRwLock<ShareMap>>,
     /// A vector of all active shards that have received their [`Event::Ready`]
     /// payload, and have dispatched to [`on_ready`] if an event handler was
     /// configured.
@@ -412,7 +412,8 @@ impl Client {
         let http = Http::new_with_token(&token);
 
         let url = Arc::new(Mutex::new(http.get_gateway().await?.url));
-        let data = Arc::new(RwLock::new(ShareMap::custom()));
+        let data = Arc::new(AsyncRwLock::new(ShareMap::custom()));
+
 
         #[cfg(feature = "framework")]
         let framework = Arc::new(Mutex::new(None));
@@ -423,10 +424,8 @@ impl Client {
         )));
 
         let cache_and_http = Arc::new(CacheAndHttp {
-            #[cfg(feature = "cache")]
-            cache: CacheRwLock::default(),
-            #[cfg(feature = "cache")]
-            update_cache_timeout: timeout,
+            cache: Arc::new(AsyncRwLock::new(Cache::default())),
+            update_cache_timeout: duration,
             http: Arc::new(http),
             __nonexhaustive: (),
         });

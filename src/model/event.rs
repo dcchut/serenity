@@ -21,6 +21,7 @@ use crate::cache::{Cache, CacheUpdate};
 use std::collections::hash_map::Entry;
 #[cfg(feature = "cache")]
 use std::mem;
+use crate::internal::{AsyncRwLock, SyncRwLock};
 
 /// Event data for the channel creation event.
 ///
@@ -413,7 +414,7 @@ impl CacheUpdate for GuildCreateEvent {
         cache.channels.extend(guild.channels.clone());
         cache
             .guilds
-            .insert(self.guild.id, Arc::new(RwLock::new(guild)));
+            .insert(self.guild.id, Arc::new(AsyncRwLock::new(guild)));
 
         None
     }
@@ -444,7 +445,7 @@ pub struct GuildDeleteEvent {
 #[cfg(feature = "cache")]
 #[async_trait]
 impl CacheUpdate for GuildDeleteEvent {
-    type Output = Arc<RwLock<Guild>>;
+    type Output = Arc<AsyncRwLock<Guild>>;
 
     async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
         // Remove channel entries for the guild if the guild is found.
@@ -627,7 +628,7 @@ impl CacheUpdate for GuildMemberUpdateEvent {
 
                 member.nick.clone_from(&self.nick);
                 member.roles.clone_from(&self.roles);
-                member.user = Arc::new(parking_lot::RwLock::new(self.user.clone()));
+                member.user = Arc::new(SyncRwLock::new(self.user.clone()));
 
                 found = true;
 
@@ -646,7 +647,7 @@ impl CacheUpdate for GuildMemberUpdateEvent {
                         mute: false,
                         nick: self.nick.clone(),
                         roles: self.roles.clone(),
-                        user: Arc::new(parking_lot::RwLock::new(self.user.clone())),
+                        user: Arc::new(SyncRwLock::new(self.user.clone())),
                         _nonexhaustive: (),
                     },
                 );
@@ -1222,7 +1223,7 @@ impl CacheUpdate for ReadyEvent {
                 },
                 GuildStatus::OnlineGuild(guild) => {
                     cache.unavailable_guilds.remove(&guild.id);
-                    cache.guilds.insert(guild.id, Arc::new(RwLock::new(guild)));
+                    cache.guilds.insert(guild.id, Arc::new(AsyncRwLock::new(guild)));
                 },
                 GuildStatus::OnlinePartialGuild(_) => {},
                 GuildStatus::__Nonexhaustive => unreachable!(),

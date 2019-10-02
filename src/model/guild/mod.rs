@@ -28,7 +28,7 @@ use super::utils::*;
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache::CacheRwLock;
 #[cfg(all(feature = "cache", feature = "model"))]
-use async_std::sync::RwLock;
+use crate::internal::AsyncRwLock;
 #[cfg(all(feature = "http", feature = "model"))]
 use serde_json::json;
 #[cfg(all(feature = "cache", feature = "model"))]
@@ -68,7 +68,7 @@ pub struct Guild {
     /// This contains all channels regardless of permissions (i.e. the ability
     /// of the bot to read from or connect to them).
     #[serde(serialize_with = "serialize_gen_locked_map")]
-    pub channels: HashMap<ChannelId, Arc<RwLock<GuildChannel>>>,
+    pub channels: HashMap<ChannelId, Arc<AsyncRwLock<GuildChannel>>>,
     /// Indicator of whether notifications for all messages are enabled by
     /// default in the guild.
     pub default_message_notifications: DefaultMessageNotificationLevel,
@@ -188,7 +188,7 @@ impl Guild {
     /// (This returns the first channel that can be read by the user, if there isn't one,
     /// returns `None`)
     #[cfg(feature = "http")]
-    pub async fn default_channel(&self, uid: UserId) -> Option<Arc<RwLock<GuildChannel>>> {
+    pub async fn default_channel(&self, uid: UserId) -> Option<Arc<AsyncRwLock<GuildChannel>>> {
         for (cid, channel) in self.channels.iter() {
             if self.user_permissions_in(*cid, uid).await.read_messages() {
                 return Some(Arc::clone(channel));
@@ -203,7 +203,7 @@ impl Guild {
     /// returns `None`)
     /// Note however that this is very costy if used in a server with lots of channels,
     /// members, or both.
-    pub async fn default_channel_guaranteed(&self) -> Option<Arc<RwLock<GuildChannel>>> {
+    pub async fn default_channel_guaranteed(&self) -> Option<Arc<AsyncRwLock<GuildChannel>>> {
         for (cid, channel) in self.channels.iter() {
             for memid in self.members.keys() {
                 if self.user_permissions_in(*cid, *memid).await.read_messages() {

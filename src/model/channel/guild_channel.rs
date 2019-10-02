@@ -6,7 +6,7 @@ use crate::model::prelude::*;
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache::CacheRwLock;
 #[cfg(feature = "cache")]
-use async_std::sync::RwLock;
+use crate::internal::AsyncRwLock;
 #[cfg(feature = "cache")]
 use std::sync::Arc;
 #[cfg(feature = "model")]
@@ -419,7 +419,7 @@ impl GuildChannel {
     /// **Note**: Right now this performs a clone of the guild. This will be
     /// optimized in the future.
     #[cfg(feature = "cache")]
-    pub async fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> {
+    pub async fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<AsyncRwLock<Guild>>> {
         let guard = cache.as_ref().read().await;
         let res = guard.guild(self.guild_id) ;
 

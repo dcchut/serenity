@@ -1,6 +1,6 @@
 use crate::model::prelude::*;
+use crate::internal::AsyncRwLock;
 use async_trait::async_trait;
-use async_std::sync::RwLock;
 use serde_json::Value;
 use std::{
     collections::HashMap,
@@ -26,27 +26,27 @@ pub trait EventHandler : Send + Sync {
     /// Dispatched when a channel is created.
     ///
     /// Provides said channel's data.
-    async fn channel_create(&self, _ctx: Context, _channel: Arc<RwLock<GuildChannel>>) {}
+    async fn channel_create(&self, _ctx: Context, _channel: Arc<AsyncRwLock<GuildChannel>>) {}
 
     /// Dispatched when a category is created.
     ///
     /// Provides said category's data.
-    async fn category_create(&self, _ctx: Context, _category: Arc<RwLock<ChannelCategory>>) {}
+    async fn category_create(&self, _ctx: Context, _category: Arc<AsyncRwLock<ChannelCategory>>) {}
 
     /// Dispatched when a category is deleted.
     ///
     /// Provides said category's data.
-    async fn category_delete(&self, _ctx: Context, _category: Arc<RwLock<ChannelCategory>>) {}
+    async fn category_delete(&self, _ctx: Context, _category: Arc<AsyncRwLock<ChannelCategory>>) {}
 
     /// Dispatched when a private channel is created.
     ///
     /// Provides said channel's data.
-    async fn private_channel_create(&self, _ctx: Context, _channel: Arc<RwLock<PrivateChannel>>) {}
+    async fn private_channel_create(&self, _ctx: Context, _channel: Arc<AsyncRwLock<PrivateChannel>>) {}
 
     /// Dispatched when a channel is deleted.
     ///
     /// Provides said channel's data.
-    async fn channel_delete(&self, _ctx: Context, _channel: Arc<RwLock<GuildChannel>>) {}
+    async fn channel_delete(&self, _ctx: Context, _channel: Arc<AsyncRwLock<GuildChannel>>) {}
 
     /// Dispatched when a pin is added, deleted.
     ///
@@ -104,7 +104,7 @@ pub trait EventHandler : Send + Sync {
     /// Provides the partial data of the guild sent by discord,
     /// and the full data from the cache, if available.
     #[cfg(feature = "cache")]
-    async fn guild_delete(&self, _ctx: Context, _incomplete: PartialGuild, _full: Option<Arc<RwLock<Guild>>>) {}
+    async fn guild_delete(&self, _ctx: Context, _incomplete: PartialGuild, _full: Option<Arc<AsyncRwLock<Guild>>>) {}
 
     /// Dispatched when a guild is deleted.
     ///
@@ -196,7 +196,7 @@ pub trait EventHandler : Send + Sync {
     ///
     /// Provides the guild's old full data (if available) and the new, albeit partial data.
     #[cfg(feature = "cache")]
-    async fn guild_update(&self, _ctx: Context, _old_data_if_available: Option<Arc<RwLock<Guild>>>, _new_but_incomplete: PartialGuild) {}
+    async fn guild_update(&self, _ctx: Context, _old_data_if_available: Option<Arc<AsyncRwLock<Guild>>>, _new_but_incomplete: PartialGuild) {}
 
     /// Dispatched when the guild is updated.
     ///

@@ -11,7 +11,7 @@ use crate::builder::{CreateEmbed, EditMessage};
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache::CacheRwLock;
 #[cfg(all(feature = "cache", feature = "model"))]
-use async_std::sync::RwLock;
+use crate::internal::AsyncRwLock;
 #[cfg(all(feature = "client", feature = "model"))]
 use serde_json::json;
 #[cfg(all(feature = "cache", feature = "model"))]
@@ -369,7 +369,7 @@ impl Message {
     ///
     /// [`guild_id`]: #method.guild_id
     #[cfg(feature = "cache")]
-    pub async fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<RwLock<Guild>>> {
+    pub async fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<AsyncRwLock<Guild>>> {
         let guard = cache.as_ref().read().await;
         let res = guard.guild(self.guild_id?);
 

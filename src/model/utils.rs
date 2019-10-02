@@ -1,4 +1,3 @@
-use async_std::sync::RwLock;
 use serde::de::Error as DeError;
 use serde::de::MapAccess;
 use serde::ser::{SerializeSeq, Serialize, Serializer};
@@ -16,6 +15,7 @@ use crate::internal::prelude::*;
 use super::permissions::Permissions;
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache::CacheRwLock;
+use crate::internal::{AsyncRwLock, SyncRwLock};
 
 pub fn default_true() -> bool {
     true
@@ -48,12 +48,12 @@ pub fn serialize_emojis<S: Serializer>(
 
 pub fn deserialize_guild_channels<'de, D: Deserializer<'de>>(
     deserializer: D)
-    -> StdResult<HashMap<ChannelId, Arc<RwLock<GuildChannel>>>, D::Error> {
+    -> StdResult<HashMap<ChannelId, Arc<AsyncRwLock<GuildChannel>>>, D::Error> {
     let vec: Vec<GuildChannel> = Deserialize::deserialize(deserializer)?;
     let mut map = HashMap::new();
 
     for channel in vec {
-        map.insert(channel.id, Arc::new(RwLock::new(channel)));
+        map.insert(channel.id, Arc::new(AsyncRwLock::new(channel)));
     }
 
     Ok(map)
@@ -164,7 +164,7 @@ pub fn serialize_roles<S: Serializer>(
 
 pub fn deserialize_single_recipient<'de, D: Deserializer<'de>>(
     deserializer: D)
-    -> StdResult<Arc<parking_lot::RwLock<User>>, D::Error> {
+    -> StdResult<Arc<SyncRwLock<User>>, D::Error> {
     let mut users: Vec<User> = Deserialize::deserialize(deserializer)?;
     let user = if users.is_empty() {
         return Err(DeError::custom("Expected a single recipient"));
@@ -172,11 +172,11 @@ pub fn deserialize_single_recipient<'de, D: Deserializer<'de>>(
         users.remove(0)
     };
 
-    Ok(Arc::new(parking_lot::RwLock::new(user)))
+    Ok(Arc::new(SyncRwLock::new(user)))
 }
 
 pub fn serialize_single_recipient<S: Serializer>(
-    user: &Arc<parking_lot::RwLock<User>>,
+    user: &Arc<SyncRwLock<User>>,
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(1))?;
@@ -187,12 +187,12 @@ pub fn serialize_single_recipient<S: Serializer>(
 }
 
 pub fn deserialize_sync_user<'de, D>(deserializer: D)
-    -> StdResult<Arc<parking_lot::RwLock<User>>, D::Error> where D: Deserializer<'de> {
-    Ok(Arc::new(parking_lot::RwLock::new(User::deserialize(deserializer)?)))
+    -> StdResult<Arc<SyncRwLock<User>>, D::Error> where D: Deserializer<'de> {
+    Ok(Arc::new(SyncRwLock::new(User::deserialize(deserializer)?)))
 }
 
 pub fn serialize_sync_user<S: Serializer>(
-    user: &Arc<parking_lot::RwLock<User>>,
+    user: &Arc<SyncRwLock<User>>,
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
     User::serialize(&*user.read(), serializer)
@@ -200,19 +200,19 @@ pub fn serialize_sync_user<S: Serializer>(
 
 pub fn deserialize_users<'de, D: Deserializer<'de>>(
     deserializer: D)
-    -> StdResult<HashMap<UserId, Arc<parking_lot::RwLock<User>>>, D::Error> {
+    -> StdResult<HashMap<UserId, Arc<SyncRwLock<User>>>, D::Error> {
     let vec: Vec<User> = Deserialize::deserialize(deserializer)?;
     let mut users = HashMap::new();
 
     for user in vec {
-        users.insert(user.id, Arc::new(parking_lot::RwLock::new(user)));
+        users.insert(user.id, Arc::new(SyncRwLock::new(user)));
     }
 
     Ok(users)
 }
 
 pub fn serialize_users<S: Serializer>(
-    users: &HashMap<UserId, Arc<parking_lot::RwLock<User>>>,
+    users: &HashMap<UserId, Arc<SyncRwLock<User>>>,
     serializer: S
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(users.len()))?;
@@ -269,7 +269,7 @@ pub fn serialize_gen_map<K: Eq + Hash, S: Serializer, V: Serialize>(
 }
 
 pub fn serialize_gen_locked_map<K: Eq + Hash, S: Serializer, V: Serialize>(
-    map: &HashMap<K, Arc<RwLock<V>>>,
+    map: &HashMap<K, Arc<AsyncRwLock<V>>>,
     serializer: S,
 ) -> StdResult<S::Ok, S::Error> {
     let mut seq = serializer.serialize_seq(Some(map.len()))?;

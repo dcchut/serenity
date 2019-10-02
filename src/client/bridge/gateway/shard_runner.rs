@@ -1,10 +1,10 @@
 use crate::gateway::{InterMessage, ReconnectType, Shard, ShardAction};
 use crate::internal::prelude::*;
 use crate::internal::ws_impl::{ReceiverExt, SenderExt};
+use crate::internal::AsyncRwLock;
 use crate::model::event::{Event, GatewayEvent};
 use crate::CacheAndHttp;
 use futures::lock::Mutex;
-use async_std::sync::RwLock;
 use serde::Deserialize;
 use std::{
     borrow::Cow,
@@ -36,7 +36,7 @@ use tokio::timer::Timeout;
 ///
 /// [`Shard`]: ../../../gateway/struct.Shard.html
 pub struct ShardRunner {
-    data: Arc<RwLock<ShareMap>>,
+    data: Arc<AsyncRwLock<ShareMap>>,
     event_handler: Option<Arc<dyn EventHandler>>,
     raw_event_handler: Option<Arc<dyn RawEventHandler>>,
     #[cfg(feature = "framework")]
@@ -520,7 +520,7 @@ impl ShardRunner {
 ///
 /// [`ShardRunner::new`]: struct.ShardRunner.html#method.new
 pub struct ShardRunnerOptions {
-    pub data: Arc<RwLock<ShareMap>>,
+    pub data: Arc<AsyncRwLock<ShareMap>>,
     pub event_handler: Option<Arc<dyn EventHandler>>,
     pub raw_event_handler: Option<Arc<dyn RawEventHandler>>,
     #[cfg(feature = "framework")]

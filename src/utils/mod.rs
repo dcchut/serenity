@@ -18,10 +18,10 @@ pub use self::{
     async_test::run_async_test,
 };
 pub use futures::lock::Mutex as Mutex;
-pub use async_std::sync::RwLock as RwLock;
 
 use base64;
 use crate::internal::prelude::*;
+use crate::internal::AsyncRwLock;
 use crate::model::{
     misc::EmojiIdentifier,
     id::EmojiId,
@@ -649,7 +649,7 @@ async fn clean_roles(cache: impl AsRef<CacheRwLock>, s: &mut String) {
 
 #[cfg(feature = "cache")]
 #[inline]
-async fn clean_channels(cache: &RwLock<Cache>, s: &mut String) {
+async fn clean_channels(cache: &AsyncRwLock<Cache>, s: &mut String) {
     let mut progress = 0;
 
     while let Some(mut mention_start) = s[progress..].find("<#") {
@@ -688,7 +688,7 @@ async fn clean_channels(cache: &RwLock<Cache>, s: &mut String) {
 
 #[cfg(feature = "cache")]
 #[inline]
-async fn clean_users(cache: &RwLock<Cache>, s: &mut String, show_discriminator: bool, guild: Option<GuildId>) {
+async fn clean_users(cache: &AsyncRwLock<Cache>, s: &mut String, show_discriminator: bool, guild: Option<GuildId>) {
     let mut progress = 0;
 
     while let Some(mut mention_start) = s[progress..].find("<@") {
@@ -969,15 +969,15 @@ mod test {
                 _nonexhaustive: (),
             };
 
-            let cache: CacheRwLock = Arc::new(RwLock::new(Cache::default())).into();
+            let cache: CacheRwLock = Arc::new(AsyncRwLock::new(Cache::default())).into();
 
             {
                 let mut cache = cache.try_write().unwrap();
                 guild.members.insert(user.id, member.clone());
                 guild.roles.insert(role.id, role.clone());
                 cache.users.insert(user.id, Arc::new(user.clone()));
-                cache.guilds.insert(guild.id, Arc::new(RwLock::new(guild.clone())));
-                cache.channels.insert(channel.id, Arc::new(RwLock::new(channel.clone())));
+                cache.guilds.insert(guild.id, Arc::new(AsyncRwLock::new(guild.clone())));
+                cache.channels.insert(channel.id, Arc::new(AsyncRwLock::new(channel.clone())));
             }
 
             let with_user_metions = "<@!100000000000000000> <@!000000000000000000> <@123> <@!123> \

@@ -41,7 +41,6 @@ pub use self::error::Error as ModelError;
 pub use self::permissions::Permissions;
 
 use crate::internal::prelude::*;
-use async_std::sync::RwLock;
 use self::utils::*;
 use serde::de::Visitor;
 use std::{

@@ -16,7 +16,7 @@ use crate::builder::{
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache:: {Cache, CacheRwLock};
 #[cfg(all(feature = "cache", feature = "model"))]
-use async_std::sync::RwLock;
+use crate::internal::AsyncRwLock;
 #[cfg(feature = "model")]
 use crate::http::AttachmentType;
 #[cfg(feature = "model")]
@@ -329,7 +329,7 @@ impl ChannelId {
     /// To allow testing pass their own cache instead of using the globale one.
     #[cfg(feature = "cache")]
     #[inline]
-    pub(crate) async fn _to_channel_cached(self, cache: &RwLock<Cache>) -> Option<Channel> {
+    pub(crate) async fn _to_channel_cached(self, cache: &AsyncRwLock<Cache>) -> Option<Channel> {
         cache.read().await.channel(self)
     }
 

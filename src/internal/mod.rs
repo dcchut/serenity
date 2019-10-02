@@ -7,6 +7,9 @@ mod rwlock_ext;
 
 pub use self::rwlock_ext::RwLockExt;
 
+pub use parking_lot::RwLock as SyncRwLock;
+pub use async_std::sync::RwLock as AsyncRwLock;
+
 #[cfg(feature = "gateway")]
 pub mod ws_impl;
 

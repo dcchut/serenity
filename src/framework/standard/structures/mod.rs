@@ -74,11 +74,11 @@ impl<T: fmt::Display> From<T> for CommandError {
 }
 
 pub trait AsyncCommand: Send + Sync {
-    fn command<'life0, 'life1, 'life2, 'life3, 'async_trait>(
+    fn command<'life0, 'life1, 'life2, 'async_trait>(
         &'life0 self,
         ctx: &'life1 mut Context,
         msg: &'life2 Message,
-        args: &'life3 mut Args,
+        args: Args,
     ) -> core::pin::Pin<
         Box<
             dyn core::future::Future<Output = CommandResult>
@@ -90,7 +90,6 @@ pub trait AsyncCommand: Send + Sync {
             'life0: 'async_trait,
             'life1: 'async_trait,
             'life2: 'async_trait,
-            'life3: 'async_trait,
             Self: 'async_trait;
 }
 

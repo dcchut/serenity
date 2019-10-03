@@ -347,7 +347,7 @@ async fn say(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 // not called.
 #[check]
 #[name = "Owner"]
-async fn owner_check(_ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> CheckResult {
+async fn owner_check(_ctx: &mut Context, msg: &Message, _: &mut Args, _: &'static CommandOptions) -> CheckResult {
         // Replace 7 with your ID to make this check pass.
         //
         // `true` will convert into `CheckResult::Success`,
@@ -376,7 +376,7 @@ async fn owner_check(_ctx: &mut Context, msg: &Message, _: &mut Args, _: &Comman
 #[check_in_help(true)]
 // Whether the check shall be displayed in the help-system.
 #[display_in_help(true)]
-async fn admin_check(ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> CheckResult {
+async fn admin_check(ctx: &mut Context, msg: &Message, _: &mut Args, _: &'static CommandOptions) -> CheckResult {
     if let Some(member) = msg.member(&ctx.cache).await {
         if let Ok(permissions) = member.permissions(&ctx.cache).await {
             return permissions.administrator().into();

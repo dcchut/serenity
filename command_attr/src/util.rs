@@ -142,7 +142,7 @@ impl<T> Default for AsOption<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Argument {
     pub mutable: Option<Mut>,
     pub name: Ident,
@@ -188,7 +188,7 @@ pub fn validate_declaration(fun: &mut CommandFun, dec_for: DeclarFor) -> Result<
     let message: Type = parse_quote!(&Message);
     let args: Type = parse_quote!(Args);
     let args2: Type = parse_quote!(&mut Args);
-    let options: Type = parse_quote!(&CommandOptions);
+    let options: Type = parse_quote!(&'static CommandOptions);
     let hoptions: Type = parse_quote!(&'static HelpOptions);
     let groups: Type = parse_quote!(&[&'static CommandGroup]);
     let owners: Type = parse_quote!(HashSet<UserId>);

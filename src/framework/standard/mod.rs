@@ -197,6 +197,7 @@ impl StandardFramework {
         where
             F: FnOnce(&mut BucketBuilder) -> &mut BucketBuilder
     {
+
         let mut builder = BucketBuilder::default();
 
         f(&mut builder);
@@ -785,7 +786,7 @@ impl Framework for StandardFramework {
                         }
                     }
 
-                    let res = command.fun.command(&mut ctx, &msg, &mut args).await;
+                    let res = command.fun.command(&mut ctx, &msg, args).await;
 
                     if let Some(after) = after {
                         after(&mut ctx, &msg, name, res);

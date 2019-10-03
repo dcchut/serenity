@@ -7,8 +7,8 @@ use syn::{
     braced,
     parse::{Error, Parse, ParseStream, Result},
     spanned::Spanned,
-    Attribute, Block, FnArg, Ident, Pat, Path, PathSegment, ReturnType, Stmt, Token, Type,
-    Visibility,
+    token::Pub,
+    Attribute, Block, FnArg, Ident, Lit, Pat, Path, PathSegment, ReturnType, Stmt, Token, Type, Lifetime, Visibility
 };
 
 #[derive(Debug, PartialEq)]
@@ -165,6 +165,39 @@ impl Parse for CommandFun {
     }
 }
 
+fn visit_reference_arguments(args: &Vec<Argument>) -> (Vec<Argument>, Vec<Lifetime>, Vec<TokenStream2>) {
+    let mut counter = 1;
+    let mut modified_arguments = Vec::new();
+    let mut lifetimes = Vec::new();
+
+    for arg in args.iter() {
+        let mut current_arg = arg.clone();
+
+
+        // is this a reference argument?
+        if let Type::Reference(rt) = &mut current_arg.kind {
+            // Add a lifetime to this variable if it doesn't have one already
+            if rt.lifetime.is_none() {
+                let new_lifetime = Lifetime::new(&format!("'life{}", counter), Span::call_site());
+                lifetimes.push(new_lifetime.clone());
+                rt.lifetime = Some(new_lifetime);
+                counter += 1;
+            }
+        }
+
+        modified_arguments.push(current_arg);
+    }
+
+    // Make the lifetime requirements
+    let mut lifetime_requirements = vec![quote!('life0: 'async_trait), quote!(Self: 'async_trait)];
+
+    for lifetime in lifetimes.iter() {
+        lifetime_requirements.push(quote!(#lifetime: 'async_trait));
+    }
+
+    (modified_arguments, lifetimes, lifetime_requirements)
+}
+
 impl ToTokens for CommandFun {
     fn to_tokens(&self, stream: &mut TokenStream2) {
         let Self {
@@ -178,90 +211,19 @@ impl ToTokens for CommandFun {
             kind,
         } = self;
 
+        let (args, lifetimes, lifetime_requirements) = visit_reference_arguments(args);
+
         let struct_name = format_ident!("_{}", name);
 
-        let (command_dec, async_command) = match kind.as_ref().unwrap() {
+        let (fn_name, async_command) = match kind.as_ref().unwrap() {
             CommandFunKind::Command => {
-                let ctx_name = &args[0].name;
-                let msg_name = &args[1].name;
-                let args_name = &args[2].name;
-
-                (quote!(
-                    fn command<'life0, 'life1, 'life2, 'life3, 'async_trait>(
-                            &'life0 self,
-                            #ctx_name: &'life1 mut Context,
-                            #msg_name: &'life2 Message,
-                            #args_name: &'life3 mut Args,
-                        ) -> core::pin::Pin<
-                            Box<
-                                dyn core::future::Future<Output = #ret>
-                                + core::marker::Send
-                                + 'async_trait,
-                            >,
-                        >
-                            where
-                                'life0: 'async_trait,
-                                'life1: 'async_trait,
-                                'life2: 'async_trait,
-                                'life3: 'async_trait,
-                                Self: 'async_trait
-                ),quote!(serenity::framework::standard::AsyncCommand))
+                (quote!(command), quote!(serenity::framework::standard::AsyncCommand))
             },
             CommandFunKind::Check => {
-                let ctx_name = &args[0].name;
-                let msg_name = &args[1].name;
-                let args_name = &args[2].name;
-                let options_name = &args[3].name;
-
-                (quote!(
-                     fn check<'life0, 'life1, 'life2, 'life3, 'async_trait>(
-                         &'life0 self,
-                         #ctx_name: &'life1 mut Context,
-                         #msg_name: &'life2 Message,
-                         #args_name: &'life3 mut Args,
-                         #options_name: &'static CommandOptions,
-                     ) -> core::pin::Pin<
-                         Box<dyn core::future::Future<Output=#ret> + core::marker::Send + 'async_trait>,
-                     >
-                        where
-                            'life0: 'async_trait,
-                            'life1: 'async_trait,
-                            'life2: 'async_trait,
-                            'life3: 'async_trait,
-                            Self: 'async_trait
-                ),quote!(serenity::framework::standard::AsyncCheckFunction))
+                (quote!(check),quote!(serenity::framework::standard::AsyncCheckFunction))
             },
             CommandFunKind::Help => {
-                let ctx_name = &args[0].name;
-                let msg_name = &args[1].name;
-                let args_name = &args[2].name;
-                let options_name = &args[3].name;
-                let groups_name = &args[4].name;
-                let owners_name = &args[5].name;
-
-                (quote!(
-                    fn help<'life0, 'life1, 'life2, 'life3, 'async_trait>(
-                        &'life0 self,
-                        #ctx_name: &'life1 mut Context,
-                        #msg_name: &'life2 Message,
-                        #args_name: Args,
-                        #options_name: &'static HelpOptions,
-                        #groups_name: &'life3 [&'static CommandGroup],
-                        #owners_name: HashSet<UserId>,
-                    ) -> core::pin::Pin<
-                        Box<
-                            dyn core::future::Future<Output = #ret>
-                            + core::marker::Send
-                            + 'async_trait,
-                        >,
-                    >
-                        where
-                            'life0: 'async_trait,
-                            'life1: 'async_trait,
-                            'life2: 'async_trait,
-                            'life3: 'async_trait,
-                            Self: 'async_trait
-                ), quote!(serenity::framework::standard::AsyncHelpCommand))
+                (quote!(help), quote!(serenity::framework::standard::AsyncHelpCommand))
             }
         };
 
@@ -271,7 +233,18 @@ impl ToTokens for CommandFun {
 
             impl #async_command for #struct_name {
                 #(#cooked)*
-                #command_dec {
+                fn #fn_name <'life0 #(, #lifetimes)*, 'async_trait> (
+                        &'life0 self,
+                        #(#args,)*
+                    ) -> core::pin::Pin<
+                        Box<
+                            dyn core::future::Future<Output = #ret>
+                            + core::marker::Send
+                            + 'async_trait,
+                        >,
+                    >
+                        where #(#lifetime_requirements, )*
+                {
                     let __inner = (async move || {
                         #(#body)*
                     })();

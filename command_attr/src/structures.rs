@@ -179,20 +179,14 @@ impl ToTokens for CommandFun {
         } = self;
 
         let struct_name = format_ident!("_{}", name);
-        let (command_name, async_command) =
-            match kind.as_ref().unwrap() {
-                CommandFunKind::Check => (quote!(check), quote!(serenity::framework::standard::AsyncCheckFunction)),
-                CommandFunKind::Command => (quote!(command), quote!(serenity::framework::standard::AsyncCommand)),
-                CommandFunKind::Help => (quote!(help), quote!(serenity::framework::standard::AsyncHelpCommand)),
-            };
 
-        let command_dec = match kind.as_ref().unwrap() {
+        let (command_dec, async_command) = match kind.as_ref().unwrap() {
             CommandFunKind::Command => {
                 let ctx_name = &args[0].name;
                 let msg_name = &args[1].name;
                 let args_name = &args[2].name;
 
-                quote!(
+                (quote!(
                     fn command<'life0, 'life1, 'life2, 'life3, 'async_trait>(
                             &'life0 self,
                             #ctx_name: &'life1 mut Context,
@@ -200,7 +194,7 @@ impl ToTokens for CommandFun {
                             #args_name: &'life3 mut Args,
                         ) -> core::pin::Pin<
                             Box<
-                                dyn core::future::Future<Output = CommandResult>
+                                dyn core::future::Future<Output = #ret>
                                 + core::marker::Send
                                 + 'async_trait,
                             >,
@@ -211,7 +205,7 @@ impl ToTokens for CommandFun {
                                 'life2: 'async_trait,
                                 'life3: 'async_trait,
                                 Self: 'async_trait
-                )
+                ),quote!(serenity::framework::standard::AsyncCommand))
             },
             CommandFunKind::Check => {
                 let ctx_name = &args[0].name;
@@ -219,7 +213,7 @@ impl ToTokens for CommandFun {
                 let args_name = &args[2].name;
                 let options_name = &args[3].name;
 
-                quote!(
+                (quote!(
                      fn check<'life0, 'life1, 'life2, 'life3, 'async_trait>(
                          &'life0 self,
                          #ctx_name: &'life1 mut Context,
@@ -227,7 +221,7 @@ impl ToTokens for CommandFun {
                          #args_name: &'life3 mut Args,
                          #options_name: &'static CommandOptions,
                      ) -> core::pin::Pin<
-                         Box<dyn core::future::Future<Output=CheckResult> + core::marker::Send + 'async_trait>,
+                         Box<dyn core::future::Future<Output=#ret> + core::marker::Send + 'async_trait>,
                      >
                         where
                             'life0: 'async_trait,
@@ -235,7 +229,7 @@ impl ToTokens for CommandFun {
                             'life2: 'async_trait,
                             'life3: 'async_trait,
                             Self: 'async_trait
-                )
+                ),quote!(serenity::framework::standard::AsyncCheckFunction))
             },
             CommandFunKind::Help => {
                 let ctx_name = &args[0].name;
@@ -245,7 +239,7 @@ impl ToTokens for CommandFun {
                 let groups_name = &args[4].name;
                 let owners_name = &args[5].name;
 
-                quote!(
+                (quote!(
                     fn help<'life0, 'life1, 'life2, 'life3, 'async_trait>(
                         &'life0 self,
                         #ctx_name: &'life1 mut Context,
@@ -256,7 +250,7 @@ impl ToTokens for CommandFun {
                         #owners_name: HashSet<UserId>,
                     ) -> core::pin::Pin<
                         Box<
-                            dyn core::future::Future<Output = CommandResult>
+                            dyn core::future::Future<Output = #ret>
                             + core::marker::Send
                             + 'async_trait,
                         >,
@@ -267,7 +261,7 @@ impl ToTokens for CommandFun {
                             'life2: 'async_trait,
                             'life3: 'async_trait,
                             Self: 'async_trait
-                )
+                ), quote!(serenity::framework::standard::AsyncHelpCommand))
             }
         };
 

@@ -7,7 +7,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::quote;
+use quote::{quote, ToTokens, format_ident};
 use syn::{
     parse::{Error, Parse, ParseStream, Result},
     parse_macro_input, parse_quote,
@@ -99,6 +99,7 @@ macro_rules! match_options {
 #[proc_macro_attribute]
 pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
     let mut fun = parse_macro_input!(input as CommandFun);
+    fun.kind = Some(CommandFunKind::Command);
 
     let _name = if !attr.is_empty() {
         parse_macro_input!(attr as Lit).to_str()
@@ -181,8 +182,8 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
     propagate_err!(validate_declaration(&mut fun, DeclarFor::Command));
 
     let either = [
-        parse_quote!(FutureCommandResult),
-        parse_quote!(serenity::framework::standard::FutureCommandResult),
+        parse_quote!(CommandResult),
+        parse_quote!(serenity::framework::standard::CommandResult),
     ];
 
     propagate_err!(validate_return_type(&mut fun, either));
@@ -201,6 +202,9 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let options_path = quote!(serenity::framework::standard::CommandOptions);
     let command_path = quote!(serenity::framework::standard::Command);
+
+    let struct_name = format_ident!("_{}", name);
+    let struct_name_upper = struct_name.to_uppercase();
 
     (quote! {
         #(#cooked)*
@@ -223,15 +227,17 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
             sub_commands: &[#(&#sub_commands),*],
         };
 
+
+        pub static #struct_name_upper : #struct_name = #struct_name {};
+
         #(#cooked2)*
         pub static #n: #command_path = #command_path {
-            fun: #name,
+            fun: &#struct_name_upper,
             options: &#options,
         };
 
         #fun
-    })
-    .into()
+    }).into()
 }
 
 /// A brother macro to [`command`], but for the help command.
@@ -274,6 +280,7 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn help(attr: TokenStream, input: TokenStream) -> TokenStream {
     let mut fun = parse_macro_input!(input as CommandFun);
+    fun.kind = Some(CommandFunKind::Help);
 
     let names = if !attr.is_empty() {
         struct Names(Vec<String>);
@@ -420,8 +427,8 @@ pub fn help(attr: TokenStream, input: TokenStream) -> TokenStream {
     propagate_err!(validate_declaration(&mut fun, DeclarFor::Help));
 
     let either = [
-        parse_quote!(FutureCommandResult),
-        parse_quote!(serenity::framework::standard::FutureCommandResult),
+        parse_quote!(CommandResult),
+        parse_quote!(serenity::framework::standard::CommandResult),
     ];
 
     propagate_err!(validate_return_type(&mut fun, either));
@@ -429,13 +436,14 @@ pub fn help(attr: TokenStream, input: TokenStream) -> TokenStream {
     let options = fun.name.with_suffix(HELP_OPTIONS);
 
     let n = fun.name.to_uppercase();
-    let nn = fun.name.clone();
 
     let cooked = fun.cooked.clone();
     let cooked2 = cooked.clone();
 
     let options_path = quote!(serenity::framework::standard::HelpOptions);
     let command_path = quote!(serenity::framework::standard::HelpCommand);
+    let struct_name = format_ident!("_{}", fun.name);
+    let struct_name_upper = struct_name.to_uppercase();
 
     (quote! {
         #(#cooked)*
@@ -469,9 +477,11 @@ pub fn help(attr: TokenStream, input: TokenStream) -> TokenStream {
             indention_prefix: #indention_prefix,
         };
 
+        pub static #struct_name_upper : #struct_name = #struct_name {};
+
         #(#cooked2)*
         pub static #n: #command_path = #command_path {
-            fun: #nn,
+            fun: &#struct_name_upper,
             options: &#options,
         };
 
@@ -675,6 +685,7 @@ pub fn group(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn check(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let mut fun = parse_macro_input!(input as CommandFun);
+    fun.kind = Some(CommandFunKind::Check);
 
     let mut name = "<fn>".to_string();
     let mut display_in_help = true;
@@ -702,8 +713,8 @@ pub fn check(_attr: TokenStream, input: TokenStream) -> TokenStream {
     propagate_err!(validate_declaration(&mut fun, DeclarFor::Check));
 
     let either = [
-        parse_quote!(FutureCheckResult),
-        parse_quote!(serenity::framework::standard::FutureCheckResult),
+        parse_quote!(CheckResult),
+        parse_quote!(serenity::framework::standard::CheckResult),
     ];
 
     propagate_err!(validate_return_type(&mut fun, either));
@@ -718,16 +729,19 @@ pub fn check(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let name = name.with_suffix(CHECK);
 
     let check = quote!(serenity::framework::standard::Check);
+    let struct_name = format_ident!("_{}", n);
+    let struct_name_upper = struct_name.to_uppercase();
 
     (quote! {
+        pub static #struct_name_upper : #struct_name = #struct_name {};
+
         pub static #name: #check = #check {
             name: #n2,
-            function: #n,
+            function: &#struct_name_upper,
             display_in_help: #display_in_help,
             check_in_help: #check_in_help
         };
 
         #fun
-    })
-    .into()
+    }).into()
 }

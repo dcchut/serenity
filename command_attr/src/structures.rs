@@ -2,7 +2,7 @@ use crate::consts::CHECK;
 use crate::util::{Argument, AsOption, IdentExt2, Parenthesised};
 use proc_macro2::Span;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, ToTokens};
+use quote::{quote, ToTokens, format_ident};
 use syn::{
     braced,
     parse::{Error, Parse, ParseStream, Result},
@@ -89,6 +89,13 @@ fn parse_argument(arg: FnArg) -> Result<Argument> {
 }
 
 #[derive(Debug)]
+pub enum CommandFunKind {
+    Command,
+    Help,
+    Check
+}
+
+#[derive(Debug)]
 pub struct CommandFun {
     /// `#[...]`-style attributes.
     pub attributes: Vec<Attribute>,
@@ -99,6 +106,7 @@ pub struct CommandFun {
     pub args: Vec<Argument>,
     pub ret: Type,
     pub body: Vec<Stmt>,
+    pub kind: Option<CommandFunKind>,
 }
 
 impl Parse for CommandFun {
@@ -152,6 +160,7 @@ impl Parse for CommandFun {
             args,
             ret,
             body,
+            kind: None,
         })
     }
 }
@@ -166,16 +175,119 @@ impl ToTokens for CommandFun {
             args,
             ret,
             body,
+            kind,
         } = self;
 
-        stream.extend(quote! {
-            #(#cooked)*
-            #visibility fn #name (#(#args),*) -> #ret {
-                ::std::boxed::Box::pin(async move {
-                    #(#body)*
-                })
+        let struct_name = format_ident!("_{}", name);
+        let (command_name, async_command) =
+            match kind.as_ref().unwrap() {
+                CommandFunKind::Check => (quote!(check), quote!(serenity::framework::standard::AsyncCheckFunction)),
+                CommandFunKind::Command => (quote!(command), quote!(serenity::framework::standard::AsyncCommand)),
+                CommandFunKind::Help => (quote!(help), quote!(serenity::framework::standard::AsyncHelpCommand)),
+            };
+
+        let command_dec = match kind.as_ref().unwrap() {
+            CommandFunKind::Command => {
+                let ctx_name = &args[0].name;
+                let msg_name = &args[1].name;
+                let args_name = &args[2].name;
+
+                quote!(
+                    fn command<'life0, 'life1, 'life2, 'life3, 'async_trait>(
+                            &'life0 self,
+                            #ctx_name: &'life1 mut Context,
+                            #msg_name: &'life2 Message,
+                            #args_name: &'life3 mut Args,
+                        ) -> core::pin::Pin<
+                            Box<
+                                dyn core::future::Future<Output = CommandResult>
+                                + core::marker::Send
+                                + 'async_trait,
+                            >,
+                        >
+                            where
+                                'life0: 'async_trait,
+                                'life1: 'async_trait,
+                                'life2: 'async_trait,
+                                'life3: 'async_trait,
+                                Self: 'async_trait
+                )
+            },
+            CommandFunKind::Check => {
+                let ctx_name = &args[0].name;
+                let msg_name = &args[1].name;
+                let args_name = &args[2].name;
+                let options_name = &args[3].name;
+
+                quote!(
+                     fn check<'life0, 'life1, 'life2, 'life3, 'async_trait>(
+                         &'life0 self,
+                         #ctx_name: &'life1 mut Context,
+                         #msg_name: &'life2 Message,
+                         #args_name: &'life3 mut Args,
+                         #options_name: &'static CommandOptions,
+                     ) -> core::pin::Pin<
+                         Box<dyn core::future::Future<Output=CheckResult> + core::marker::Send + 'async_trait>,
+                     >
+                        where
+                            'life0: 'async_trait,
+                            'life1: 'async_trait,
+                            'life2: 'async_trait,
+                            'life3: 'async_trait,
+                            Self: 'async_trait
+                )
+            },
+            CommandFunKind::Help => {
+                let ctx_name = &args[0].name;
+                let msg_name = &args[1].name;
+                let args_name = &args[2].name;
+                let options_name = &args[3].name;
+                let groups_name = &args[4].name;
+                let owners_name = &args[5].name;
+
+                quote!(
+                    fn help<'life0, 'life1, 'life2, 'life3, 'async_trait>(
+                        &'life0 self,
+                        #ctx_name: &'life1 mut Context,
+                        #msg_name: &'life2 Message,
+                        #args_name: Args,
+                        #options_name: &'static HelpOptions,
+                        #groups_name: &'life3 [&'static CommandGroup],
+                        #owners_name: HashSet<UserId>,
+                    ) -> core::pin::Pin<
+                        Box<
+                            dyn core::future::Future<Output = CommandResult>
+                            + core::marker::Send
+                            + 'async_trait,
+                        >,
+                    >
+                        where
+                            'life0: 'async_trait,
+                            'life1: 'async_trait,
+                            'life2: 'async_trait,
+                            'life3: 'async_trait,
+                            Self: 'async_trait
+                )
             }
-        });
+        };
+
+        let output = quote! {
+            #[allow(non_camel_case_types)]
+            pub struct #struct_name {}
+
+            impl #async_command for #struct_name {
+                #(#cooked)*
+                #command_dec {
+                    let __inner = (async move || {
+                        #(#body)*
+                    })();
+
+                    Box::pin(__inner)
+                }
+            }
+        };
+
+        stream.extend(output);
     }
 }
 

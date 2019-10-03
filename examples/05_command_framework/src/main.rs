@@ -13,7 +13,7 @@ use std::{collections::{HashMap, HashSet}, env, fmt::Write, sync::Arc};
 use serenity::{
     client::bridge::gateway::{ShardId, ShardManager},
     framework::standard::{
-        Args, CommandOptions, FutureCommandResult, FutureCheckResult, CommandGroup,
+        Args, CommandOptions, CommandResult, CheckResult, CommandGroup,
         DispatchError, HelpOptions, help_commands, StandardFramework,
         macros::{command, group, help, check},
     },
@@ -24,7 +24,6 @@ use async_trait::async_trait;
 
 // This imports `typemap`'s `Key` as `TypeMapKey`.
 use serenity::prelude::*;
-use serenity::framework::standard::{CommandError, BeforeHandler, AfterHandler};
 
 // A container type is created for inserting into the Client's `data`, which
 // allows for data to be accessible across all events and framework commands, or
@@ -119,19 +118,19 @@ If you want more information about a specific command, just pass the command as 
 // If the `String` is not empty, your given `String` will be used instead.
 // If you pass in a `None`, no hint will be displayed at all.
 async fn my_help(
-    mut context: Context,
-    msg: Message,
+    context: &mut Context,
+    msg: &Message,
     args: Args,
     help_options: &'static HelpOptions,
-    groups: Vec<&'static CommandGroup>,
+    groups: &[&'static CommandGroup],
     owners: HashSet<UserId>
-) -> FutureCommandResult {
-    let res = help_commands::with_embeds(&mut context, &msg, args, help_options, &groups, owners).await;
-    (context, msg, res)
+) -> CommandResult {
+    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await
 }
 
-struct ClientHandler {}
+//struct ClientHandler {}
 
+/*
 #[async_trait]
 impl BeforeHandler for ClientHandler {
     async fn before_handler(&self, ctx : &mut Context, msg : &Message, command_name : &str) -> bool {
@@ -160,6 +159,7 @@ impl AfterHandler for ClientHandler {
         }
     }
 }
+*/
 
 #[tokio::main]
 async fn main() {
@@ -225,10 +225,31 @@ async fn main() {
         //
         // You can not use this to determine whether a command should be
         // executed. Instead, the `#[check]` macro gives you this functionality.
-        .before(Box::new(ClientHandler {}))
+        .before(|_ctx, msg, command_name| {
+            println!("Got command '{}' by user '{}'",
+                     command_name,
+                     msg.author.name);
+
+            // Increment the number of times this command has been run once. If
+            // the command's name does not exist in the counter, add a default
+            // value of 0.
+            /* TODO: async closure or something here
+            let mut data = ctx.data.write().await;
+            let counter = data.get_mut::<CommandCounter>().expect("Expected CommandCounter in ShareMap.");
+            let entry = counter.entry(command_name.to_string()).or_insert(0);
+            *entry += 1;
+            */
+
+            true // if `before` returns false, command processing doesn't happen.
+        })
         // Similar to `before`, except will be called directly _after_
         // command execution.
-        .after(Box::new(ClientHandler {}))
+        .after(|_, _, command_name, error| {
+            match error {
+                Ok(()) => println!("Processed command '{}'", command_name),
+                Err(why) => println!("Command '{}' returned error {:?}", command_name, why),
+            }
+        })
         // Set a function that's called whenever an attempted command-call's
         // command could not be found.
         .unrecognised_command(|_, _, unknown_command_name| {
@@ -270,7 +291,7 @@ async fn main() {
 // Options are passed via subsequent attributes.
 // Make this command use the "complicated" bucket.
 #[bucket = "complicated"]
-async fn commands(ctx: Context, msg: Message) -> FutureCommandResult {
+async fn commands(ctx: &mut Context, msg: &Message) -> CommandResult {
     let mut contents = "Commands used:\n".to_string();
 
     {
@@ -286,14 +307,14 @@ async fn commands(ctx: Context, msg: Message) -> FutureCommandResult {
         }
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 // Repeats what the user passed as argument but ensures that user and role
 // mentions are replaced with a safe textual alternative.
 // In this example channel mentions are excluded via the `ContentSafeOptions`.
 #[command]
-async fn say(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
+async fn say(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let settings = if let Some(guild_id) = msg.guild_id {
         // By default roles, users, and channel mentions are cleaned.
         ContentSafeOptions::default()
@@ -316,7 +337,7 @@ async fn say(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 // A function which acts as a "check", to determine whether to call a command.
@@ -326,7 +347,7 @@ async fn say(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
 // not called.
 #[check]
 #[name = "Owner"]
-async fn owner_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOptions) -> FutureCheckResult {
+async fn owner_check(_ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> CheckResult {
         // Replace 7 with your ID to make this check pass.
         //
         // `true` will convert into `CheckResult::Success`,
@@ -342,7 +363,7 @@ async fn owner_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOption
         // and if the check's failure origin is unknown you can mark it as such (same as using `false.into`):
         // `CheckResult::new_unknown()`
         let res = msg.author.id == 7;
-        (ctx, msg, res.into())
+        res.into()
 }
 
 // A function which acts as a "check", to determine whether to call a command.
@@ -355,30 +376,30 @@ async fn owner_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOption
 #[check_in_help(true)]
 // Whether the check shall be displayed in the help-system.
 #[display_in_help(true)]
-async fn admin_check(ctx: Context, msg: Message, _: &mut Args, _: &CommandOptions) -> FutureCheckResult {
+async fn admin_check(ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> CheckResult {
     if let Some(member) = msg.member(&ctx.cache).await {
         if let Ok(permissions) = member.permissions(&ctx.cache).await {
-            return (ctx, msg, permissions.administrator().into());
+            return permissions.administrator().into();
         }
     }
 
-    (ctx, msg, false.into())
+    false.into()
 }
 
 #[command]
-async fn some_long_command(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
+async fn some_long_command(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let res = format!("Arguments: {:?}", args.rest());
     if let Err(why) = msg.channel_id.say(&ctx.http, &res).await {
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
 // Limits the usage of this command to roles named:
 #[allowed_roles("mods", "ultimate neko")]
-async fn about_role(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
+async fn about_role(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let potential_role_name = args.rest();
 
     if let Some(guild) = msg.guild(&ctx.cache).await {
@@ -390,7 +411,7 @@ async fn about_role(ctx: Context, msg: Message, args: Args) -> FutureCommandResu
                 println!("Error sending message: {:?}", why);
             }
 
-            return (ctx, msg, Ok(()));
+            return Ok(());
         }
     }
 
@@ -398,13 +419,13 @@ async fn about_role(ctx: Context, msg: Message, args: Args) -> FutureCommandResu
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
 // Lets us also call `~math *` instead of just `~math multiply`.
 #[aliases("*")]
-async fn multiply(ctx: Context, msg: Message, mut args: Args) -> FutureCommandResult {
+async fn multiply(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
         let first = args.single::<f64>();
         let second = args.single::<f64>();
 
@@ -418,20 +439,20 @@ async fn multiply(ctx: Context, msg: Message, mut args: Args) -> FutureCommandRe
             println!("Err computing product");
         }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
-async fn about(ctx: Context, msg: Message) -> FutureCommandResult {
+async fn about(ctx: &mut Context, msg: &Message) -> CommandResult {
     if let Err(why) = msg.channel_id.say(&ctx.http, "This is a small test-bot! : )").await {
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
-async fn latency(ctx: Context, msg: Message) -> FutureCommandResult {
+async fn latency(ctx: &mut Context, msg: &Message) -> CommandResult {
     // The shard manager is an interface for mutating, stopping, restarting, and
     // retrieving information about shards.
     {
@@ -466,19 +487,19 @@ async fn latency(ctx: Context, msg: Message) -> FutureCommandResult {
         }
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
 // Limit command usage to guilds.
 #[only_in(guilds)]
 #[checks(Owner)]
-async fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
+async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
     if let Err(why) = msg.channel_id.say(&ctx.http, "Pong! : )").await {
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
@@ -488,27 +509,27 @@ async fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
 #[bucket = "emoji"]
 // Allow only administrators to call this:
 #[required_permissions("ADMINISTRATOR")]
-async fn cat(ctx: Context, msg: Message) -> FutureCommandResult {
+async fn cat(ctx: &mut Context, msg: &Message) -> CommandResult {
     if let Err(why) = msg.channel_id.say(&ctx.http, ":cat:").await {
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
 #[description = "Sends an emoji with a dog."]
 #[bucket = "emoji"]
-async fn dog(ctx: Context, msg: Message) -> FutureCommandResult {
+async fn dog(ctx: &mut Context, msg: &Message) -> CommandResult {
     if let Err(why) = msg.channel_id.say(&ctx.http, ":dog:").await {
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
-async fn bird(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
+async fn bird(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let say_content = if args.is_empty() {
         ":bird: can find animals for you.".to_string()
     } else {
@@ -519,21 +540,21 @@ async fn bird(ctx: Context, msg: Message, args: Args) -> FutureCommandResult {
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 #[command]
-async fn am_i_admin(ctx: Context, msg: Message) -> FutureCommandResult {
+async fn am_i_admin(ctx: &mut Context, msg: &Message) -> CommandResult {
     if let Err(why) = msg.channel_id.say(&ctx.http, "Yes you are.").await {
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }
 
 
 #[command]
-async fn slow_mode(ctx: Context, msg: Message, mut args: Args) -> FutureCommandResult {
+async fn slow_mode(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     let say_content = if let Ok(slow_mode_rate_seconds) = args.single::<u64>() {
         if let Err(why) = msg.channel_id.edit(&ctx.http, |c| c.slow_mode_rate(slow_mode_rate_seconds)).await {
             println!("Error setting channel's slow mode rate: {:?}", why);
@@ -552,5 +573,5 @@ async fn slow_mode(ctx: Context, msg: Message, mut args: Args) -> FutureCommandR
         println!("Error sending message: {:?}", why);
     }
 
-    (ctx, msg, Ok(()))
+    Ok(())
 }

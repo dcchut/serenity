@@ -3,7 +3,6 @@ use std::fmt;
 use crate::model::channel::Message;
 use crate::client::Context;
 use crate::framework::standard::{Args, CommandOptions};
-use async_trait::async_trait;
 
 /// This type describes why a check has failed and occurs on
 /// [`CheckResult::Failure`].
@@ -112,9 +111,22 @@ impl From<Reason> for CheckResult {
     }
 }
 
-#[async_trait]
-pub trait AsyncCheckFunction : Send + Sync {
-    async fn check(&self, ctx: &mut Context, msg: &Message, args: &mut Args, options: &'static CommandOptions) -> CheckResult;
+pub trait AsyncCheckFunction: Send + Sync {
+    fn check<'life0, 'life1, 'life2, 'life3, 'async_trait>(
+        &'life0 self,
+        ctx: &'life1 mut Context,
+        msg: &'life2 Message,
+        args: &'life3 mut Args,
+        options: &'static CommandOptions,
+    ) -> core::pin::Pin<
+        Box<dyn core::future::Future<Output = CheckResult> + core::marker::Send + 'async_trait>,
+    >
+        where
+            'life0: 'async_trait,
+            'life1: 'async_trait,
+            'life2: 'async_trait,
+            'life3: 'async_trait,
+            Self: 'async_trait;
 }
 
 // TODO: remove pub type CheckFunction = fn(Context, Message, &mut Args, &CommandOptions) -> CheckResult;
@@ -127,7 +139,7 @@ pub struct Check {
     /// Name listed in help-system.
     pub name: &'static str,
     /// Function that will be executed.
-    pub function: Box<dyn AsyncCheckFunction>,
+    pub function: &'static dyn AsyncCheckFunction,
     /// Whether a check should be evaluated in the help-system.
     /// `false` will ignore check and won't fail execution.
     pub check_in_help: bool,

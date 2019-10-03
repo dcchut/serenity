@@ -2,7 +2,6 @@ use std::{
     collections::HashSet,
     fmt,
 };
-use async_trait::async_trait;
 use crate::client::Context;
 use crate::model::{
     channel::Message,
@@ -74,16 +73,32 @@ impl<T: fmt::Display> From<T> for CommandError {
     }
 }
 
-#[async_trait]
-pub trait AsyncCommand : Send + Sync {
-    async fn command(&self, ctx: &mut Context, msg: &Message, args: &mut Args) -> CommandResult;
+pub trait AsyncCommand: Send + Sync {
+    fn command<'life0, 'life1, 'life2, 'life3, 'async_trait>(
+        &'life0 self,
+        ctx: &'life1 mut Context,
+        msg: &'life2 Message,
+        args: &'life3 mut Args,
+    ) -> core::pin::Pin<
+        Box<
+            dyn core::future::Future<Output = CommandResult>
+            + core::marker::Send
+            + 'async_trait,
+        >,
+    >
+        where
+            'life0: 'async_trait,
+            'life1: 'async_trait,
+            'life2: 'async_trait,
+            'life3: 'async_trait,
+            Self: 'async_trait;
 }
 
 pub type CommandResult = ::std::result::Result<(), CommandError>;
 // TODO: remove pub type CommandFn = fn(Context, Message, Args) -> FutureCommandResult;
 
 pub struct Command {
-    pub fun: Box<dyn AsyncCommand>,
+    pub fun: &'static dyn AsyncCommand,
     pub options: &'static CommandOptions,
 }
 
@@ -99,13 +114,32 @@ impl PartialEq for Command {
     #[inline]
     fn eq(&self, other: &Command) -> bool {
         // TODO: does this even make sense?
-        (self.fun.as_ref() as *const _) == (other.fun.as_ref() as *const _) && (self.options == other.options)
+        (self.fun as *const _) == (other.fun as *const _) && (self.options == other.options)
     }
 }
 
-#[async_trait]
-pub trait AsyncHelpCommand : Send + Sync {
-    async fn command(&self, ctx: &mut Context, msg: &Message, args: Args, options: &'static HelpOptions, groups: &[&'static CommandGroup], owners: HashSet<UserId>) -> CommandResult;
+pub trait AsyncHelpCommand: Send + Sync {
+    fn help<'life0, 'life1, 'life2, 'life3, 'async_trait>(
+        &'life0 self,
+        ctx: &'life1 mut Context,
+        msg: &'life2 Message,
+        args: Args,
+        options: &'static HelpOptions,
+        groups: &'life3 [&'static CommandGroup],
+        owners: HashSet<UserId>,
+    ) -> core::pin::Pin<
+        Box<
+            dyn core::future::Future<Output = CommandResult>
+            + core::marker::Send
+            + 'async_trait,
+        >,
+    >
+        where
+            'life0: 'async_trait,
+            'life1: 'async_trait,
+            'life2: 'async_trait,
+            'life3: 'async_trait,
+            Self: 'async_trait;
 }
 
 //let res = (help.fun)(&mut ctx, &msg, args, help.options, &groups, owners);
@@ -120,7 +154,7 @@ pub trait AsyncHelpCommand : Send + Sync {
 //) -> Pin<Box<dyn Future<Output = (Context, Message, CommandResult)> + Send>>;
 
 pub struct HelpCommand {
-    pub fun: Box<dyn AsyncHelpCommand>,
+    pub fun: &'static dyn AsyncHelpCommand,
     pub options: &'static HelpOptions,
 }
 
@@ -137,7 +171,7 @@ impl PartialEq for HelpCommand {
     #[inline]
     fn eq(&self, other: &HelpCommand) -> bool {
         // TODO: does this even make sense?
-        (self.fun.as_ref() as *const _) == (other.fun.as_ref() as *const _) && (self.options == other.options)
+        (self.fun as *const _) == (other.fun as *const _) && (self.options == other.options)
     }
 }
 

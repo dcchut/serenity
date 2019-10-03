@@ -731,7 +731,7 @@ impl Framework for StandardFramework {
                         }
                     }
 
-                    let res = help.fun.command(&mut ctx, &msg, args, help.options, &groups, owners).await;
+                    let res = help.fun.help(&mut ctx, &msg, args, help.options, &groups, owners).await;
 
                     if let Some(after) = after {
                         after(&mut ctx, &msg, name, res);

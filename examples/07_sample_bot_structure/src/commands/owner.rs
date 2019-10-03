@@ -2,13 +2,13 @@ use crate::ShardManagerContainer;
 use serenity::prelude::*;
 use serenity::model::prelude::*;
 use serenity::framework::standard::{
-    FutureCommandResult,
+    CommandResult,
     macros::command,
 };
 
 #[command]
 #[owners_only]
-async fn quit(ctx: Context, msg: Message) -> FutureCommandResult {
+async fn quit(ctx: &mut Context, msg: &Message) -> CommandResult {
     {
         let data = ctx.data.read().await;
 
@@ -20,5 +20,6 @@ async fn quit(ctx: Context, msg: Message) -> FutureCommandResult {
                 let _ = msg.reply(&ctx, "There was a problem getting the shard manager").await;
             }
     }
-    (ctx, msg, Ok(()))
+
+    Ok(())
 }

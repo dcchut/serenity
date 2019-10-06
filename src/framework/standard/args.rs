@@ -523,7 +523,10 @@ impl Args {
         let is_quoted = self.args[self.offset].kind == TokenKind::QuotedArgument;
 
         if is_quoted {
-            match &*self.state.read().unwrap() {
+            // We explicitly clone the state here so that we don't deadlock
+            let state = self.state.read().unwrap().clone();
+
+            match state {
                 State::None => self.update_state(State::Quoted),
                 State::Trimmed => self.update_state(State::TrimmedQuoted),
                 _ => {}

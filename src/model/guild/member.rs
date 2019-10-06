@@ -482,6 +482,11 @@ impl Member {
     pub fn user_id(&self) -> UserId {
         self.user.read().id
     }
+
+    /// Retrieve a string representation of this user
+    pub async fn async_to_string(&self) -> String {
+        self.user.read().mention().await
+    }
 }
 
 /*

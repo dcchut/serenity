@@ -551,17 +551,19 @@ impl GuildId {
     /// ```rust,no_run
     /// # use serenity::model::id::GuildId;
     /// # use serenity::http::Http;
-    /// # use serenity::model::guild::members_iter_to_stream;
+    /// use serenity::model::guild::members_iter_to_stream;
+    /// use futures::{StreamExt, pin_mut};
     /// # async fn try_main() {
     /// # let guild_id = GuildId::default();
     /// # let ctx = Http::default();
     /// let mut members_stream = members_iter_to_stream(guild_id.members_iter(&ctx));
+    /// pin_mut!(members_stream);
     ///
     /// for member_result in members_stream.next().await {
     ///     match member_result {
     ///         Ok(member) => println!(
     ///             "{} is {}",
-    ///             member,
+    ///             member.async_to_string().await,
     ///             member.display_name()
     ///         ),
     ///         Err(error) => eprintln!("Uh oh!  Error: {}", error),

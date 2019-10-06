@@ -411,8 +411,9 @@ impl Args {
         }
 
         let mut s = s;
+        let state = self.state.read().unwrap().clone();
 
-        match &*self.state.read().unwrap() {
+        match state {
             State::None => {}
             State::Quoted => {
                 s = remove_quotes(s);
@@ -490,7 +491,9 @@ impl Args {
             return self;
         }
 
-        match &*self.state.read().unwrap() {
+        let state = self.state.read().unwrap().clone();
+
+        match state {
             State::None => self.update_state(State::Trimmed),
             State::Quoted => self.update_state(State::QuotedTrimmed),
             _ => {}

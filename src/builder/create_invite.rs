@@ -88,19 +88,19 @@ impl CreateInvite {
     /// # #[cfg(all(feature = "cache", feature = "client"))]
     /// # use serenity::client::Context;
     /// # #[cfg(feature = "framework")]
-    /// # use serenity::framework::standard::{FutureCommandResult, macros::command};
+    /// # use serenity::framework::standard::{CommandResult, macros::command};
     /// # use serenity::model::id::ChannelId;
     /// #
     /// # #[cfg(all(feature = "cache", feature = "client", feature = "framework", feature = "http"))]
     /// # #[command]
-    /// # async fn example(context: Context) -> FutureCommandResult {
+    /// # async fn example(context: &mut Context) -> CommandResult {
     /// #     let channel = context.cache.read().await.guild_channel(81384788765712384).unwrap();
     /// #     let channel = channel.read().await;
     /// #
     /// let invite = channel.create_invite(context, |i| {
     ///     i.max_age(3600)
     /// }).await?;
-    /// # (context, Ok(()))
+    /// # Ok(())
     /// # }
     /// #
     /// # fn main() {}

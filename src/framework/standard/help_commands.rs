@@ -27,7 +27,7 @@
 //!
 //! #[help]
 //! async fn my_help(
-//!    mut context: Context,
+//!    mut context: &mut Context,
 //!    msg: &Message,
 //!    args: Args,
 //!    help_options: &'static HelpOptions,
@@ -36,7 +36,7 @@
 //! ) -> CommandResult {
 //! #  #[cfg(all(feature = "cache", feature = "http"))]
 //! # {
-//!    help_commands::with_embeds(&mut context, msg, args, help_options, groups, owners).await
+//!    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await
 //! # }
 //! #
 //! # #[cfg(not(all(feature = "cache", feature = "http")))]
@@ -1196,14 +1196,14 @@ async fn send_error_embed(
 ///
 /// #[help]
 /// async fn my_help(
-///     mut context: Context,
+///     context: &mut Context,
 ///     msg: &Message,
 ///     args: Args,
 ///     help_options: &'static HelpOptions,
 ///     groups: &[&'static CommandGroup],
 ///     owners: HashSet<UserId>
 /// ) -> CommandResult {
-///     with_embeds(&mut context, msg, args, &help_options, groups, owners).await
+///     with_embeds(context, msg, args, &help_options, groups, owners).await
 /// }
 ///
 /// client.with_framework(StandardFramework::new()
@@ -1397,14 +1397,14 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 ///
 /// #[help]
 /// async fn my_help(
-///     mut context: Context,
+///     context: &mut Context,
 ///     msg: &Message,
 ///     args: Args,
 ///     help_options: &'static HelpOptions,
 ///     groups: &[&'static CommandGroup],
 ///     owners: HashSet<UserId>
 /// ) -> CommandResult {
-///     plain(&mut context, msg, args, &help_options, groups, owners).await
+///     plain(context, msg, args, &help_options, groups, owners).await
 /// }
 ///
 /// client.with_framework(StandardFramework::new()

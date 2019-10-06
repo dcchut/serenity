@@ -79,17 +79,17 @@ impl Activity {
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]
-    /// use serenity::framework::standard::{Args, FutureCommandResult, macros::command};
+    /// use serenity::framework::standard::{Args, CommandResult, macros::command};
     /// # #[cfg(feature = "client")]
     /// use serenity::client::Context;
     ///
     /// # #[cfg(feature = "framework")]
     /// #[command]
-    /// async fn activity(mut ctx: Context, _msg: Message, args: Args) -> FutureCommandResult {
+    /// async fn activity(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
     ///     let name = args.message();
-    ///     ctx.set_activity(Activity::playing(&name));
+    ///     ctx.set_activity(Activity::playing(&name)).await;
     ///
-    ///     (ctx, _msg, Ok(()))
+    ///     Ok(())
     /// }
     /// #
     /// # fn main() {}
@@ -126,19 +126,19 @@ impl Activity {
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]
-    /// use serenity::framework::standard::{Args, FutureCommandResult, macros::command};
+    /// use serenity::framework::standard::{Args, CommandResult, macros::command};
     /// # #[cfg(feature = "client")]
     /// use serenity::client::Context;
     ///
     /// # #[cfg(feature = "framework")]
     /// #[command]
-    /// async fn stream(mut ctx: Context, _msg: Message, args: Args) -> FutureCommandResult {
+    /// async fn stream(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
     ///     const STREAM_URL: &str = "...";
     ///
     ///     let name = args.message();
-    ///     ctx.set_activity(Activity::streaming(&name, STREAM_URL));
+    ///     ctx.set_activity(Activity::streaming(&name, STREAM_URL)).await;
     ///
-    ///     (ctx, _msg, Ok(()))
+    ///     Ok(())
     /// }
     /// #
     /// # fn main() {}
@@ -174,17 +174,17 @@ impl Activity {
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]
-    /// use serenity::framework::standard::{Args, FutureCommandResult, macros::command};
+    /// use serenity::framework::standard::{Args, CommandResult, macros::command};
     /// # #[cfg(feature = "client")]
     /// use serenity::client::Context;
     ///
     /// # #[cfg(feature = "framework")]
     /// #[command]
-    /// async fn listen(mut ctx: Context, _msg: Message, args: Args) -> FutureCommandResult {
+    /// async fn listen(ctx: &mut Context, _msg: &Message, args: Args) -> CommandResult {
     ///     let name = args.message();
     ///     ctx.set_activity(Activity::listening(&name));
     ///
-    ///     (ctx, _msg, Ok(()))
+    ///     Ok(())
     /// }
     /// #
     /// # fn main() {}

@@ -486,12 +486,12 @@ impl Client {
     /// use serenity::framework::StandardFramework;
     /// use serenity::client::{Client, Context};
     /// use serenity::model::channel::Message;
-    /// use serenity::framework::standard::{FutureCommandResult, macros::{group, command}};
+    /// use serenity::framework::standard::{CommandResult, macros::{group, command}};
     ///
     /// #[command]
-    /// async fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
+    /// async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
     ///     msg.channel_id.say(&ctx.http, "Pong!").await?;
-    ///     (ctx, msg, Ok(()))
+    ///     Ok(())
     /// }
     ///
     /// // Commands must be intermediately handled through groups.
@@ -507,7 +507,7 @@ impl Client {
     ///     .configure(|c| c.prefix("~"))
     ///     // The macros generate instances of command and group structs, which reside as `static` variables.
     ///     // Hence the uppercase name, and the suffix for distinguishment.
-    ///     .group(&PINGPONG_GROUP));
+    ///     .group(&PINGPONG_GROUP)).await;
     /// # Ok(())
     /// # }
     /// #

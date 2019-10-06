@@ -36,21 +36,21 @@
 //! use serenity::client::{Client, Context, EventHandler};
 //! use serenity::model::channel::Message;
 //! use serenity::framework::standard::macros::{command, group};
-//! use serenity::framework::standard::{StandardFramework, FutureCommandResult};
+//! use serenity::framework::standard::{StandardFramework, CommandResult};
 //! use std::env;
 //!
 //! #[command]
-//! async fn about(ctx: Context, msg: Message) -> FutureCommandResult {
+//! async fn about(ctx: &mut Context, msg: &Message) -> CommandResult {
 //!     msg.channel_id.say(&ctx.http, "A simple test bot").await?;
 //!
-//!     (ctx, msg, Ok(()))
+//!     Ok(())
 //! }
 //!
 //! #[command]
-//! async fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
+//! async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
 //!     msg.channel_id.say(&ctx.http, "pong!").await?;
 //!
-//!     (ctx, msg, Ok(()))
+//!     Ok(())
 //! }
 //!
 //! #[group]
@@ -72,7 +72,7 @@
 //!     // containing any options you gave it. For instance, the group `name` and its `commands`.
 //!     // Their identifiers, names you can use to refer to these instances in code, are an
 //!     // all-uppercased version of the `name` with a `_GROUP` suffix appended at the end.
-//!     .group(&GENERAL_GROUP));
+//!     .group(&GENERAL_GROUP)).await;
 //! # }
 //! ```
 //!

@@ -139,16 +139,18 @@ impl StandardFramework {
     /// # use serenity::prelude::EventHandler;
     /// # struct Handler;
     /// # impl EventHandler for Handler {}
+    /// # async {
     /// use serenity::Client;
     /// use serenity::framework::StandardFramework;
     /// use std::env;
     ///
     /// let token = env::var("DISCORD_TOKEN").unwrap();
-    /// let mut client = Client::new(&token, Handler).unwrap();
+    /// let mut client = Client::new(&token, Handler).await.unwrap();
     /// client.with_framework(StandardFramework::new()
     ///     .configure(|c| c
     ///         .with_whitespace(true)
-    ///         .prefix("~")));
+    ///         .prefix("~"))).await;
+    /// # };
     /// ```
     ///
     /// [`Client`]: ../../client/struct.Client.html
@@ -173,11 +175,13 @@ impl StandardFramework {
     /// a 2 second delay inbetween invocations:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # use serenity::prelude::*;
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # async {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::standard::macros::command;
     /// use serenity::framework::standard::{StandardFramework, CommandResult};
@@ -185,12 +189,13 @@ impl StandardFramework {
     /// #[command]
     /// // Registers the bucket `basic` to this command.
     /// #[bucket = "basic"]
-    /// fn nothing() -> CommandResult {
+    /// async fn nothing() -> CommandResult {
     ///     Ok(())
     /// }
     ///
     /// client.with_framework(StandardFramework::new()
     ///     .bucket("basic", |b| b.delay(2).time_span(10).limit(3)));
+    /// # };
     /// ```
     #[inline]
     pub fn bucket<F>(mut self, name: &str, f: F) -> Self
@@ -329,6 +334,7 @@ impl StandardFramework {
     /// Add a group with ping and pong commands:
     ///
     /// ```rust,no_run
+    /// # #![feature(async_closure)]
     /// # use serenity::prelude::*;
     /// # use std::error::Error as StdError;
     /// # struct Handler;
@@ -345,14 +351,14 @@ impl StandardFramework {
     ///
     /// // For information regarding this macro, learn more about it in its documentation in `command_attr`.
     /// #[command]
-    /// fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
+    /// async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
     ///     msg.channel_id.say(&ctx.http, "pong!")?;
     ///
     ///     Ok(())
     /// }
     ///
     /// #[command]
-    /// fn pong(ctx: &mut Context, msg: &Message) -> CommandResult {
+    /// async fn pong(ctx: &mut Context, msg: &Message) -> CommandResult {
     ///     msg.channel_id.say(&ctx.http, "ping!")?;
     ///
     ///     Ok(())
@@ -362,11 +368,12 @@ impl StandardFramework {
     /// #[commands(ping, pong)]
     /// struct BingBong;
     ///
-    /// # fn main() -> Result<(), Box<StdError>> {
-    /// #   let mut client = Client::new("token", Handler)?;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<StdError>> {
+    /// #   let mut client = Client::new("token", Handler).await?;
     /// client.with_framework(StandardFramework::new()
     ///     // Groups' names are changed to all uppercase, plus appended with `_GROUP`.
-    ///     .group(&BINGBONG_GROUP));
+    ///     .group(&BINGBONG_GROUP)).await;
     /// #   Ok(())
     /// # }
     /// ```
@@ -419,7 +426,8 @@ impl StandardFramework {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # async {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// use serenity::framework::standard::DispatchError::{NotEnoughArguments,
     /// TooManyArguments};
     /// use serenity::framework::StandardFramework;
@@ -439,7 +447,8 @@ impl StandardFramework {
     ///             },
     ///             _ => println!("Unhandled dispatch error."),
     ///         }
-    ///     }));
+    ///     })).await;
+    /// # };
     /// ```
     pub fn on_dispatch_error<F>(mut self, f: F) -> Self
         where
@@ -472,7 +481,8 @@ impl StandardFramework {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # async {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
@@ -481,6 +491,7 @@ impl StandardFramework {
     ///         println!("Running command {}", cmd_name);
     ///         true
     ///     }));
+    /// # };
     /// ```
     ///
     /// Using before to prevent command usage:
@@ -489,16 +500,17 @@ impl StandardFramework {
     /// # use serenity::prelude::*;
     /// # struct Handler;
     /// #
+    /// # async {
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new()
     ///     .before(|ctx, msg, cmd_name| {
-    ///         if let Ok(channel) = msg.channel_id.to_channel(ctx) {
+    ///         if let Ok(channel) = msg.channel_id.to_channel(ctx).await {
     ///             //  Don't run unless in nsfw channel
-    ///             if !channel.is_nsfw() {
+    ///             if !channel.is_nsfw().await {
     ///                 return false;
     ///             }
     ///         }
@@ -507,6 +519,7 @@ impl StandardFramework {
     ///
     ///         true
     ///     }));
+    /// # }
     /// ```
     ///
     pub fn before<F>(mut self, f: F) -> Self
@@ -530,7 +543,9 @@ impl StandardFramework {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// #
+    /// # async {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
@@ -540,7 +555,8 @@ impl StandardFramework {
     ///         if let Err(why) = error {
     ///             println!("Error in {}: {:?}", cmd_name, why);
     ///         }
-    ///     }));
+    ///     })).await;
+    /// # };
     /// ```
     pub fn after<F>(mut self, f: F) -> Self
         where
@@ -562,14 +578,16 @@ impl StandardFramework {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # async {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new()
     ///     .unrecognised_command(|_ctx, msg, unrecognised_command_name| {
     ///        println!("A user named {:?} tried to executute an unknown command: {}", msg.author.name, unrecognised_command_name);
-    ///     }));
+    ///     })).await;
+    /// # };
     /// ```
     pub fn unrecognised_command<F>(mut self, f: F) -> Self
         where
@@ -591,14 +609,16 @@ impl StandardFramework {
     /// # struct Handler;
     /// #
     /// # impl EventHandler for Handler {}
-    /// # let mut client = Client::new("token", Handler).unwrap();
+    /// # async {
+    /// # let mut client = Client::new("token", Handler).await.unwrap();
     /// #
     /// use serenity::framework::StandardFramework;
     ///
     /// client.with_framework(StandardFramework::new()
     ///     .normal_message(|ctx, msg| {
     ///         println!("Received a generic message: {:?}", msg.content);
-    ///     }));
+    ///     })).await;
+    /// # };
     /// ```
     pub fn normal_message<F>(mut self, f: F) -> Self
         where

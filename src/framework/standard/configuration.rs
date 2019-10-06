@@ -279,12 +279,12 @@ impl Configuration {
     /// use serenity::framework::StandardFramework;
     /// use serenity::client::Context;
     /// use serenity::model::channel::Message;
-    /// use serenity::framework::standard::{FutureCommandResult, macros::{group, command}};
+    /// use serenity::framework::standard::{CommandResult, macros::{group, command}};
     ///
     /// #[command]
-    /// async fn ping(ctx: Context, msg: Message) -> FutureCommandResult {
+    /// async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
     ///     msg.channel_id.say(&ctx.http, "Pong!").await?;
-    ///     (ctx, msg, Ok(()))
+    ///     Ok(())
     /// }
     ///
     /// #[group]
@@ -302,7 +302,7 @@ impl Configuration {
     ///
     /// client.with_framework(StandardFramework::new()
     ///     .group(&PENG_GROUP)
-    ///     .configure(|c| c.disabled_commands(disabled)));
+    ///     .configure(|c| c.disabled_commands(disabled))).await;
     /// # }
     /// ```
     pub fn disabled_commands(&mut self, commands: HashSet<String>) -> &mut Self {

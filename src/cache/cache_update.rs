@@ -21,6 +21,7 @@ use async_trait::async_trait;
 ///         id::UserId,
 ///         user::User,
 ///     },
+///     SyncRwLock,
 /// };
 /// use std::{
 ///     collections::hash_map::Entry,
@@ -46,10 +47,11 @@ use async_trait::async_trait;
 ///
 ///     async fn update(&mut self, cache: &mut Cache) -> Option<Self::Output> {
 ///         // If an entry for the user already exists, update its fields.
-///         match cache.users.entry(self.user_id) {
+///         use serenity::SyncRwLock;
+/// match cache.users.entry(self.user_id) {
 ///             Entry::Occupied(entry) => {
 ///                 let user = entry.get();
-///                 let mut writer = user.write().await;
+///                 let mut writer = user.write();
 ///                 let old = writer.clone();
 ///
 ///                 writer.bot = self.user_is_bot;
@@ -66,7 +68,7 @@ use async_trait::async_trait;
 ///
 ///                 // Return the old copy for the user's sake.
 ///                 Some(old)
-///             },
+///             }
 ///             Entry::Vacant(entry) => {
 ///                 // We can convert a `serde_json::Value` to a User for test
 ///                 // purposes.
@@ -78,11 +80,11 @@ use async_trait::async_trait;
 ///                     "username": self.user_name.clone(),
 ///                 })).expect("Error making user");
 ///
-///                 entry.insert(Arc::new(RwLock::new(user)));
+///                 entry.insert(Arc::new(SyncRwLock::new(user)));
 ///
 ///                 // There was no old copy, so return None.
 ///                 None
-///             },
+///             }
 ///         }
 ///     }
 /// }

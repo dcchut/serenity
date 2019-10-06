@@ -791,14 +791,14 @@ impl Cache {
     /// ```rust,no_run
     /// # #![feature(async_closure)]
     /// # use serenity::client::Context;
-    /// # use serenity::framework::standard::{FutureCommandResult, macros::command};
+    /// # use serenity::framework::standard::{CommandResult, macros::command};
     /// #
     /// # #[command]
-    /// # async fn test(context: Context) -> FutureCommandResult {
+    /// # async fn test(context: &mut Context) -> CommandResult {
     /// if let Some(user) = context.cache.read().await.user(7) {
-    ///     println!("User with Id 7 is currently named {}", user.name);
+    ///     println!("User with Id 7 is currently named {}", user.read().name);
     /// }
-    /// # (context, Ok(()))
+    /// # Ok(())
     /// # }
     /// #
     /// # fn main() {}

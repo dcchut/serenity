@@ -551,10 +551,13 @@ impl GuildId {
     /// ```rust,no_run
     /// # use serenity::model::id::GuildId;
     /// # use serenity::http::Http;
+    /// # use serenity::model::guild::members_iter_to_stream;
     /// # async fn try_main() {
     /// # let guild_id = GuildId::default();
     /// # let ctx = Http::default();
-    /// for member_result in guild_id.members_iter(&ctx) {
+    /// let mut members_stream = members_iter_to_stream(guild_id.members_iter(&ctx));
+    ///
+    /// for member_result in members_stream.next().await {
     ///     match member_result {
     ///         Ok(member) => println!(
     ///             "{} is {}",

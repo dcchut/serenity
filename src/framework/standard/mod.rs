@@ -352,14 +352,14 @@ impl StandardFramework {
     /// // For information regarding this macro, learn more about it in its documentation in `command_attr`.
     /// #[command]
     /// async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
-    ///     msg.channel_id.say(&ctx.http, "pong!")?;
+    ///     msg.channel_id.say(&ctx.http, "pong!").await?;
     ///
     ///     Ok(())
     /// }
     ///
     /// #[command]
     /// async fn pong(ctx: &mut Context, msg: &Message) -> CommandResult {
-    ///     msg.channel_id.say(&ctx.http, "ping!")?;
+    ///     msg.channel_id.say(&ctx.http, "ping!").await?;
     ///
     ///     Ok(())
     /// }
@@ -369,7 +369,7 @@ impl StandardFramework {
     /// struct BingBong;
     ///
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Box<StdError>> {
+    /// # async fn main() -> Result<(), Box<dyn StdError>> {
     /// #   let mut client = Client::new("token", Handler).await?;
     /// client.with_framework(StandardFramework::new()
     ///     // Groups' names are changed to all uppercase, plus appended with `_GROUP`.

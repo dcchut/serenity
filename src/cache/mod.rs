@@ -1086,7 +1086,7 @@ impl AsRef<CacheRwLock> for CacheRwLock {
 
 impl Default for CacheRwLock {
     fn default() -> Self {
-        Self(Arc::new(RwLock::new(Cache::default())))
+        Self(Arc::new(AsyncRwLock::new(Cache::default())))
     }
 }
 

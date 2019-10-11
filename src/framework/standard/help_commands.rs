@@ -431,8 +431,8 @@ fn nested_group_command_search<'b, 'a : 'b>(
                 let command = *command;
 
                 let search_command_name_matched = if group.options.prefixes.is_empty() {
-                    if starts_with_whole_word(&name, &group.help_name) {
-                        name.drain(..=group.help_name.len());
+                    if starts_with_whole_word(&name, &group.name) {
+                        name.drain(..=group.name.len());
                     }
 
                     command
@@ -508,46 +508,47 @@ fn nested_group_command_search<'b, 'a : 'b>(
                 similar_commands
                     .sort_unstable_by(|a, b| a.levenshtein_distance.cmp(&b.levenshtein_distance));
 
-            let check_names: Vec<String> = command
-                .options
-                .checks
-                .iter()
-                .chain(group.options.checks.iter())
-                .filter_map(|check| {
-                    if check.display_in_help {
-                        Some(check.name.to_string())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+                let check_names: Vec<String> = command
+                    .options
+                    .checks
+                    .iter()
+                    .chain(group.options.checks.iter())
+                    .filter_map(|check| {
+                        if check.display_in_help {
+                            Some(check.name.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
 
-            return Ok(CustomisedHelpData::SingleCommand {
-                command: Command {
-                    name: options.names[0],
-                    description: options.desc,
-                    group_name: group.name,
-                    group_prefixes: &group.options.prefixes,
-                    checks: check_names,
-                    aliases: options.names[1..].to_vec(),
-                    availability: available_text,
-                    usage: options.usage,
-                    usage_sample: options.examples.to_vec(),
-                },
-            });
-        }
+                return Ok(CustomisedHelpData::SingleCommand {
+                    command: Command {
+                        name: options.names[0],
+                        description: options.desc,
+                        group_name: group.name,
+                        group_prefixes: &group.options.prefixes,
+                        checks: check_names,
+                        aliases: options.names[1..].to_vec(),
+                        availability: available_text,
+                        usage: options.usage,
+                        usage_sample: options.examples.to_vec(),
+                    },
+                });
+            }
 
-        match nested_group_command_search(
-            cache,
-            &group.options.sub_groups,
-            name,
-            help_options,
-            msg,
-            similar_commands,
-            owners,
-        ).await {
-            Ok(found) => return Ok(found),
-            Err(()) => (),
+            match nested_group_command_search(
+                cache,
+                &group.options.sub_groups,
+                name,
+                help_options,
+                msg,
+                similar_commands,
+                owners,
+            ).await {
+                Ok(found) => return Ok(found),
+                Err(()) => (),
+            }
         }
 
         Err(())
@@ -656,7 +657,7 @@ fn fetch_all_eligible_commands_in_group<'a>(
     help_options: &'a HelpOptions,
     group: &'a CommandGroup,
     msg: &'a Message,
-    highest_formatter: mut HelpBehaviour,
+    mut highest_formatter: HelpBehaviour,
 ) -> BoxFuture<'a, GroupCommandsPair> {
     async move {
         let mut group_with_cmds = GroupCommandsPair::default();
@@ -672,16 +673,16 @@ fn fetch_all_eligible_commands_in_group<'a>(
             &mut highest_formatter,
         ).await;
 
-        for sub_group in group.sub_groups {
+        for sub_group in group.options.sub_groups {
             if HelpBehaviour::Hide == highest_formatter {
                 break;
-            } else if sub_group.commands.is_empty() && sub_group.sub_groups.is_empty() {
+            } else if sub_group.options.commands.is_empty() && sub_group.options.sub_groups.is_empty() {
                 continue;
             }
 
             let grouped_cmd = fetch_all_eligible_commands_in_group(
                 &context,
-                &sub_group.commands,
+                &sub_group.options.commands,
                 &owners,
                 &help_options,
                 &sub_group,
@@ -777,7 +778,7 @@ pub fn searched_lowercase<'b, 'a : 'b>(
         let is_prefixless_group = {
             group.options.prefixes.is_empty()
                 && trim_prefixless_group(
-                &group.help_name.to_lowercase(),
+                &group.name.to_lowercase(),
                 searched_named_lowercase,
             )
         };
@@ -811,7 +812,7 @@ pub fn searched_lowercase<'b, 'a : 'b>(
                 });
             }
         } else if progressed || group.options.prefixes.is_empty() {
-            for sub_group in group.sub_groups {
+            for sub_group in group.options.sub_groups {
                 if let Some(found_set) = searched_lowercase(
                     context,
                     sub_group,

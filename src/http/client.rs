@@ -19,7 +19,6 @@ use super::{
     HttpError,
 };
 
-use futures::lock::Mutex;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use log::{debug, trace};

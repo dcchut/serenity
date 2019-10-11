@@ -7,7 +7,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{quote, ToTokens, format_ident};
+use quote::{quote, format_ident};
 use syn::{
     parse::{Error, Parse, ParseStream, Result},
     parse_macro_input, parse_quote,

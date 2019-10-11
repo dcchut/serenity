@@ -7,8 +7,7 @@ use syn::{
     braced,
     parse::{Error, Parse, ParseStream, Result},
     spanned::Spanned,
-    token::Pub,
-    Attribute, Block, FnArg, Ident, Lit, Pat, Path, PathSegment, ReturnType, Stmt, Token, Type, Lifetime, Visibility
+    Attribute, Block, FnArg, Ident, Pat, Path, PathSegment, ReturnType, Stmt, Token, Type, Lifetime, Visibility
 };
 
 #[derive(Debug, PartialEq)]
@@ -233,7 +232,7 @@ impl ToTokens for CommandFun {
 
             impl #async_command for #struct_name {
                 #(#cooked)*
-                fn #fn_name <'life0 #(, #lifetimes)*, 'async_trait> (
+                #visibility fn #fn_name <'life0 #(, #lifetimes)*, 'async_trait> (
                         &'life0 self,
                         #(#args,)*
                     ) -> core::pin::Pin<

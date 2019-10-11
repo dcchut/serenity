@@ -62,7 +62,7 @@ fn context(
     http: &Arc<Http>,
     cache: &Arc<AsyncRwLock<Cache>>,
 ) -> Context {
-    Context::new(Arc::clone(data), runner_tx.clone(), shard_id, cache.clone(), Arc::clone(http))
+    Context::new(Arc::clone(data), runner_tx.clone(), shard_id, Arc::clone(http), Arc::clone(cache))
 }
 
 
@@ -98,7 +98,6 @@ pub(crate) async fn dispatch(
     shard_id: u64,
     cache_and_http: Arc<CacheAndHttp>,
 ) {
-    // TODO: change this later to minimize the number of .clones() we do
     if let Some(ref h) = event_handler {
         let event = event.clone();
         match event {
@@ -131,43 +130,21 @@ pub(crate) async fn dispatch(
                     Arc::clone(&cache_and_http),
                 ).await;
             }
-        },
-        (None, Some(ref rh)) => {
-            if let DispatchEvent::Model(e) = event {
-                #[cfg(not(feature = "cache"))]
+        }
+    };
+
+    if let Some(ref rh) = raw_event_handler {
+        if let DispatchEvent::Model(e) = event {
+            #[cfg(not(feature = "cache"))]
                 let context = context(data, runner_tx, shard_id, &cache_and_http.http);
-                #[cfg(feature = "cache")]
+            #[cfg(feature = "cache")]
                 let context = context(data, runner_tx, shard_id, &cache_and_http.http, &cache_and_http.cache);
 
-                let event_handler = Arc::clone(rh);
-                tokio::spawn(async move {
-                    event_handler.raw_event(context, e);
-                });
-            }
-        },
-        (Some(_), Some(_)) => {
-            if let DispatchEvent::Model(ref e) = event {
-                    dispatch(DispatchEvent::Model(e.clone()),
-                             framework,
-                             data,
-                             &None,
-                             raw_event_handler,
-                             runner_tx,
-                             threadpool,
-                             shard_id,
-                             Arc::clone(&cache_and_http))
-            }
-            dispatch(event,
-                     framework,
-                     data,
-                     event_handler,
-                     &None,
-                     runner_tx,
-                     threadpool,
-                     shard_id,
-                     cache_and_http);
+            // TODO: investigate changes necessary here
+            let event_handler = Arc::clone(rh);
+            event_handler.raw_event(context, e).await;
         }
-    }
+    };
 }
 
 #[cfg(not(feature = "framework"))]

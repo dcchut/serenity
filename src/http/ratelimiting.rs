@@ -48,7 +48,6 @@ use reqwest::{
     StatusCode,
 };
 use crate::internal::prelude::*;
-use parking_lot::{Mutex, RwLock};
 
 use std::{
     collections::HashMap,
@@ -58,7 +57,6 @@ use std::{
         FromStr,
     },
     time::Duration,
-    str,
     i64,
     u64,
 };
@@ -66,6 +64,7 @@ use super::{HttpError, Request};
 use log::debug;
 use tokio::timer::delay_for;
 use futures::lock::Mutex;
+use crate::SyncRwLock;
 
 /// Ratelimiter for requests to the Discord API.
 ///
@@ -87,7 +86,7 @@ pub struct Ratelimiter {
     global: Arc<Mutex<()>>,
     // When futures is implemented, make tasks clear out their respective entry
     // when the 'reset' passes.
-    routes: Arc<RwLock<HashMap<Route, Arc<Mutex<Ratelimit>>>>>,
+    routes: Arc<SyncRwLock<HashMap<Route, Arc<Mutex<Ratelimit>>>>>,
     token: String,
 }
 
@@ -134,7 +133,7 @@ impl Ratelimiter {
     ///
     /// [`Ratelimit`]: struct.Ratelimit.html
     /// [`Route`]: ../routing/enum.Route.html
-    pub fn routes(&self) -> Arc<RwLock<HashMap<Route, Arc<Mutex<Ratelimit>>>>> {
+    pub fn routes(&self) -> Arc<SyncRwLock<HashMap<Route, Arc<Mutex<Ratelimit>>>>> {
         Arc::clone(&self.routes)
     }
 
@@ -169,7 +168,7 @@ impl Ratelimiter {
                 .entry(route)
                 .or_default());
 
-            bucket.lock().pre_hook(&route);
+            bucket.lock().await.pre_hook(&route).await;
 
             let request = req.build(&self.client, &self.token)?;
             let response = request.send().await?;
@@ -196,7 +195,7 @@ impl Ratelimiter {
                     Ok(
                         if let Some(retry_after) = parse_header::<u64>(&response.headers(), "retry-after")? {
                             debug!("Ratelimited on route {:?} for {:?}ms", route, retry_after);
-                            thread::sleep(Duration::from_millis(retry_after));
+                            tokio::timer::delay_for(Duration::from_millis(retry_after)).await;
 
                             true
                         } else {
@@ -204,7 +203,7 @@ impl Ratelimiter {
                         },
                     )
                 } else {
-                    bucket.lock().post_hook(&response, &route)
+                    bucket.lock().await.post_hook(&response, &route).await
                 };
 
                 if !redo.unwrap_or(true) {
@@ -251,7 +250,7 @@ impl Ratelimit {
         self.reset_after
     }
 
-    pub fn pre_hook(&mut self, route: &Route) {
+    pub async fn pre_hook(&mut self, route: &Route) {
         if self.limit() == 0 {
             return;
         }

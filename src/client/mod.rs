@@ -424,8 +424,8 @@ impl Client {
         )));
 
         let cache_and_http = Arc::new(CacheAndHttp {
-            cache: Arc::new(AsyncRwLock::new(Cache::default())),
-            update_cache_timeout: duration,
+            cache: CacheRwLock::default(),
+            update_cache_timeout: timeout,
             http: Arc::new(http),
             __nonexhaustive: (),
         });

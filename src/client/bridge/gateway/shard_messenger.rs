@@ -52,7 +52,7 @@ impl ShardMessenger {
     ///
     /// ```rust,no_run
     /// # use futures::lock::Mutex;
-    /// # use serenity::client::gateway::Shard;
+    /// # use serenity::gateway::Shard;
     /// # use std::error::Error;
     /// # use std::sync::Arc;
     /// #
@@ -76,7 +76,7 @@ impl ShardMessenger {
     ///
     /// ```rust,no_run
     /// # use futures::lock::Mutex;
-    /// # use serenity::client::gateway::Shard;
+    /// # use serenity::gateway::Shard;
     /// # use std::error::Error;
     /// # use std::sync::Arc;
     /// #
@@ -124,7 +124,7 @@ impl ShardMessenger {
     ///
     /// ```rust,no_run
     /// # use futures::lock::Mutex;
-    /// # use serenity::client::gateway::Shard;
+    /// # use serenity::gateway::Shard;
     /// # use std::error::Error;
     /// # use std::sync::Arc;
     /// #
@@ -194,7 +194,7 @@ impl ShardMessenger {
     ///
     /// ```rust,no_run
     /// # use futures::lock::Mutex;
-    /// # use serenity::client::gateway::Shard;
+    /// # use serenity::gateway::Shard;
     /// # use std::error::Error;
     /// # use std::sync::Arc;
     /// #

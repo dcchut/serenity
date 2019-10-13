@@ -274,9 +274,8 @@ impl Shard {
     /// # #[cfg(feature = "model")]
     /// # #[tokio::main]
     /// # async fn main() {
-    /// # use serenity::{gateway::Shard, prelude::Mutex};
+    /// # use serenity::{gateway::Shard, utils::Mutex};
     /// # use std::sync::Arc;
-    /// # use futures::lock::Mutex;
     /// #
     /// # let mutex = Arc::new(Mutex::new("".to_string()));
     /// #

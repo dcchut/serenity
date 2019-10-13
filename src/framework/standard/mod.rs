@@ -508,18 +508,18 @@ impl StandardFramework {
     ///
     /// client.with_framework(StandardFramework::new()
     ///     .before(|ctx, msg, cmd_name| {
-    ///         if let Ok(channel) = msg.channel_id.to_channel(ctx).await {
-    ///             //  Don't run unless in nsfw channel
-    ///             if !channel.is_nsfw().await {
-    ///                 return false;
-    ///             }
-    ///         }
+    ///         //if let Ok(channel) = msg.channel_id.to_channel(ctx).await {
+    ///         //      Don't run unless in nsfw channel
+    ///         //    if !channel.is_nsfw().await {
+    ///         //        return false;
+    ///         //    }
+    ///         //}
     ///
     ///         println!("Running command {}", cmd_name);
     ///
     ///         true
     ///     }));
-    /// # }
+    /// # };
     /// ```
     ///
     pub fn before<F>(mut self, f: F) -> Self
@@ -820,6 +820,7 @@ impl Framework for StandardFramework {
 pub trait CommonOptions {
     fn required_permissions(&self) -> &Permissions;
     fn allowed_roles(&self) -> &'static [&'static str];
+    fn checks(&self) -> &'static [&'static Check];
     fn only_in(&self) -> OnlyIn;
     fn help_available(&self) -> bool;
     fn owners_only(&self) -> bool;
@@ -833,6 +834,10 @@ impl CommonOptions for &GroupOptions {
 
     fn allowed_roles(&self) -> &'static [&'static str] {
         &self.allowed_roles
+    }
+
+    fn checks(&self) -> &'static [&'static Check] {
+        &self.checks
     }
 
     fn only_in(&self) -> OnlyIn {
@@ -859,6 +864,10 @@ impl CommonOptions for &CommandOptions {
 
     fn allowed_roles(&self) -> &'static [&'static str] {
         &self.allowed_roles
+    }
+
+    fn checks(&self) -> &'static [&'static Check] {
+        &self.checks
     }
 
     fn only_in(&self) -> OnlyIn {

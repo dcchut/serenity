@@ -62,6 +62,7 @@
 #[cfg(all(feature = "cache", feature = "http"))]
 use super::{
     Args, CommandGroup, CommandOptions,
+    CheckResult,
     CommandResult, has_correct_roles, HelpBehaviour, HelpOptions,
     has_correct_permissions, OnlyIn,
     structures::Command as InternalCommand,
@@ -86,7 +87,7 @@ use std::{
 };
 #[cfg(all(feature = "cache", feature = "http"))]
 use log::warn;
-use futures::future::{BoxFuture, FutureExt};
+use async_recursion::async_recursion;
 
 /// Macro to format a command according to a `HelpBehaviour` or
 /// continue to the next command-name upon hiding.
@@ -346,236 +347,258 @@ fn find_any_command_matches(
         }).cloned()
 }
 
+
 #[cfg(all(feature = "cache", feature = "http"))]
-async fn check_command_behaviour(
+async fn check_common_behaviour(
+    cache: impl AsRef<CacheRwLock>,
     msg: &Message,
     options: &impl CommonOptions,
     owners: &HashSet<UserId>,
     help_options: &HelpOptions,
-    cache: &CacheRwLock,
 ) -> HelpBehaviour {
-    if !&options.help_available() {
+    if !options.help_available() {
         return HelpBehaviour::Hide;
     }
 
-    if options.only_in() == OnlyIn::None
-        || options.only_in() == OnlyIn::Dm && msg.is_private()
-        || options.only_in() == OnlyIn::Guild && !msg.is_private()
-    {
-        if options.owners_only() && !owners.contains(&msg.author.id) {
-            return help_options.lacking_ownership;
-        }
-
-        if options.owner_privilege() && owners.contains(&msg.author.id) {
-            return HelpBehaviour::Nothing;
-        }
-
-        if has_correct_permissions(&cache, options, msg).await {
-
-            if let Some(guild) = msg.guild(&cache).await {
-                let guild = guild.read().await;
-
-                if let Some(member) = guild.members.get(&msg.author.id) {
-                    if has_correct_roles(options, &guild, &member) {
-                        return HelpBehaviour::Nothing;
-                    } else {
-                        return help_options.lacking_role;
-                    }
-                }
-            } else {
-                return HelpBehaviour::Nothing;
-            }
-        } else {
-            return help_options.lacking_permissions;
-        }
-    } else {
+    if options.only_in() == OnlyIn::Dm && !msg.is_private() ||
+       options.only_in() == OnlyIn::Guild && msg.is_private() {
         return help_options.wrong_channel;
+    }
+
+    if options.owners_only() && !owners.contains(&msg.author.id) {
+        return help_options.lacking_ownership;
+    }
+
+    if options.owner_privilege() && owners.contains(&msg.author.id) {
+        return HelpBehaviour::Nothing;
+    }
+
+    if !has_correct_permissions(&cache, options, msg).await {
+        return help_options.lacking_permissions;
+    }
+
+    if let Some(guild) = msg.guild(&cache).await {
+        let guild = guild.read().await;
+
+        if let Some(member) = guild.members.get(&msg.author.id) {
+            if !has_correct_roles(options, &guild, &member) {
+                return help_options.lacking_role;
+            }
+        }
     }
 
     HelpBehaviour::Nothing
 }
 
+// We convert this async function to a boxed async function
+// to avoid E0700: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+#[async_recursion]
+#[cfg(all(feature = "cache", feature = "http"))]
+async fn check_command_behaviour(
+    ctx: &mut Context,
+    msg: &Message,
+    options: &'static CommandOptions,
+    owners: &HashSet<UserId>,
+    help_options: &HelpOptions,
+) -> HelpBehaviour {
+    let b = check_common_behaviour(&ctx, msg, &options, owners, help_options).await;
+
+    if b == HelpBehaviour::Nothing {
+       for check in options.checks {
+           let mut args = Args::new("", &[]);
+           let res = check.function.check(ctx, msg, &mut args, options).await;
+
+           if let CheckResult::Failure(_) = res {
+               return help_options.lacking_conditions;
+           }
+       }
+    }
+
+    b
+}
+
+#[async_recursion]
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::too_many_arguments)]
-fn nested_group_command_search<'b, 'a : 'b>(
-    cache: &'b CacheRwLock,
-    groups: &'b [&'static CommandGroup],
-    name: &'b mut String,
+async fn nested_group_command_search<'a>(
+    ctx: &mut Context,
+    msg: &Message,
+    groups: &[&'static CommandGroup],
+    name: &mut String,
     help_options: &'a HelpOptions,
-    msg: &'b Message,
-    similar_commands: &'b mut Vec<SuggestedCommandName>,
-    owners: &'b HashSet<UserId>,
-) -> BoxFuture<'b, Result<CustomisedHelpData<'a>, ()>> {
-    async move {
-        for group in groups {
-            let group = *group;
-            let mut found: Option<&'static InternalCommand> = None;
+    similar_commands: &mut Vec<SuggestedCommandName>,
+    owners: &HashSet<UserId>,
+) -> Result<CustomisedHelpData<'a>, ()> {
+    for group in groups {
+        let group = *group;
+        let mut found: Option<&'static InternalCommand> = None;
 
-            let group_behaviour = check_command_behaviour(
-                &msg,
-                &group.options,
-                &owners,
-                &help_options,
-                &cache,
-            ).await;
+        let group_behaviour = check_common_behaviour(
+            &ctx,
+            msg,
+            &group.options,
+            &owners,
+            &help_options,
+        ).await;
 
-            match &group_behaviour {
-                HelpBehaviour::Nothing => (),
-                _ => {
-                    continue;
-                }
-            }
-
-            let mut found_group_prefix: bool = false;
-            for command in group.options.commands {
-                let command = *command;
-
-                let search_command_name_matched = if group.options.prefixes.is_empty() {
-                    if starts_with_whole_word(&name, &group.name) {
-                        name.drain(..=group.name.len());
-                    }
-
-                    command
-                        .options
-                        .names
-                        .iter()
-                        .find(|n| **n == name)
-                        .cloned()
-                } else {
-                    find_any_command_matches(
-                        &command,
-                        &group,
-                        name,
-                        &mut found_group_prefix
-                    )
-                };
-
-                if search_command_name_matched.is_some() {
-                    if HelpBehaviour::Nothing == check_command_behaviour(
-                        &msg,
-                        &command.options,
-                        &owners,
-                        &help_options,
-                        &cache,
-                    ).await {
-                        found = Some(command);
-                    } else {
-                        break;
-                    }
-                } else if help_options.max_levenshtein_distance > 0 {
-                    let command_name = if let Some(first_prefix) = group.options.prefixes.get(0) {
-                        format!("{} {}", &first_prefix, &command.options.names[0])
-                    } else {
-                        command.options.names[0].to_string()
-                    };
-
-                    let levenshtein_distance = levenshtein_distance(&command_name, &name);
-
-                    if levenshtein_distance <= help_options.max_levenshtein_distance
-                        && HelpBehaviour::Nothing == check_command_behaviour(
-                        &msg,
-                        &command.options,
-                        &owners,
-                        &help_options,
-                        &cache,
-                    ).await
-                    {
-                        similar_commands.push(SuggestedCommandName {
-                            name: command_name,
-                            levenshtein_distance,
-                        });
-                    }
-                }
-            }
-
-            if let Some(command) = found {
-                let options = &command.options;
-
-                if !options.help_available {
-                    return Ok(CustomisedHelpData::NoCommandFound {
-                        help_error_message: &help_options.no_help_available_text,
-                    });
-                }
-
-                let available_text = if options.only_in == OnlyIn::Dm {
-                    &help_options.dm_only_text
-                } else if options.only_in == OnlyIn::Guild {
-                    &help_options.guild_only_text
-                } else {
-                    &help_options.dm_and_guild_text
-                };
-
-                similar_commands
-                    .sort_unstable_by(|a, b| a.levenshtein_distance.cmp(&b.levenshtein_distance));
-
-                let check_names: Vec<String> = command
-                    .options
-                    .checks
-                    .iter()
-                    .chain(group.options.checks.iter())
-                    .filter_map(|check| {
-                        if check.display_in_help {
-                            Some(check.name.to_string())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-                return Ok(CustomisedHelpData::SingleCommand {
-                    command: Command {
-                        name: options.names[0],
-                        description: options.desc,
-                        group_name: group.name,
-                        group_prefixes: &group.options.prefixes,
-                        checks: check_names,
-                        aliases: options.names[1..].to_vec(),
-                        availability: available_text,
-                        usage: options.usage,
-                        usage_sample: options.examples.to_vec(),
-                    },
-                });
-            }
-
-            match nested_group_command_search(
-                cache,
-                &group.options.sub_groups,
-                name,
-                help_options,
-                msg,
-                similar_commands,
-                owners,
-            ).await {
-                Ok(found) => return Ok(found),
-                Err(()) => (),
+        match &group_behaviour {
+            HelpBehaviour::Nothing => (),
+            _ => {
+                continue;
             }
         }
 
-        Err(())
-    }.boxed()
+        let mut found_group_prefix: bool = false;
+        for command in group.options.commands {
+            let command = *command;
+
+            let search_command_name_matched = if group.options.prefixes.is_empty() {
+                if starts_with_whole_word(&name, &group.name) {
+                    name.drain(..=group.name.len());
+                }
+
+                command
+                    .options
+                    .names
+                    .iter()
+                    .find(|n| **n == name)
+                    .cloned()
+            } else {
+                find_any_command_matches(
+                    &command,
+                    &group,
+                    name,
+                    &mut found_group_prefix
+                )
+            };
+
+            if search_command_name_matched.is_some() {
+
+                if HelpBehaviour::Nothing == check_command_behaviour(
+                    ctx,
+                    msg,
+                    &command.options,
+                    &owners,
+                    &help_options,
+                ).await {
+                    found = Some(command);
+                } else {
+                    break;
+                }
+            } else if help_options.max_levenshtein_distance > 0 {
+
+                let command_name = if let Some(first_prefix) = group.options.prefixes.get(0) {
+                    format!("{} {}", &first_prefix, &command.options.names[0])
+                } else {
+                    command.options.names[0].to_string()
+                };
+
+                let levenshtein_distance = levenshtein_distance(&command_name, &name);
+
+                if levenshtein_distance <= help_options.max_levenshtein_distance
+                    && HelpBehaviour::Nothing == check_command_behaviour(
+                    ctx,
+                    msg,
+                    &command.options,
+                    &owners,
+                    &help_options,
+                ).await
+                {
+                    similar_commands.push(SuggestedCommandName {
+                        name: command_name,
+                        levenshtein_distance,
+                    });
+                }
+            }
+        }
+
+        if let Some(command) = found {
+            let options = &command.options;
+
+            if !options.help_available {
+                return Ok(CustomisedHelpData::NoCommandFound {
+                    help_error_message: &help_options.no_help_available_text,
+                });
+            }
+
+            let available_text = if options.only_in == OnlyIn::Dm {
+                &help_options.dm_only_text
+            } else if options.only_in == OnlyIn::Guild {
+                &help_options.guild_only_text
+            } else {
+                &help_options.dm_and_guild_text
+            };
+
+            similar_commands
+                .sort_unstable_by(|a, b| a.levenshtein_distance.cmp(&b.levenshtein_distance));
+
+            let check_names: Vec<String> = command
+                .options
+                .checks
+                .iter()
+                .chain(group.options.checks.iter())
+                .filter_map(|check| {
+                    if check.display_in_help {
+                        Some(check.name.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            return Ok(CustomisedHelpData::SingleCommand {
+                command: Command {
+                    name: options.names[0],
+                    description: options.desc,
+                    group_name: group.name,
+                    group_prefixes: &group.options.prefixes,
+                    checks: check_names,
+                    aliases: options.names[1..].to_vec(),
+                    availability: available_text,
+                    usage: options.usage,
+                    usage_sample: options.examples.to_vec(),
+                },
+            });
+        }
+
+        match nested_group_command_search(
+            ctx,
+            msg,
+            &group.options.sub_groups,
+            name,
+            help_options,
+            similar_commands,
+            owners,
+        ).await {
+            Ok(found) => return Ok(found),
+            Err(()) => (),
+        }
+
+    }
+
+    Err(())
 }
 
 /// Tries to extract a single command matching searched command name otherwise
 /// returns similar commands.
 #[cfg(feature = "cache")]
 async fn fetch_single_command<'a>(
-    cache: impl AsRef<CacheRwLock>,
+    ctx: &mut Context,
+    msg: &Message,
     groups: &[&'static CommandGroup],
     name: &str,
     help_options: &'a HelpOptions,
-    msg: &Message,
     owners: &HashSet<UserId>,
 ) -> Result<CustomisedHelpData<'a>, Vec<SuggestedCommandName>> {
     let mut similar_commands: Vec<SuggestedCommandName> = Vec::new();
-    let cache = cache.as_ref();
     let mut name = name.to_string();
 
     match nested_group_command_search(
-        &cache,
+        ctx,
+        msg,
         &groups,
         &mut name,
         &help_options,
-        &msg,
         &mut similar_commands,
         &owners,
     ).await {
@@ -587,12 +610,12 @@ async fn fetch_single_command<'a>(
 #[cfg(feature = "cache")]
 #[allow(clippy::too_many_arguments)]
 async fn fill_eligible_commands<'a>(
-    context: &Context,
+    ctx: &mut Context,
+    msg: &Message,
     commands: &[&'static InternalCommand],
     owners: &HashSet<UserId>,
     help_options: &'a HelpOptions,
     group: &'a CommandGroup,
-    msg: &Message,
     to_fill: &mut GroupCommandsPair,
     highest_formatter: &mut HelpBehaviour,
 ) {
@@ -605,12 +628,12 @@ async fn fill_eligible_commands<'a>(
         } else {
             std::cmp::max(
                 *highest_formatter,
-                check_command_behaviour(
+                check_common_behaviour(
+                    &ctx,
                     msg,
                     &group.options,
                     owners,
                     help_options,
-                    &context.cache,
                 ).await
             )
         }
@@ -634,11 +657,11 @@ async fn fill_eligible_commands<'a>(
         }
 
         let command_behaviour = check_command_behaviour(
+            ctx,
             msg,
             &command.options,
             owners,
             help_options,
-            &context.cache,
         ).await;
 
         let name = format_command_name!(command_behaviour, &name);
@@ -648,63 +671,63 @@ async fn fill_eligible_commands<'a>(
 
 /// Tries to fetch all commands visible to the user within a group and
 /// its sub-groups.
+#[async_recursion]
 #[cfg(feature = "cache")]
 #[allow(clippy::too_many_arguments)]
-fn fetch_all_eligible_commands_in_group<'a>(
-    context: &'a Context,
-    commands: &'a [&'static InternalCommand],
-    owners: &'a HashSet<UserId>,
+async fn fetch_all_eligible_commands_in_group<'a>(
+    ctx: &mut Context,
+    msg: &Message,
+    commands: &[&'static InternalCommand],
+    owners: &HashSet<UserId>,
     help_options: &'a HelpOptions,
     group: &'a CommandGroup,
-    msg: &'a Message,
-    mut highest_formatter: HelpBehaviour,
-) -> BoxFuture<'a, GroupCommandsPair> {
-    async move {
-        let mut group_with_cmds = GroupCommandsPair::default();
+    highest_formatter: HelpBehaviour,
+) -> GroupCommandsPair {
+    let mut group_with_cmds = GroupCommandsPair::default();
+    let mut highest_formatter = highest_formatter;
 
-        fill_eligible_commands(
-            &context,
-            &commands,
-            &owners,
-            &help_options,
-            &group,
-            &msg,
-            &mut group_with_cmds,
-            &mut highest_formatter,
-        ).await;
+    fill_eligible_commands(
+        ctx,
+        msg,
+        &commands,
+        &owners,
+        &help_options,
+        &group,
+        &mut group_with_cmds,
+        &mut highest_formatter,
+    ).await;
 
-        for sub_group in group.options.sub_groups {
-            if HelpBehaviour::Hide == highest_formatter {
-                break;
-            } else if sub_group.options.commands.is_empty() && sub_group.options.sub_groups.is_empty() {
-                continue;
-            }
-
-            let grouped_cmd = fetch_all_eligible_commands_in_group(
-                &context,
-                &sub_group.options.commands,
-                &owners,
-                &help_options,
-                &sub_group,
-                &msg,
-                highest_formatter,
-            ).await;
-
-            group_with_cmds.sub_groups.push(grouped_cmd);
+    for sub_group in group.options.sub_groups {
+        if HelpBehaviour::Hide == highest_formatter {
+            break;
+        } else if sub_group.options.commands.is_empty() && sub_group.options.sub_groups.is_empty() {
+            continue;
         }
 
-        group_with_cmds
-    }.boxed()
+        let grouped_cmd = fetch_all_eligible_commands_in_group(
+            ctx,
+            msg,
+            &sub_group.options.commands,
+            &owners,
+            &help_options,
+            &sub_group,
+            highest_formatter,
+        ).await;
+
+        group_with_cmds.sub_groups.push(grouped_cmd);
+    }
+
+    group_with_cmds
 }
 
 
 /// Fetch groups with their commands.
 #[cfg(feature = "cache")]
 async fn create_command_group_commands_pair_from_groups<'a>(
-    context: &Context,
+    ctx: &mut Context,
+    msg: &Message,
     groups: &[&'static CommandGroup],
     owners: &HashSet<UserId>,
-    msg: &Message,
     help_options: &'a HelpOptions,
 ) -> Vec<GroupCommandsPair> {
     let mut listed_groups: Vec<GroupCommandsPair> = Vec::default();
@@ -712,7 +735,7 @@ async fn create_command_group_commands_pair_from_groups<'a>(
     for group in groups {
         let group = *group;
 
-        let group_with_cmds = create_single_group(&context, group, &owners, &msg, &help_options).await;
+        let group_with_cmds = create_single_group(ctx, msg, group, &owners, &help_options).await;
 
         if !group_with_cmds.command_names.is_empty() {
             listed_groups.push(group_with_cmds);
@@ -725,19 +748,19 @@ async fn create_command_group_commands_pair_from_groups<'a>(
 /// Fetches a single group with its commands.
 #[cfg(feature = "cache")]
 async fn create_single_group(
-    context: &Context,
+    ctx: &mut Context,
+    msg: &Message,
     group: &CommandGroup,
     owners: &HashSet<UserId>,
-    msg: &Message,
     help_options: &HelpOptions,
 ) -> GroupCommandsPair {
     let mut group_with_cmds = fetch_all_eligible_commands_in_group(
-        &context,
+        ctx,
+        &msg,
         &group.options.commands,
         &owners,
         &help_options,
         &group,
-        &msg,
         HelpBehaviour::Nothing,
     ).await;
 
@@ -764,70 +787,72 @@ fn trim_prefixless_group(group_name: &str, searched_group: &mut String) -> bool 
     false
 }
 
+#[async_recursion]
 #[cfg(feature = "cache")]
 #[allow(clippy::implicit_hasher)]
-pub fn searched_lowercase<'b, 'a : 'b>(
-    context: &'b Context,
-    group: &'b CommandGroup,
-    owners: &'b HashSet<UserId>,
+pub async fn searched_lowercase<'a>(
+    ctx: &mut Context,
+    msg: &Message,
+    args: &'a Args,
+    group: &CommandGroup,
+    owners: &HashSet<UserId>,
     help_options: &'a HelpOptions,
-    msg: &'b Message,
-    searched_named_lowercase: &'b mut String,
-) -> BoxFuture<'b, Option<CustomisedHelpData<'a>>> {
-    async move {
-        let is_prefixless_group = {
-            group.options.prefixes.is_empty()
-                && trim_prefixless_group(
-                &group.name.to_lowercase(),
-                searched_named_lowercase,
-            )
-        };
-        let mut progressed = is_prefixless_group;
-        let is_word_prefix = group
-            .options
-            .prefixes
-            .iter()
-            .any(|prefix| {
-                if starts_with_whole_word(&searched_named_lowercase, &prefix) {
-                    searched_named_lowercase.drain(..=prefix.len());
-                    progressed = true;
-                }
-
-                prefix == searched_named_lowercase
-            });
-
-        if is_prefixless_group || is_word_prefix {
-            let single_group =
-                create_single_group(&context, &group, owners, &msg, &help_options).await;
-
-            if !single_group.command_names.is_empty() {
-                return Some(CustomisedHelpData::GroupedCommands {
-                    help_description: group
-                        .options
-                        .description
-                        .as_ref()
-                        .map(|s| s.to_string())
-                        .unwrap_or_default(),
-                    groups: vec![single_group],
-                });
+    searched_named_lowercase: &mut String,
+) -> Option<CustomisedHelpData<'a>> {
+    let is_prefixless_group = {
+        group.options.prefixes.is_empty()
+            && trim_prefixless_group(
+            &group.name.to_lowercase(),
+            searched_named_lowercase,
+        )
+    };
+    let mut progressed = is_prefixless_group;
+    let is_word_prefix = group
+        .options
+        .prefixes
+        .iter()
+        .any(|prefix| {
+            if starts_with_whole_word(&searched_named_lowercase, &prefix) {
+                searched_named_lowercase.drain(..=prefix.len());
+                progressed = true;
             }
-        } else if progressed || group.options.prefixes.is_empty() {
-            for sub_group in group.options.sub_groups {
-                if let Some(found_set) = searched_lowercase(
-                    context,
-                    sub_group,
-                    owners,
-                    help_options,
-                    msg,
-                    searched_named_lowercase,
-                ).await {
-                    return Some(found_set);
-                }
+
+            prefix == searched_named_lowercase
+        });
+
+    if is_prefixless_group || is_word_prefix {
+        let single_group =
+            create_single_group(ctx, msg, &group, owners, &help_options).await;
+
+        if !single_group.command_names.is_empty() {
+            return Some(CustomisedHelpData::GroupedCommands {
+                help_description: group
+                    .options
+                    .description
+                    .as_ref()
+                    .map(|s| s.to_string())
+                    .unwrap_or_default(),
+                groups: vec![single_group],
+            });
+        }
+    } else if progressed || group.options.prefixes.is_empty() {
+        for sub_group in group.options.sub_groups {
+
+            if let Some(found_set) = searched_lowercase(
+                ctx,
+                msg,
+                args,
+                sub_group,
+                owners,
+                help_options,
+                searched_named_lowercase,
+            ).await {
+                return Some(found_set);
             }
         }
+    }
 
-        None
-    }.boxed()
+    None
 }
 
 /// Iterates over all commands and forges them into a `CustomisedHelpData`,
@@ -836,31 +861,30 @@ pub fn searched_lowercase<'b, 'a : 'b>(
 #[cfg(feature = "cache")]
 #[allow(clippy::implicit_hasher)]
 pub async fn create_customised_help_data<'a, 'b>(
-    context: &'b Context,
-    groups: &[&'static CommandGroup],
-    owners: &'b HashSet<UserId>,
+    ctx: &mut Context,
+    msg: &Message,
     args: &'a Args,
+    groups: &[&'static CommandGroup],
+    owners: &HashSet<UserId>,
     help_options: &'a HelpOptions,
-    msg: &'b Message,
 ) -> CustomisedHelpData<'a> {
-    let cache = &context.cache;
-
     if !args.is_empty() {
         let name = args.message();
 
-        return match fetch_single_command(&cache, &groups, &name, &help_options, &msg, owners).await {
+        return match fetch_single_command(ctx, msg, &groups, &name, &help_options, owners).await {
             Ok(single_command) => single_command,
             Err(suggestions) => {
-                let mut searched_named_lowercase = name.to_lowercase().to_string();
+                let mut searched_named_lowercase = name.to_lowercase();
 
                 for group in groups {
 
                     if let Some(found_command) = searched_lowercase(
-                        context,
+                        ctx,
+                        msg,
+                        args,
                         group,
                         owners,
                         help_options,
-                        msg,
                         &mut searched_named_lowercase,
                     ).await {
                         return found_command;
@@ -897,10 +921,10 @@ pub async fn create_customised_help_data<'a, 'b>(
     };
 
     let listed_groups = create_command_group_commands_pair_from_groups(
-        &context,
+        ctx,
+        msg,
         &groups,
         owners,
-        &msg,
         &help_options,
     ).await;
 
@@ -1182,13 +1206,6 @@ async fn send_error_embed(
 /// ```rust,no_run
 /// # #![feature(async_closure)]
 /// # use serenity::prelude::*;
-/// # struct Handler;
-/// #
-/// # impl EventHandler for Handler {}
-/// # #[tokio::main]
-/// # async fn main() {
-/// # let mut client = Client::new("token", Handler).await.unwrap();
-/// #
 /// use std::{collections::HashSet, hash::BuildHasher};
 /// use serenity::{framework::standard::{Args, CommandGroup, CommandResult,
 ///     StandardFramework, macros::help, HelpOptions,
@@ -1206,30 +1223,36 @@ async fn send_error_embed(
 /// ) -> CommandResult {
 ///     with_embeds(context, msg, args, &help_options, groups, owners).await
 /// }
+/// # struct Handler;
+/// #
+/// # impl EventHandler for Handler {}
+/// # #[tokio::main]
+/// # async fn main() {
+/// # let mut client = Client::new("token", Handler).await.unwrap();
+/// #
 ///
 /// client.with_framework(StandardFramework::new()
-///     .help(&MY_HELP));
+///     .help(&MY_HELP)).await;
 /// # }
 /// ```
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::implicit_hasher)]
 pub async fn with_embeds(
-    context: &mut Context,
+    ctx: &mut Context,
     msg: &Message,
     args: Args,
     help_options: &HelpOptions,
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    let formatted_help =
-        create_customised_help_data(&context, &groups, &owners, &args, help_options, msg).await;
+    let formatted_help = create_customised_help_data(ctx, msg, &args, &groups, &owners, help_options).await;
 
     if let Err(why) = match formatted_help {
         CustomisedHelpData::SuggestedCommands {
             ref help_description,
             ref suggestions,
         } => send_suggestion_embed(
-            &context.http,
+            &ctx.http,
             msg.channel_id,
             &help_description,
             &suggestions,
@@ -1238,7 +1261,7 @@ pub async fn with_embeds(
         CustomisedHelpData::NoCommandFound {
             ref help_error_message,
         } => send_error_embed(
-            &context.http,
+            &ctx.http,
             msg.channel_id,
             help_error_message,
             help_options.embed_error_colour,
@@ -1247,7 +1270,7 @@ pub async fn with_embeds(
             ref help_description,
             ref groups,
         } => send_grouped_commands_embed(
-            &context.http,
+            &ctx.http,
             &help_options,
             msg.channel_id,
             &help_description,
@@ -1255,7 +1278,7 @@ pub async fn with_embeds(
             help_options.embed_success_colour,
         ).await,
         CustomisedHelpData::SingleCommand { ref command } => send_single_command_embed(
-            &context.http,
+            &ctx.http,
             &help_options,
             msg.channel_id,
             &command,
@@ -1383,13 +1406,6 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 /// ```rust,no_run
 /// # #![feature(async_closure)]
 /// # use serenity::prelude::*;
-/// # struct Handler;
-/// #
-/// # impl EventHandler for Handler {}
-/// # #[tokio::main]
-/// # async fn main() {
-/// # let mut client = Client::new("token", Handler).await.unwrap();
-/// #
 /// use std::{collections::HashSet, hash::BuildHasher};
 /// use serenity::{framework::standard::{Args, CommandGroup, CommandResult,
 ///     StandardFramework, macros::help, HelpOptions,
@@ -1407,23 +1423,29 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 /// ) -> CommandResult {
 ///     plain(context, msg, args, &help_options, groups, owners).await
 /// }
+/// # struct Handler;
+/// #
+/// # impl EventHandler for Handler {}
+/// # #[tokio::main]
+/// # async fn main() {
+/// # let mut client = Client::new("token", Handler).await.unwrap();
+/// #
 ///
 /// client.with_framework(StandardFramework::new()
-///     .help(&MY_HELP));
+///     .help(&MY_HELP)).await;
 /// # }
 /// ```
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::implicit_hasher)]
 pub async fn plain(
-    context: &mut Context,
+    ctx: &mut Context,
     msg: &Message,
     args: Args,
     help_options: &HelpOptions,
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    let formatted_help =
-        create_customised_help_data(&context, &groups, &owners, &args, help_options, msg).await;
+    let formatted_help = create_customised_help_data(ctx, msg, &args, &groups, &owners, help_options).await;
 
     let result = match formatted_help {
         CustomisedHelpData::SuggestedCommands {
@@ -1443,7 +1465,7 @@ pub async fn plain(
         CustomisedHelpData::__Nonexhaustive => unreachable!(),
     };
 
-    if let Err(why) = msg.channel_id.say(&context.http, result).await {
+    if let Err(why) = msg.channel_id.say(&ctx, result).await {
         warn_about_failed_send!(&formatted_help, why);
     };
 

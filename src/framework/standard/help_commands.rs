@@ -1245,7 +1245,9 @@ pub async fn with_embeds(
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    let formatted_help = create_customised_help_data(ctx, msg, &args, &groups, &owners, help_options).await;
+    // FIXME: we need to figure out something better here, but I'm not sure
+    // of a way to escape this lifetime hell.
+    let formatted_help = futures::executor::block_on(create_customised_help_data(ctx, msg, &args, &groups, &owners, help_options));
 
     if let Err(why) = match formatted_help {
         CustomisedHelpData::SuggestedCommands {

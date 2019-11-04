@@ -1491,6 +1491,7 @@ impl<'de> Deserialize<'de> for GatewayEvent {
 /// Event received over a websocket connection
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
 pub enum Event {
     /// A [`Channel`] was created.
     ///
@@ -2061,6 +2062,7 @@ impl<'de> Deserialize<'de> for VoiceHeartbeatAck {
 pub struct VoiceReady {
     pub heartbeat_interval: u64,
     pub modes: Vec<String>,
+    pub ip: String, 
     pub port: u16,
     pub ssrc: u32,
     #[serde(skip)]

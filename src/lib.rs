@@ -55,8 +55,6 @@
 #![doc(html_root_url = "https://docs.rs/serenity/*")]
 #![deny(rust_2018_idioms)]
 
-#![feature(async_closure)]
-
 #[macro_use]
 extern crate serde;
 

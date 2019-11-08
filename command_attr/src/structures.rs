@@ -164,7 +164,7 @@ impl Parse for CommandFun {
     }
 }
 
-fn visit_reference_arguments(args: &Vec<Argument>) -> (Vec<Argument>, Vec<Lifetime>, Vec<TokenStream2>) {
+fn visit_reference_arguments(args: &Vec<Argument>) -> (Vec<Argument>, Vec<Lifetime>, Vec<TokenStream2>, Vec<TokenStream2>) {
     let mut counter = 1;
     let mut modified_arguments = Vec::new();
     let mut lifetimes = Vec::new();
@@ -189,12 +189,15 @@ fn visit_reference_arguments(args: &Vec<Argument>) -> (Vec<Argument>, Vec<Lifeti
 
     // Make the lifetime requirements
     let mut lifetime_requirements = vec![quote!('life0: 'async_trait), quote!(Self: 'async_trait)];
+    let mut simple_lifetime_requirements = vec![];
 
     for lifetime in lifetimes.iter() {
         lifetime_requirements.push(quote!(#lifetime: 'async_trait));
+        simple_lifetime_requirements.push(quote!(#lifetime: 'async_trait));
+
     }
 
-    (modified_arguments, lifetimes, lifetime_requirements)
+    (modified_arguments, lifetimes, lifetime_requirements, simple_lifetime_requirements)
 }
 
 impl ToTokens for CommandFun {
@@ -210,7 +213,10 @@ impl ToTokens for CommandFun {
             kind,
         } = self;
 
-        let (args, lifetimes, lifetime_requirements) = visit_reference_arguments(args);
+        let (args, lifetimes, lifetime_requirements, simple_lifetime_requirements) = visit_reference_arguments(args);
+
+        let arg_names = args.iter().map(|a| a.name.clone()).collect::<Vec<_>>();
+
 
         let struct_name = format_ident!("_{}", name);
 
@@ -232,6 +238,7 @@ impl ToTokens for CommandFun {
 
             impl #async_command for #struct_name {
                 #(#cooked)*
+                #[allow(unused_mut)]
                 #visibility fn #fn_name <'life0 #(, #lifetimes)*, 'async_trait> (
                         &'life0 self,
                         #(#args,)*
@@ -244,11 +251,24 @@ impl ToTokens for CommandFun {
                     >
                         where #(#lifetime_requirements, )*
                 {
-                    let __inner = (async move || {
-                        #(#body)*
-                    })();
 
-                    Box::pin(__inner)
+                    fn __inner<'async_trait #(, #lifetimes)*> (
+                        #(#args,)*
+                    ) -> core::pin::Pin<
+                        Box<
+                            dyn core::future::Future<Output = #ret>
+                            + core::marker::Send
+                            + 'async_trait
+                        >,
+                    >
+                        where #(#simple_lifetime_requirements, )*
+                    {
+                        Box::pin(async move {
+                            #(#body)*
+                        })
+                    }
+
+                    __inner(#(#arg_names,)*)
                 }
             }
         };

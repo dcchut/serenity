@@ -11,7 +11,6 @@ use std::collections::HashMap;
 /// Editing the content of a [`Message`] to `"hello"`:
 ///
 /// ```rust,no_run
-/// # #![feature(async_closure)]
 /// # use serenity::model::id::{ChannelId, MessageId};
 /// # #[cfg(feature = "client")]
 /// # use serenity::client::Context;

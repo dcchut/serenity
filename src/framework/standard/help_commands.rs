@@ -6,7 +6,6 @@
 //! embeds:
 //!
 //! ```rust,no_run
-//! #![feature(async_closure)]
 //! use serenity::framework::standard::{
 //!     StandardFramework,
 //!     help_commands,
@@ -1204,7 +1203,6 @@ async fn send_error_embed(
 /// Use the command with `exec_help`:
 ///
 /// ```rust,no_run
-/// # #![feature(async_closure)]
 /// # use serenity::prelude::*;
 /// use std::{collections::HashSet, hash::BuildHasher};
 /// use serenity::{framework::standard::{Args, CommandGroup, CommandResult,
@@ -1405,8 +1403,7 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 ///
 /// Use the command with `exec_help`:
 ///
-/// ```rust,no_run
-/// # #![feature(async_closure)]
+/// ```rust,ignore
 /// # use serenity::prelude::*;
 /// use std::{collections::HashSet, hash::BuildHasher};
 /// use serenity::{framework::standard::{Args, CommandGroup, CommandResult,
@@ -1423,7 +1420,7 @@ fn single_command_to_plain_string(help_options: &HelpOptions, command: &Command<
 ///     groups: &[&'static CommandGroup],
 ///     owners: HashSet<UserId>
 /// ) -> CommandResult {
-///     plain(context, msg, args, &help_options, groups, owners).await
+///     plain(context, msg, args, help_options, groups, owners).await
 /// }
 /// # struct Handler;
 /// #

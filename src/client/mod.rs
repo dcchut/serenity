@@ -211,7 +211,6 @@ pub struct Client {
     /// 5 seconds:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # extern crate serenity;
     /// #
     /// # use serenity::client::{Client, EventHandler};
@@ -473,7 +472,6 @@ impl Client {
     /// Create a simple framework that responds to a `~ping` command:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # use serenity::prelude::EventHandler;
     /// # use std::error::Error;
     /// #

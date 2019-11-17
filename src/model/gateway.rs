@@ -75,7 +75,6 @@ impl Activity {
     /// Create a command that sets the current activity:
     ///
     /// ```rust,no_run
-    /// #![feature(async_closure)]
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]
@@ -122,7 +121,6 @@ impl Activity {
     /// Create a command that sets the current streaming status:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]
@@ -170,7 +168,6 @@ impl Activity {
     /// Create a command that sets the current listening status:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// use serenity::model::gateway::Activity;
     /// use serenity::model::channel::Message;
     /// # #[cfg(feature = "framework")]

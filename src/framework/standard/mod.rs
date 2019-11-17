@@ -175,7 +175,6 @@ impl StandardFramework {
     /// a 2 second delay inbetween invocations:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # use serenity::prelude::*;
     /// # struct Handler;
     /// #
@@ -334,7 +333,6 @@ impl StandardFramework {
     /// Add a group with ping and pong commands:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # use serenity::prelude::*;
     /// # use std::error::Error as StdError;
     /// # struct Handler;

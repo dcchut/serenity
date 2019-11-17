@@ -8,7 +8,6 @@
 //! git = "https://github.com/serenity-rs/serenity.git"
 //! features = ["framework", "standard_framework"]
 //! ```
-#![feature(async_closure)]
 mod commands;
 
 use std::{

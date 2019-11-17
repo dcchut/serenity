@@ -32,7 +32,6 @@
 //! ping and about command:
 //!
 //! ```rust,no_run
-//! #![feature(async_closure)]
 //! use serenity::client::{Client, Context, EventHandler};
 //! use serenity::model::channel::Message;
 //! use serenity::framework::standard::macros::{command, group};

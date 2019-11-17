@@ -789,7 +789,6 @@ impl Cache {
     /// Retrieve a user from the cache and print their name:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # use serenity::client::Context;
     /// # use serenity::framework::standard::{CommandResult, macros::command};
     /// #

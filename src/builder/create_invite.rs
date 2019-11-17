@@ -84,7 +84,6 @@ impl CreateInvite {
     /// Create an invite with a max age of `3600` seconds, or 1 hour:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # #[cfg(all(feature = "cache", feature = "client"))]
     /// # use serenity::client::Context;
     /// # #[cfg(feature = "framework")]
@@ -122,7 +121,6 @@ impl CreateInvite {
     /// Create an invite with a max use limit of `5`:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # #[cfg(all(feature = "cache", feature = "client"))]
     /// # use serenity::client::Context;
     /// # #[cfg(feature = "framework")]
@@ -158,7 +156,6 @@ impl CreateInvite {
     /// Create an invite which is temporary:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # #[cfg(all(feature = "cache", feature = "client"))]
     /// # use serenity::client::Context;
     /// # #[cfg(feature = "framework")]
@@ -193,7 +190,6 @@ impl CreateInvite {
     /// Create an invite which is unique:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// # #[cfg(all(feature = "cache", feature = "client"))]
     /// # use serenity::client::Context;
     /// # #[cfg(feature = "framework")]

@@ -39,7 +39,6 @@ docs.
 A basic ping-pong bot looks like:
 
 ```rust,ignore
-#![feature(async_closure)]
 
 use serenity::client::Client;
 use serenity::model::channel::Message;

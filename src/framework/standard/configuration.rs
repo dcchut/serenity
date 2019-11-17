@@ -275,7 +275,6 @@ impl Configuration {
     /// Ignore a set of commands, assuming they exist:
     ///
     /// ```rust,no_run
-    /// # #![feature(async_closure)]
     /// use serenity::framework::StandardFramework;
     /// use serenity::client::Context;
     /// use serenity::model::channel::Message;

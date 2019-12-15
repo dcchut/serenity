@@ -30,7 +30,7 @@ use futures::channel::mpsc::{UnboundedSender, UnboundedReceiver, unbounded};
 use futures::stream::StreamExt;
 use futures::sink::SinkExt;
 use std::time::Duration;
-use tokio::timer::Timeout;
+use tokio::time::timeout;
 
 /// A runner for managing a [`Shard`] and its respective WebSocket client.
 ///
@@ -385,7 +385,7 @@ impl ShardRunner {
     async fn recv(&mut self) -> Result<bool> {
         // TODO: we use a 50 ms timeout here to simulate a non-blocking call
         let next =
-            Timeout::new(self.runner_rx.next(), Duration::from_millis(50));
+            timeout(Duration::from_millis(50), self.runner_rx.next());
 
         let mut _value = None;
 

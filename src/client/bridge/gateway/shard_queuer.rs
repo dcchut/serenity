@@ -28,7 +28,7 @@ use crate::client::bridge::voice::ClientVoiceManager;
 #[cfg(feature = "framework")]
 use crate::framework::Framework;
 
-use tokio::timer::delay_for;
+use tokio::time::delay_for;
 use futures::channel::mpsc::{UnboundedSender, UnboundedReceiver};
 use futures::stream::StreamExt;
 

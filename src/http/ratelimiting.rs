@@ -62,7 +62,7 @@ use std::{
 };
 use super::{HttpError, Request};
 use log::debug;
-use tokio::timer::delay_for;
+use tokio::time::delay_for;
 use futures::lock::Mutex;
 use crate::SyncRwLock;
 
@@ -199,7 +199,7 @@ impl Ratelimiter {
                     Ok(
                         if let Some(retry_after) = parse_header::<u64>(&response.headers(), "retry-after")? {
                             debug!("Ratelimited on route {:?} for {:?}ms", route, retry_after);
-                            tokio::timer::delay_for(Duration::from_millis(retry_after)).await;
+                            delay_for(Duration::from_millis(retry_after)).await;
 
                             true
                         } else {

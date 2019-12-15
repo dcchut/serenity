@@ -32,7 +32,7 @@ version = "0.2.0"
 
 [dependencies.tokio]
 version = "0.2.4"
-features = ["time"]
+features = ["time", "macros"]
 
 [dependencies.reqwest]
 git = "https://github.com/seanmonstar/reqwest"

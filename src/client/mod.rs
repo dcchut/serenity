@@ -236,7 +236,7 @@ pub struct Client {
     ///         println!("Shard count instantiated: {}",
     ///                  guard.shards_instantiated().len());
     ///
-    ///         tokio::timer::delay_for(Duration::from_millis(5000)).await;
+    ///         tokio::time::delay_for(Duration::from_millis(5000)).await;
     ///     }
     /// });
     /// #     Ok(())
@@ -271,7 +271,7 @@ pub struct Client {
     /// // Create a thread which will sleep for 60 seconds and then have the
     /// // shard manager shutdown.
     /// tokio::spawn(async move {
-    ///     tokio::timer::delay_for(Duration::from_secs(60)).await;
+    ///     tokio::time::delay_for(Duration::from_secs(60)).await;
     ///
     ///     shard_manager.lock().await.shutdown_all();
     ///

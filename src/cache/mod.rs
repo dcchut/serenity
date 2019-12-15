@@ -260,7 +260,7 @@ impl Cache {
     ///         //
     ///         // For demonstrative purposes we're just sleeping the thread for 5
     ///         // seconds.
-    ///         tokio::timer::delay_for(Duration::from_secs(5)).await;
+    ///         tokio::time::delay_for(Duration::from_secs(5)).await;
     ///
     ///         let guard = ctx.cache.read().await;
     ///         println!("{} unknown members", guard.unknown_members().await);

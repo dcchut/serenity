@@ -423,7 +423,9 @@ impl Client {
         )));
 
         let cache_and_http = Arc::new(CacheAndHttp {
+            #[cfg(feature = "cache")]
             cache: CacheRwLock::default(),
+            #[cfg(feature = "cache")]
             update_cache_timeout: timeout,
             http: Arc::new(http),
             __nonexhaustive: (),

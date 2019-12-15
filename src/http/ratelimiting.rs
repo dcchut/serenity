@@ -48,7 +48,6 @@ use reqwest::{
     StatusCode,
 };
 use crate::internal::prelude::*;
-
 use std::{
     collections::HashMap,
     sync::Arc,
@@ -306,7 +305,6 @@ impl Ratelimit {
             false
         } else if let Some(retry_after) = parse_header::<u64>(&response.headers(), "retry-after")? {
             debug!("Ratelimited on route {:?} for {:?}ms", route, retry_after);
-
             delay_for(Duration::from_millis(retry_after as u64)).await;
 
             true

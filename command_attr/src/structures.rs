@@ -125,7 +125,7 @@ impl Parse for CommandFun {
             }
         }
 
-        let visibility = input.parse()?;
+        let visibility = input.parse::<Visibility>()?;
 
         input.parse::<Token![async]>()?;
         input.parse::<Token![fn]>()?;

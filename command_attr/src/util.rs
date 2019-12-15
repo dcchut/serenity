@@ -2,7 +2,7 @@ use crate::structures::CommandFun;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, ToTokens, format_ident};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
     braced, bracketed, parenthesized,
     parse::{Error, Parse, ParseStream, Result},

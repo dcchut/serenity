@@ -169,7 +169,7 @@ impl Suggestions {
             .as_vec()
             .iter()
             .fold(0, |total_size, size| total_size + size.name.len());
-        let byte_len_of_sep = self.as_vec().len().checked_sub(1).unwrap_or(0) * separator.len();
+        let byte_len_of_sep = self.as_vec().len().saturating_sub(1) * separator.len();
         let mut result = String::with_capacity(size + byte_len_of_sep);
         result.push_str(first_iter_element.name.borrow());
 
@@ -416,9 +416,9 @@ async fn check_command_behaviour(
     b
 }
 
-#[async_recursion]
 #[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::too_many_arguments)]
+#[async_recursion]
 async fn nested_group_command_search<'a>(
     ctx: &mut Context,
     msg: &Message,
@@ -800,7 +800,7 @@ pub async fn searched_lowercase<'a>(
 ) -> Option<CustomisedHelpData<'a>> {
     let is_prefixless_group = {
         group.options.prefixes.is_empty()
-            && trim_prefixless_group(
+        && trim_prefixless_group(
             &group.name.to_lowercase(),
             searched_named_lowercase,
         )
@@ -1026,7 +1026,7 @@ fn flatten_group_to_plain_string(
         );
     }
 
-    let joined_commands = format!("{}", group.command_names.join(", "));
+    let joined_commands = group.command_names.join(", ");
 
     let _ = write!(group_text, "{}", joined_commands);
 
@@ -1444,7 +1444,8 @@ pub async fn plain(
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    let formatted_help = create_customised_help_data(ctx, msg, &args, &groups, &owners, help_options).await;
+    let formatted_help =
+        create_customised_help_data(ctx, msg, &args, &groups, &owners, help_options).await;
 
     let result = match formatted_help {
         CustomisedHelpData::SuggestedCommands {

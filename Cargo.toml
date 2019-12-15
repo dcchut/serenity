@@ -145,6 +145,7 @@ gateway = [
 http = []
 absolute_ratelimits = ["http"]
 rustls_backend = ["tungstenite", "rustls", "webpki", "webpki-roots"]
+#rustls_backend = ["reqwest/rustls-tls", "tungstenite", "rustls", "webpki", "webpki-roots"]
 native_tls_backend = ["reqwest/default-tls", "tungstenite/tls"]
 model = ["builder", "http"]
 standard_framework = ["framework", "uwl", "command_attr"]

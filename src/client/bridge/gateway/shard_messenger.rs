@@ -154,6 +154,7 @@ impl ShardMessenger {
     /// online:
     ///
     /// ```rust,ignore
+    /// # use futures::lock::Mutex;
     /// # use serenity::client::gateway::Shard;
     /// # use std::error::Error;
     /// # use std::sync::Arc;

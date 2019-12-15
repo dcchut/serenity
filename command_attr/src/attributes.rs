@@ -4,7 +4,7 @@ use syn::spanned::Spanned;
 use syn::{Attribute, Ident, Lit, LitStr, Meta, NestedMeta, Path};
 
 use crate::structures::{Checks, Colour, HelpBehaviour, OnlyIn, Permissions};
-use crate::util::{LitExt, AsOption};
+use crate::util::{AsOption, LitExt};
 
 use std::fmt::{self, Write};
 

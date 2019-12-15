@@ -18,7 +18,6 @@ use super::{
     GuildPagination,
     HttpError,
 };
-
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use log::{debug, trace};
@@ -1505,6 +1504,12 @@ impl Http {
                     let _b = f.read_to_end(&mut buf)?;
                     let part = Part::bytes(buf).file_name(filename.to_string());
 
+
+                    // TODO: investigate why this doesn't work
+                    // multipart = multipart
+                    //     .part(file_num.to_string(),
+                    //         Part::reader(file.try_clone()?)
+                    //             .file_name(filename));
 
                     multipart = multipart
                         .part(file_num.to_string(),

@@ -1792,7 +1792,7 @@ fn configure_client_backend(builder: ClientBuilder) -> ClientBuilder {
 
 #[cfg(feature = "native_tls_backend")]
 fn configure_client_backend(builder: ClientBuilder) -> ClientBuilder {
-    builder.use_default_tls()
+    builder.use_native_tls()
 }
 
 impl AsRef<Http> for Http {

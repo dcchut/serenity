@@ -36,7 +36,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! serenity = "0.7"
+//! serenity = "0.8"
 //! ```
 //!
 //! [`Cache`]: cache/struct.Cache.html
@@ -115,3 +115,8 @@ pub struct CacheAndHttp {
 #[allow(clippy::useless_attribute)]
 #[allow(rust_2018_idioms)]
 extern crate self as serenity;
+
+// For the procedural macros in `command_attr`.
+#[cfg(feature = "standard_framework")]
+#[doc(hidden)]
+pub use static_assertions;

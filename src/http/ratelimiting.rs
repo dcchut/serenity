@@ -244,6 +244,7 @@ impl Ratelimit {
     #[cfg(feature = "absolute_ratelimits")]
     fn get_delay(&self) -> i64 {
         use chrono::Utc;
+
         let now = Utc::now().timestamp_millis();
         self.reset - now
     }

@@ -268,8 +268,7 @@ pub struct HelpOptions {
     pub indention_prefix: &'static str,
 }
 
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct GroupOptions {
     pub prefixes: &'static [&'static str],
     pub only_in: OnlyIn,
@@ -284,6 +283,7 @@ pub struct GroupOptions {
     pub commands: &'static [&'static Command],
     pub sub_groups: &'static [&'static CommandGroup],
 }
+
 #[derive(Debug, PartialEq)]
 pub struct CommandGroup {
     pub name: &'static str,

@@ -4,7 +4,12 @@ use reqwest::{
     ClientBuilder,
     header::{AUTHORIZATION, USER_AGENT, CONTENT_TYPE, HeaderValue, HeaderMap as Headers},
     multipart::Part,
+    Client,
+    ClientBuilder,
     Response as ReqwestResponse,
+};
+use reqwest::{
+    header::{AUTHORIZATION, USER_AGENT, CONTENT_TYPE, HeaderValue, HeaderMap as Headers},
     StatusCode,
     Url,
 };
@@ -106,49 +111,6 @@ impl Http {
                 user_id,
             },
         }).await
-    }
-
-    /// Ban zeyla from a [`Guild`], removing her messages sent in the last X number
-    /// of days.
-    ///
-    /// Passing a `delete_message_days` of `0` is equivalent to not removing any
-    /// messages. Up to `7` days' worth of messages may be deleted.
-    ///
-    /// **Note**: Requires that you have the [Ban Members] permission.
-    ///
-    /// [`Guild`]: ../model/guild/struct.Guild.html
-    /// [Ban Members]: ../model/permissions/struct.Permissions.html#associatedconstant.BAN_MEMBERS
-    pub async fn ban_zeyla(&self, guild_id: u64, delete_message_days: u8, reason: &str) -> Result<()> {
-        self.ban_user(guild_id, 114_941_315_417_899_012, delete_message_days, reason).await
-    }
-
-    /// Ban luna from a [`Guild`], removing her messages sent in the last X number
-    /// of days.
-    ///
-    /// Passing a `delete_message_days` of `0` is equivalent to not removing any
-    /// messages. Up to `7` days' worth of messages may be deleted.
-    ///
-    /// **Note**: Requires that you have the [Ban Members] permission.
-    ///
-    /// [`Guild`]: ../model/guild/struct.Guild.html
-    /// [Ban Members]: ../model/permissions/struct.Permissions.html#associatedconstant.BAN_MEMBERS
-    pub async fn ban_luna(&self, guild_id: u64, delete_message_days: u8, reason: &str) -> Result<()> {
-        self.ban_user(guild_id, 180_731_582_049_550_336, delete_message_days, reason).await
-    }
-
-    /// Ban the serenity servermoms from a [`Guild`], removing their messages
-    /// sent in the last X number of days.
-    ///
-    /// Passing a `delete_message_days` of `0` is equivalent to not removing any
-    /// messages. Up to `7` days' worth of messages may be deleted.
-    ///
-    /// **Note**: Requires that you have the [Ban Members] permission.
-    ///
-    /// [`Guild`]: ../model/guild/struct.Guild.html
-    /// [Ban Members]: ../model/permissions/struct.Permissions.html#associatedconstant.BAN_MEMBERS
-    pub async fn ban_servermoms(&self, guild_id: u64, delete_message_days: u8, reason: &str) -> Result<()> {
-        self.ban_zeyla(guild_id, delete_message_days, reason).await?;
-        self.ban_luna(guild_id, delete_message_days, reason).await
     }
 
     /// Broadcasts that the current user is typing in the given [`Channel`].
@@ -1488,7 +1450,7 @@ impl Http {
             Err(_) => return Err(Error::Url(uri)),
         };
 
-        let mut multipart = reqwest::multipart::Form::new();
+        let mut multipart = reqwest::blocking::multipart::Form::new();
         let mut file_num = "0".to_string();
 
         for file in files {

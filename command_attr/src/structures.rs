@@ -7,7 +7,9 @@ use syn::{
     braced,
     parse::{Error, Parse, ParseStream, Result},
     spanned::Spanned,
-    Attribute, Block, FnArg, Ident, Pat, Path, PathSegment, ReturnType, Stmt, Token, Type, Lifetime, Visibility
+    Lifetime,
+    Attribute, Block, FnArg, Ident, Pat, Path, PathSegment, ReturnType, Stmt, Token, Type,
+    Visibility,
 };
 
 #[derive(Debug, PartialEq)]

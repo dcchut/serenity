@@ -65,7 +65,6 @@ fn context(
     Context::new(Arc::clone(data), runner_tx.clone(), shard_id, Arc::clone(http), Arc::clone(cache))
 }
 
-
 #[cfg(not(feature = "cache"))]
 fn context(
     data: &Arc<AsyncRwLock<ShareMap>>,

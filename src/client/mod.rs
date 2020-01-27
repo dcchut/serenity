@@ -413,7 +413,6 @@ impl Client {
         let url = Arc::new(Mutex::new(http.get_gateway().await?.url));
         let data = Arc::new(AsyncRwLock::new(ShareMap::custom()));
 
-
         #[cfg(feature = "framework")]
         let framework = Arc::new(Mutex::new(None));
         #[cfg(feature = "voice")]

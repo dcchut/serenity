@@ -3,6 +3,7 @@
 // Currently exists for backwards compatibility to previous Rust versions.
 #![recursion_limit = "128"]
 
+#[allow(unused_extern_crates)]
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
@@ -74,8 +75,8 @@ macro_rules! match_options {
 /// | `#[help_available]` </br> `#[help_available(b)]`                             | If the command should be displayed in the help message.                                                  | `b` is a boolean. If no boolean is provided, the value is assumed to be `true`.                                                                                                                                                  |
 /// | `#[only_in(ctx)]`                                                            | Which environment the command can be executed in.                                                        | `ctx` is a string with the accepted values `guild`/`guilds` and `dm`/`dms` (Direct Message).                                                                                                                                     |
 /// | `#[bucket(name)]` </br> `#[bucket = name]`                                   | What bucket will impact this command.                                                                    | `name` is a string containing the bucket's name.</br> Refer to [the bucket example in the standard framework](https://docs.rs/serenity/*/serenity/framework/standard/struct.StandardFramework.html#method.bucket) for its usage. |
-/// | `#[owners_only]` </br> `#[owners_only(b)]`                                   | If this command is exclusive to owners.                                                                  | `b` is a boolean. If no boolean is provided, the value is assumed to be `true`.                                                                                                                                                 |
-/// | `#[owner_privilege]` </br> `#[owner_privilege(b)]`                           | If owners can bypass certain options.                                                                    | `b` is a boolean. If no boolean is provided, the value is assumed to be `true`.                                                                                                                                                 |
+/// | `#[owners_only]` </br> `#[owners_only(b)]`                                   | If this command is exclusive to owners.                                                                  | `b` is a boolean. If no boolean is provided, the value is assumed to be `true`.                                                                                                                                                  |
+/// | `#[owner_privilege]` </br> `#[owner_privilege(b)]`                           | If owners can bypass certain options.                                                                    | `b` is a boolean. If no boolean is provided, the value is assumed to be `true`.                                                                                                                                                  |
 /// | `#[sub_commands(commands)]`                                                  | The sub or children commands of this command. They are executed in the form: `this-command sub-command`. | `commands` is a comma separated list of identifiers referencing functions marked by the `#[command]` macro.                                                                                                                      |
 ///
 /// Documentation comments (`///`) applied onto the function are interpreted as sugar for the
@@ -179,14 +180,10 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
         sub_commands,
     } = options;
 
-    propagate_err!(validate_declaration(&mut fun, DeclarFor::Command));
+    propagate_err!(create_declaration_validations(&mut fun, DeclarFor::Command));
 
-    let either = [
-        parse_quote!(CommandResult),
-        parse_quote!(serenity::framework::standard::CommandResult),
-    ];
-
-    propagate_err!(validate_return_type(&mut fun, either));
+    let res = parse_quote!(serenity::framework::standard::CommandResult);
+    create_return_type_validation(&mut fun, res);
 
     let name = fun.name.clone();
     let options = name.with_suffix(COMMAND_OPTIONS);
@@ -437,14 +434,10 @@ pub fn help(attr: TokenStream, input: TokenStream) -> TokenStream {
     let strikethrough_commands_tip_in_dm = AsOption(strikethrough_commands_tip_in_dm);
     let strikethrough_commands_tip_in_guild = AsOption(strikethrough_commands_tip_in_guild);
 
-    propagate_err!(validate_declaration(&mut fun, DeclarFor::Help));
+    propagate_err!(create_declaration_validations(&mut fun, DeclarFor::Help));
 
-    let either = [
-        parse_quote!(CommandResult),
-        parse_quote!(serenity::framework::standard::CommandResult),
-    ];
-
-    propagate_err!(validate_return_type(&mut fun, either));
+    let res = parse_quote!(serenity::framework::standard::CommandResult);
+    create_return_type_validation(&mut fun, res);
 
     let options = fun.name.with_suffix(HELP_OPTIONS);
 
@@ -558,6 +551,8 @@ pub fn help(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// | Syntax                                               | Description                                                                        | Argument explanation                                                                                                                                                                 |
 /// |------------------------------------------------------|------------------------------------------------------------------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+/// | `#[commands(commands)]`                              | Set of commands belonging to this group.                                           | `commands` is a comma separated list of identifiers referencing functions marked by the `#[command]` macro                                                                           |
+/// | `#[sub_groups(subs)]`                                | Set of sub groups belonging to this group.                                         | `subs` is a comma separated list of identifiers referencing structs marked by the `#[group]` macro                                                                                   |
 /// | `#[prefixes(prefs)]`                                 | Text that must appear   before an invocation of a command of this group may occur. | `prefs` is a comma separated list of strings                                                                                                                                         |
 /// | `#[prefix(pref)]`                                    | Assign just a single prefix.                                                       | `pref` is a string                                                                                                                                                                   |
 /// | `#[allowed_roles(roles)]`                            | Set of roles the user must possess                                                 | `roles` is a comma separated list of strings containing role names                                                                                                                   |
@@ -697,9 +692,9 @@ pub fn group(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// A macro for marking a function as a condition checker to groups and commands.
-/// 
+///
 /// ## Options
-/// 
+///
 /// | Syntax                                             | Description                                                              | Argument explanation                                                                 |
 /// |----------------------------------------------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
 /// | `#[name(s)]` </br> `#[name = s]`                   | How the check should be listed in help.                                  | `s` is a string. If this option isn't provided, the value is assumed to be `"<fn>"`. |
@@ -733,14 +728,10 @@ pub fn check(_attr: TokenStream, input: TokenStream) -> TokenStream {
         }
     }
 
-    propagate_err!(validate_declaration(&mut fun, DeclarFor::Check));
+    propagate_err!(create_declaration_validations(&mut fun, DeclarFor::Check));
 
-    let either = [
-        parse_quote!(CheckResult),
-        parse_quote!(serenity::framework::standard::CheckResult),
-    ];
-
-    propagate_err!(validate_return_type(&mut fun, either));
+    let res = parse_quote!(serenity::framework::standard::CheckResult);
+    create_return_type_validation(&mut fun, res);
 
     let n = fun.name.clone();
     let n2 = name.clone();

@@ -136,7 +136,6 @@ impl ShardManager {
     ) -> (Arc<Mutex<Self>>, ShardManagerMonitor) {
         let (thread_tx, thread_rx) = mpsc::unbounded();
         let (shard_queue_tx, shard_queue_rx) = mpsc::unbounded();
-
         let runners = DashMap::default();
 
         let mut shard_queuer = ShardQueuer {

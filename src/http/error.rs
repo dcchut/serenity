@@ -1,7 +1,7 @@
 use reqwest::{
     Error as ReqwestError,
+    blocking::Response,
     header::InvalidHeaderValue,
-    Response,
     StatusCode,
     Url,
 };
@@ -15,6 +15,7 @@ use std::{
         Result as FmtResult
     }
 };
+use url::ParseError as UrlError;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiscordJsonError {
@@ -107,36 +108,35 @@ impl StdError for Error {
     }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     use http_crate::response::Builder;
-//     use crate::utils::run_async_test;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use http_crate::response::Builder;
+    use reqwest::ResponseBuilderExt;
 
-//     #[test]
-//     fn test_error_response_into() {
-//         run_async_test(async move {
-//             let error = DiscordJsonError {
-//                 code: 43121215,
-//                 message: String::from("This is a Ferris error"),
-//                 non_exhaustive: (),
-//             };
+    #[test]
+    fn test_error_response_into() {
+        let error = DiscordJsonError {
+            code: 43121215,
+            message: String::from("This is a Ferris error"),
+            non_exhaustive: (),
+        };
 
-//             let mut builder = Builder::new();
-//             builder.status(403);
-//             let body = serde_json::to_string(&error).unwrap();
-//             let response = builder.body(body.into_bytes()).unwrap();
+        let mut builder = Builder::new();
+        builder = builder.status(403);
+        builder = builder.url(String::from("https://ferris.crab").parse().unwrap());
+        let body_string = serde_json::to_string(&error).unwrap();
+        let response = builder.body(body_string.into_bytes()).unwrap();
 
-//             let reqwest_response: reqwest::Response = response.into();
-//             let error_response: ErrorResponse = ErrorResponse::async_from_response(reqwest_response).await;
+        let reqwest_response: reqwest::blocking::Response = response.into();
+        let error_response: ErrorResponse = reqwest_response.into();
 
-//             let known = ErrorResponse {
-//                 status_code: reqwest::StatusCode::from_u16(403).unwrap(),
-//                 url: String::from("http://no.url.provided.local/").parse().unwrap(),
-//                 error,
-//             };
+        let known = ErrorResponse {
+            status_code: reqwest::StatusCode::from_u16(403).unwrap(),
+            url: String::from("https://ferris.crab").parse().unwrap(),
+            error,
+        };
 
-//             assert_eq!(error_response, known);
-//         });
-//     }
-// }
+        assert_eq!(error_response, known);
+    }
+}

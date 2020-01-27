@@ -417,6 +417,29 @@ async fn check_command_behaviour(
 }
 
 #[cfg(all(feature = "cache", feature = "http"))]
+fn check_command_behaviour(
+    ctx: &mut Context,
+    msg: &Message,
+    options: &CommandOptions,
+    owners: &HashSet<UserId>,
+    help_options: &HelpOptions,
+) -> HelpBehaviour {
+    let b = check_common_behaviour(&ctx, msg, &options, owners, help_options);
+
+    if b == HelpBehaviour::Nothing {
+       for check in options.checks {
+           let mut args = Args::new("", &[]);
+
+           if let CheckResult::Failure(_) = (check.function)(ctx, msg, &mut args, options) {
+               return help_options.lacking_conditions;
+           }
+       }
+    }
+
+    b
+}
+
+#[cfg(all(feature = "cache", feature = "http"))]
 #[allow(clippy::too_many_arguments)]
 #[async_recursion]
 async fn nested_group_command_search<'a>(
@@ -736,7 +759,7 @@ async fn create_command_group_commands_pair_from_groups<'a>(
 
         let group_with_cmds = create_single_group(ctx, msg, group, &owners, &help_options).await;
 
-        if !group_with_cmds.command_names.is_empty() {
+        if !group_with_cmds.command_names.is_empty() || !group_with_cmds.sub_groups.is_empty() {
             listed_groups.push(group_with_cmds);
         }
     }

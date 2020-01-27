@@ -39,13 +39,22 @@ version = "0.10"
 features = ["json", "native-tls"]
 optional = true
 
+[dependencies.static_assertions]
+optional = true
+version = "1.1"
+
 [dependencies.audiopus]
 optional = true
 version = "0.1"
 
 [dependencies.command_attr]
 path = "./command_attr"
-version = "0.1"
+# FIXME: A terrible mistake was done. The version of command_attr
+# should've incremented from 0.1.6 to 0.2.0 as 0.1.7 is incompatible
+# with serenity 0.7.x, therefore violating the SemVer specification.
+# Upon a new release of `command_attr`, please increment to 0.2.0
+# and yank 0.1.7 from crates.io.
+version = "0.1.7"
 optional = true
 
 [dependencies.serde]
@@ -54,7 +63,7 @@ features = ["derive"]
 
 [dependencies.uwl]
 optional = true
-version = "0.4"
+version = "0.5"
 
 [dependencies.base64]
 optional = true
@@ -71,6 +80,12 @@ version = "0.4"
 [dependencies.flate2]
 optional = true
 version = "1"
+
+[dependencies.reqwest]
+default-features = false
+features = ["blocking", "json"]
+optional = true
+version = "0.10"
 
 [dependencies.rand]
 optional = true
@@ -97,7 +112,7 @@ version = "0.3"
 
 [dependencies.url]
 optional = true
-version = "2"
+version = "^2.1"
 
 [dependencies.webpki]
 optional = true
@@ -108,7 +123,7 @@ optional = true
 version = "0.18"
 
 [dev-dependencies.http_crate]
-version = "0.1"
+version = "0.2"
 package = "http"
 
 [dev-dependencies.matches]
@@ -148,7 +163,7 @@ rustls_backend = ["tungstenite", "rustls", "webpki", "webpki-roots"]
 #rustls_backend = ["reqwest/rustls-tls", "tungstenite", "rustls", "webpki", "webpki-roots"]
 native_tls_backend = ["reqwest/default-tls", "tungstenite/tls"]
 model = ["builder", "http"]
-standard_framework = ["framework", "uwl", "command_attr"]
+standard_framework = ["framework", "uwl", "command_attr", "static_assertions"]
 utils = ["base64"]
 voice = ["byteorder", "gateway", "audiopus", "rand", "sodiumoxide"]
 

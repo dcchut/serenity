@@ -31,6 +31,8 @@ use std::sync::Arc;
 use uwl::{UnicodeStream, StrExt};
 use async_trait::async_trait;
 use futures::{FutureExt, future::BoxFuture};
+use threadpool::ThreadPool;
+use uwl::Stream;
 
 #[cfg(feature = "cache")]
 use crate::cache::CacheRwLock;

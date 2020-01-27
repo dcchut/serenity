@@ -1,18 +1,5 @@
 use crate::constants;
-use reqwest::{
-    Client,
-    ClientBuilder,
-    header::{AUTHORIZATION, USER_AGENT, CONTENT_TYPE, HeaderValue, HeaderMap as Headers},
-    multipart::Part,
-    Client,
-    ClientBuilder,
-    Response as ReqwestResponse,
-};
-use reqwest::{
-    header::{AUTHORIZATION, USER_AGENT, CONTENT_TYPE, HeaderValue, HeaderMap as Headers},
-    StatusCode,
-    Url,
-};
+use reqwest::{Client, ClientBuilder, header::{AUTHORIZATION, USER_AGENT, CONTENT_TYPE, HeaderValue, HeaderMap as Headers}, multipart::Part, Response as ReqwestResponse, StatusCode, Url};
 use crate::internal::prelude::*;
 use crate::model::prelude::*;
 use super::{
@@ -1450,7 +1437,7 @@ impl Http {
             Err(_) => return Err(Error::Url(uri)),
         };
 
-        let mut multipart = reqwest::blocking::multipart::Form::new();
+        let mut multipart = reqwest::multipart::Form::new();
         let mut file_num = "0".to_string();
 
         for file in files {

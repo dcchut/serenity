@@ -1,6 +1,6 @@
 use reqwest::{
     Error as ReqwestError,
-    blocking::Response,
+    Response,
     header::InvalidHeaderValue,
     StatusCode,
     Url,
@@ -15,7 +15,6 @@ use std::{
         Result as FmtResult
     }
 };
-use url::ParseError as UrlError;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiscordJsonError {

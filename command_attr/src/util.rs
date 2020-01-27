@@ -139,7 +139,7 @@ impl<T> Default for AsOption<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Argument {
     pub mutable: Option<Mut>,
     pub name: Ident,

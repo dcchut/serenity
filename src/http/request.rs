@@ -1,9 +1,7 @@
 use crate::constants;
-use reqwest::blocking::{
+use reqwest::{
     Client,
     RequestBuilder as ReqwestRequestBuilder,
-};
-use reqwest::{
     header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT, HeaderMap as Headers, HeaderValue},
     Url,
 };

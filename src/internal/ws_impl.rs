@@ -20,7 +20,6 @@ use std::{
     net::TcpStream,
     sync::Arc,
 };
-use url::Url;
 
 pub trait ReceiverExt {
     fn recv_json(&mut self) -> Result<Option<Value>>;

@@ -58,7 +58,7 @@ fn find_prefix<'a>(
     ctx: &mut Context,
     msg: &Message,
     config: &Configuration,
-    stream: &UnicodeStream<'a>,
+    stream: &Stream<'a>,
 ) -> Option<Cow<'a, str>> {
     let try_match = |prefix: &str| {
         let peeked = stream.peek_for(prefix.chars().count());
@@ -200,7 +200,7 @@ fn try_parse<M: ParseMap>(
 }
 
 fn parse_cmd<'a>(
-    stream: &'a mut UnicodeStream<'_>,
+    stream: &'a mut Stream<'_>,
     ctx: &'a Context,
     msg: &'a Message,
     config: &'a Configuration,
@@ -239,7 +239,7 @@ fn parse_cmd<'a>(
 }
 
 fn parse_group<'a>(
-    stream: &'a mut UnicodeStream<'_>,
+    stream: &'a mut Stream<'_>,
     ctx: &'a Context,
     msg: &'a Message,
     config: &'a Configuration,
@@ -274,7 +274,7 @@ fn parse_group<'a>(
 
 #[inline]
 async fn handle_command<'a>(
-    stream: &'a mut UnicodeStream<'_>,
+    stream: &'a mut Stream<'_>,
     ctx: &'a Context,
     msg: &'a Message,
     config: &'a Configuration,
@@ -292,7 +292,7 @@ async fn handle_command<'a>(
 
 #[inline]
 async fn handle_group(
-    stream: &mut UnicodeStream<'_>,
+    stream: &mut Stream<'_>,
     ctx: &Context,
     msg: &Message,
     config: &Configuration,

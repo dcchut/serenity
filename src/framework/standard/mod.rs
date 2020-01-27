@@ -28,10 +28,8 @@ use crate::model::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use uwl::{UnicodeStream, StrExt};
 use async_trait::async_trait;
 use futures::{FutureExt, future::BoxFuture};
-use threadpool::ThreadPool;
 use uwl::Stream;
 
 #[cfg(feature = "cache")]
@@ -644,7 +642,7 @@ impl StandardFramework {
 #[async_trait]
 impl Framework for StandardFramework {
     async fn dispatch(&mut self, mut ctx: Context, msg: Message) {
-        let mut stream = UnicodeStream::new(&msg.content);
+        let mut stream = Stream::new(&msg.content);
 
         stream.take_while(|s| s.is_whitespace());
 

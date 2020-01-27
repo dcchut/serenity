@@ -130,7 +130,6 @@ impl MessageBuilder {
     /// ```rust
     /// use serenity::model::id::ChannelId;
     /// use serenity::utils::MessageBuilder;
-    /// use serde_json::error::ErrorCode::Message;
     ///
     /// #[tokio::main]
     /// async fn main() {

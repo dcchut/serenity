@@ -98,7 +98,7 @@ version = "0.2"
 [dependencies.tungstenite]
 default-features = false
 optional = true
-version = "0.9"
+version = "0.10"
 
 [dependencies.typemap]
 optional = true

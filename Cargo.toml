@@ -114,7 +114,7 @@ version = "0.21"
 
 [dependencies.webpki-roots]
 optional = true
-version = "0.18"
+version = "0.19"
 
 [dev-dependencies.http_crate]
 version = "0.2"

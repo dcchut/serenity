@@ -30,7 +30,7 @@ impl EventHandler for Handler {
 
             let response = builder
                 .push("User ")
-                .push_bold_safe(msg.author.name)
+                .push_bold_safe(&msg.author.name)
                 .push(" used the 'ping' command in the ")
                 .mention(&channel)
                 .await

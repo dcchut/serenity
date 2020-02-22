@@ -1493,9 +1493,7 @@ impl Http {
                     let filename = url.path_segments()
                       .and_then(|segments| segments.last().map(ToString::to_string))
                       .ok_or_else(|| Error::Url(url.to_string()))?;
-                    let mut picture: Vec<u8> = vec![];
-                    let mut req = self.client.get(url).send()?;
-                    std::io::copy(&mut req, &mut picture)?;
+                    let picture = self.client.get(url).send().await?.bytes().await?;
                     multipart = multipart
                         .part(file_num.to_string(), Part::bytes(Cow::Borrowed(&picture[..]).into_owned())
                             .file_name(filename.to_string()));

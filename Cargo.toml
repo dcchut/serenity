@@ -87,7 +87,7 @@ version = "0.7"
 
 [dependencies.rustls]
 optional = true
-version = "0.16"
+version = "0.17"
 
 [dependencies.sodiumoxide]
 default-features = false

@@ -322,7 +322,7 @@ async fn handle_event(
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.channel_pins_update(context, event);
+                event_handler.channel_pins_update(context, event).await;
             });
         },
         DispatchEvent::Model(Event::ChannelRecipientAdd(mut event)) => {

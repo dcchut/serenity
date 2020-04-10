@@ -24,11 +24,10 @@
 //! [model]: ../model/index.html
 
 pub mod client;
+pub mod error;
 pub mod ratelimiting;
 pub mod request;
 pub mod routing;
-
-mod error;
 
 pub use reqwest::StatusCode;
 pub use self::client::*;
@@ -133,6 +132,14 @@ impl CacheHttp for Arc<CacheAndHttp> {
     fn cache(&self) -> Option<&CacheRwLock> { Some(&self.cache) }
 }
 
+#[cfg(feature = "client")]
+impl CacheHttp for &Arc<CacheAndHttp> {
+    #[cfg(feature = "http")]
+    fn http(&self) -> &Http { &self.http }
+    #[cfg(feature = "cache")]
+    fn cache(&self) -> Option<&CacheRwLock> { Some(&self.cache) }
+}
+
 #[cfg(all(feature = "cache", feature = "http"))]
 impl CacheHttp for (&CacheRwLock, &Http) {
     fn cache(&self) -> Option<&CacheRwLock> { Some(&self.0) }
@@ -146,6 +153,11 @@ impl CacheHttp for &Http {
 
 #[cfg(feature = "http")]
 impl CacheHttp for Arc<Http> {
+    fn http(&self) -> &Http { &*self }
+}
+
+#[cfg(feature = "http")]
+impl CacheHttp for &Arc<Http> {
     fn http(&self) -> &Http { &*self }
 }
 

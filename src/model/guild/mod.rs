@@ -867,6 +867,12 @@ impl Guild {
     #[inline]
     pub async fn kick<U: Into<UserId>>(&self, http: impl AsRef<Http>, user_id: U) -> Result<()> { self.id.kick(&http, user_id).await }
 
+    #[cfg(feature = "http")]
+    #[inline]
+    pub async fn kick_with_reason<U: Into<UserId>>(&self, http: impl AsRef<Http>, user_id: U, reason: &str) -> Result<()> {
+        self.id.kick_with_reason(&http, user_id, reason).await
+    }
+
     /// Leaves the guild.
     #[inline]
     pub async fn leave(&self, http: impl AsRef<Http>) -> Result<()> { self.id.leave(&http).await }

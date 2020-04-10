@@ -18,6 +18,7 @@ pub use self::{
     async_test::run_async_test,
 };
 pub use futures::lock::Mutex as Mutex;
+pub type Color = Colour;
 
 use base64;
 use crate::internal::prelude::*;

@@ -399,7 +399,7 @@ impl MessageBuilder {
     }
 
     /// Pushes a quoted inline text to the content
-    pub fn push_quote<D: I>(mut self, content: D) -> Self {
+    pub fn push_quote<D: I>(&mut self, content: D) -> &mut Self {
         self.0.push_str("> ");
         self.0.push_str(&content.into().to_string());
 
@@ -559,8 +559,8 @@ impl MessageBuilder {
     ///
     /// assert_eq!(content, "> hello\nworld");
     /// ```
-    pub fn push_quote_line<D: I>(mut self, content: D) -> Self {
-        self = self.push_quote(content);
+    pub fn push_quote_line<D: I>(&mut self, content: D) -> &mut Self {
+        self.push_quote(content);
         self.0.push('\n');
 
         self
@@ -680,7 +680,7 @@ impl MessageBuilder {
     }
 
     /// Pushes a quoted inline text to the content normalizing content.
-    pub fn push_quote_safe<D: I>(mut self, content: D) -> Self {
+    pub fn push_quote_safe<D: I>(&mut self, content: D) -> &mut Self {
         self.0.push_str("> ");
         {
             let mut c = content.into();
@@ -863,15 +863,15 @@ impl MessageBuilder {
     ///
     /// assert_eq!(content, "> @\u{200B}everyone\nIsn't a mention.");
     /// ```
-    pub fn push_quote_line_safe<D: I>(mut self, content: D) -> Self {
-        self = self.push_quote_safe(content);
+    pub fn push_quote_line_safe<D: I>(&mut self, content: D) -> &mut Self {
+        self.push_quote_safe(content);
         self.0.push('\n');
 
         self
     }
 
     /// Starts a multi-line quote, every push after this one will be quoted
-    pub fn quote_rest(mut self) -> Self {
+    pub fn quote_rest(&mut self) -> &mut Self {
         self.0.push_str("\n>>> ");
 
         self

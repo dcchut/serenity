@@ -32,7 +32,7 @@ version = "0.3.0"
 
 [dependencies.tokio]
 version = "0.3.1"
-features = ["time", "macros", "rt"]
+features = ["time", "macros", "rt", "rt-multi-thread"]
 
 [dependencies.reqwest]
 version = "0.10.8"

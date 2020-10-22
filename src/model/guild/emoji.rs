@@ -11,8 +11,6 @@ use serde_json::json;
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::internal::prelude::*;
 #[cfg(all(feature = "cache", feature = "model"))]
-use std::mem;
-#[cfg(all(feature = "cache", feature = "model"))]
 use super::super::ModelError;
 #[cfg(all(feature = "cache", feature = "model"))]
 use super::super::id::GuildId;
@@ -124,7 +122,7 @@ impl Emoji {
                 match AsRef::<Http>::as_ref(&cache_and_http)
                     .edit_emoji(guild_id.0, self.id.0, &map).await {
                     Ok(emoji) => {
-                        mem::replace(self, emoji);
+                        *self = emoji;
 
                         Ok(())
                     },

@@ -149,7 +149,7 @@ impl Webhook {
 
         match http.as_ref().edit_webhook_with_token(self.id.0, &self.token, &map).await {
             Ok(replacement) => {
-                mem::replace(self, replacement);
+                *self = replacement;
 
                 Ok(())
             },

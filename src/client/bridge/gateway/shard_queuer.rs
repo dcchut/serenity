@@ -28,9 +28,9 @@ use crate::client::bridge::voice::ClientVoiceManager;
 #[cfg(feature = "framework")]
 use crate::framework::Framework;
 
-use tokio::time::delay_for;
 use futures::channel::mpsc::{UnboundedSender, UnboundedReceiver};
 use futures::stream::StreamExt;
+use tokio::time::sleep;
 
 const WAIT_BETWEEN_BOOTS_IN_SECONDS: u64 = 5;
 
@@ -154,7 +154,7 @@ impl ShardQueuer {
 
         let to_sleep = duration - elapsed;
 
-        delay_for(to_sleep).await;
+        sleep(to_sleep).await;
     }
 
     async fn checked_start(&mut self, id: u64, total: u64) {

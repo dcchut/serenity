@@ -66,7 +66,7 @@ async fn main() {
 
     tokio::spawn(async move {
         loop {
-            tokio::timer::delay_for(Duration::from_secs(30)).await;
+            tokio::timer::sleep(Duration::from_secs(30)).await;
 
             let lock = manager.lock().await;
 

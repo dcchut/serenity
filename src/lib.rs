@@ -113,6 +113,7 @@ pub struct CacheAndHttp {
 
 // For the procedural macros defined in `command_attr`; do not remove!
 #[allow(clippy::useless_attribute)]
+#[allow(unused_attributes)]
 #[allow(rust_2018_idioms)]
 extern crate self as serenity;
 

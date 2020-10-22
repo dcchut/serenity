@@ -380,7 +380,7 @@ impl GuildChannel {
 
         match cache_http.http().edit_channel(self.id.0, &edited).await {
             Ok(channel) => {
-                std::mem::replace(self, channel);
+                *self = channel;
 
                 Ok(())
             },

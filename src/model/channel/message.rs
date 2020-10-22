@@ -29,7 +29,6 @@ use serde::{
 use super::utils::U64Visitor;
 #[cfg(feature = "model")]
 use std::{
-    mem,
     result::Result as StdResult,
 };
 #[cfg(feature = "model")]
@@ -268,7 +267,7 @@ impl Message {
 
         match cache_http.http().edit_message(self.channel_id.0, self.id.0, &obj).await {
             Ok(edited) => {
-                mem::replace(self, edited);
+                *self = edited;
 
                 Ok(())
             },

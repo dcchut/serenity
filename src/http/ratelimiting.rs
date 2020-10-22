@@ -61,9 +61,9 @@ use std::{
 };
 use super::{HttpError, Request};
 use log::debug;
-use tokio::time::delay_for;
 use futures::lock::Mutex;
 use crate::SyncRwLock;
+use tokio::time::sleep;
 
 /// Ratelimiter for requests to the Discord API.
 ///
@@ -198,7 +198,7 @@ impl Ratelimiter {
                     Ok(
                         if let Some(retry_after) = parse_header::<u64>(&response.headers(), "retry-after")? {
                             debug!("Ratelimited on route {:?} for {:?}ms", route, retry_after);
-                            delay_for(Duration::from_millis(retry_after)).await;
+                            sleep(Duration::from_millis(retry_after)).await;
 
                             true
                         } else {
@@ -277,7 +277,7 @@ impl Ratelimit {
                 delay,
             );
 
-            delay_for(Duration::from_millis(delay)).await;
+            sleep(Duration::from_millis(delay)).await;
 
             return;
         }
@@ -306,7 +306,7 @@ impl Ratelimit {
             false
         } else if let Some(retry_after) = parse_header::<u64>(&response.headers(), "retry-after")? {
             debug!("Ratelimited on route {:?} for {:?}ms", route, retry_after);
-            delay_for(Duration::from_millis(retry_after as u64)).await;
+            sleep(Duration::from_millis(retry_after as u64)).await;
 
             true
         } else {

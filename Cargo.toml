@@ -31,7 +31,7 @@ version = "1.5.0"
 version = "0.2.1"
 
 [dependencies.tokio]
-version = "0.2.17"
+version = "1.0.1"
 features = ["time", "macros"]
 
 [dependencies.reqwest]

@@ -2189,10 +2189,10 @@ impl Region {
     }
 }
 
-#[doc="The level to set as criteria prior to a user being able to send
-    messages in a [`Guild`].
-
-    [`Guild`]: struct.Guild.html"]
+/// The level to set as criteria prior to a user being able to send
+/// messages in a [`Guild`].
+///
+/// [`Guild`]: struct.Guild.html
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub enum VerificationLevel {
     /// Does not require any verification.

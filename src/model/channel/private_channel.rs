@@ -1,19 +1,11 @@
-use chrono::{DateTime, FixedOffset};
-use crate::model::prelude::*;
-use crate::internal::SyncRwLock;
-use std::fmt::{
-    Display,
-    Formatter,
-    Result as FmtResult
-};
 use super::{deserialize_single_recipient, serialize_single_recipient};
+use crate::internal::SyncRwLock;
+use crate::model::prelude::*;
+use chrono::{DateTime, FixedOffset};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[cfg(feature = "model")]
-use crate::builder::{
-    CreateMessage,
-    EditMessage,
-    GetMessages
-};
+use crate::builder::{CreateMessage, EditMessage, GetMessages};
 #[cfg(feature = "model")]
 use crate::http::AttachmentType;
 #[cfg(feature = "http")]
@@ -40,9 +32,11 @@ pub struct PrivateChannel {
     #[serde(rename = "type")]
     pub kind: ChannelType,
     /// The recipient to the private channel.
-    #[serde(deserialize_with = "deserialize_single_recipient",
-            serialize_with = "serialize_single_recipient",
-            rename = "recipients")]
+    #[serde(
+        deserialize_with = "deserialize_single_recipient",
+        serialize_with = "serialize_single_recipient",
+        rename = "recipients"
+    )]
     pub recipient: Arc<SyncRwLock<User>>,
     #[serde(skip)]
     pub(crate) _nonexhaustive: (),
@@ -52,7 +46,9 @@ pub struct PrivateChannel {
 impl PrivateChannel {
     /// Broadcasts that the current user is typing to the recipient.
     #[cfg(feature = "http")]
-    pub async fn broadcast_typing(&self, http: impl AsRef<Http>) -> Result<()> { self.id.broadcast_typing(&http).await }
+    pub async fn broadcast_typing(&self, http: impl AsRef<Http>) -> Result<()> {
+        self.id.broadcast_typing(&http).await
+    }
 
     /// React to a [`Message`] with a custom [`Emoji`] or unicode character.
     ///
@@ -67,9 +63,19 @@ impl PrivateChannel {
     /// [`Message::react`]: struct.Message.html#method.react
     /// [Add Reactions]: ../permissions/struct.Permissions.html#associatedconstant.ADD_REACTIONS
     #[cfg(feature = "http")]
-    pub async fn create_reaction<M, R>(&self, http: impl AsRef<Http>, message_id: M, reaction_type: R) -> Result<()>
-        where M: Into<MessageId>, R: Into<ReactionType> {
-        self.id.create_reaction(&http, message_id, reaction_type).await
+    pub async fn create_reaction<M, R>(
+        &self,
+        http: impl AsRef<Http>,
+        message_id: M,
+        reaction_type: R,
+    ) -> Result<()>
+    where
+        M: Into<MessageId>,
+        R: Into<ReactionType>,
+    {
+        self.id
+            .create_reaction(&http, message_id, reaction_type)
+            .await
     }
 
     /// Deletes the channel. This does not delete the contents of the channel,
@@ -77,7 +83,9 @@ impl PrivateChannel {
     /// be re-opened.
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn delete(&self, http: impl AsRef<Http>) -> Result<Channel> { self.id.delete(&http).await }
+    pub async fn delete(&self, http: impl AsRef<Http>) -> Result<Channel> {
+        self.id.delete(&http).await
+    }
 
     /// Deletes all messages by Ids from the given vector in the channel.
     ///
@@ -98,7 +106,11 @@ impl PrivateChannel {
     /// [Manage Messages]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_MESSAGES
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn delete_messages<T: AsRef<MessageId>, It: IntoIterator<Item=T>>(&self, http: impl AsRef<Http>, message_ids: It) -> Result<()> {
+    pub async fn delete_messages<T: AsRef<MessageId>, It: IntoIterator<Item = T>>(
+        &self,
+        http: impl AsRef<Http>,
+        message_ids: It,
+    ) -> Result<()> {
         self.id.delete_messages(&http, message_ids).await
     }
 
@@ -110,7 +122,11 @@ impl PrivateChannel {
     /// [Manage Channel]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_CHANNELS
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn delete_permission(&self, http: impl AsRef<Http>, permission_type: PermissionOverwriteType) -> Result<()> {
+    pub async fn delete_permission(
+        &self,
+        http: impl AsRef<Http>,
+        permission_type: PermissionOverwriteType,
+    ) -> Result<()> {
         self.id.delete_permission(&http, permission_type).await
     }
 
@@ -123,14 +139,20 @@ impl PrivateChannel {
     /// [Manage Messages]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_MESSAGES
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn delete_reaction<M, R>(&self,
-                                 http: impl AsRef<Http>,
-                                 message_id: M,
-                                 user_id: Option<UserId>,
-                                 reaction_type: R)
-                                 -> Result<()>
-        where M: Into<MessageId>, R: Into<ReactionType> {
-        self.id.delete_reaction(&http, message_id, user_id, reaction_type).await
+    pub async fn delete_reaction<M, R>(
+        &self,
+        http: impl AsRef<Http>,
+        message_id: M,
+        user_id: Option<UserId>,
+        reaction_type: R,
+    ) -> Result<()>
+    where
+        M: Into<MessageId>,
+        R: Into<ReactionType>,
+    {
+        self.id
+            .delete_reaction(&http, message_id, user_id, reaction_type)
+            .await
     }
 
     /// Edits a [`Message`] in the channel given its Id.
@@ -154,8 +176,16 @@ impl PrivateChannel {
     /// [`the limit`]: ../../builder/struct.EditMessage.html#method.content
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn edit_message<F, M>(&self, http: impl AsRef<Http>, message_id: M, f: F) -> Result<Message>
-        where F: FnOnce(&mut EditMessage) -> &mut EditMessage, M: Into<MessageId> {
+    pub async fn edit_message<F, M>(
+        &self,
+        http: impl AsRef<Http>,
+        message_id: M,
+        f: F,
+    ) -> Result<Message>
+    where
+        F: FnOnce(&mut EditMessage) -> &mut EditMessage,
+        M: Into<MessageId>,
+    {
         self.id.edit_message(&http, message_id, f).await
     }
 
@@ -164,7 +194,9 @@ impl PrivateChannel {
     /// **Note**: This method is for consistency. This will always return
     /// `false`, due to DMs not being considered NSFW.
     #[inline]
-    pub fn is_nsfw(&self) -> bool { false }
+    pub fn is_nsfw(&self) -> bool {
+        false
+    }
 
     /// Gets a message from the channel.
     ///
@@ -173,7 +205,11 @@ impl PrivateChannel {
     /// [Read Message History]: ../permissions/struct.Permissions.html#associatedconstant.READ_MESSAGE_HISTORY
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn message<M: Into<MessageId>>(&self, http: impl AsRef<Http>, message_id: M) -> Result<Message> {
+    pub async fn message<M: Into<MessageId>>(
+        &self,
+        http: impl AsRef<Http>,
+        message_id: M,
+    ) -> Result<Message> {
         self.id.message(&http, message_id).await
     }
 
@@ -188,12 +224,16 @@ impl PrivateChannel {
     #[cfg(feature = "http")]
     #[inline]
     pub async fn messages<F>(&self, http: impl AsRef<Http>, builder: F) -> Result<Vec<Message>>
-        where F: FnOnce(&mut GetMessages) -> &mut GetMessages {
+    where
+        F: FnOnce(&mut GetMessages) -> &mut GetMessages,
+    {
         self.id.messages(&http, builder).await
     }
 
     /// Returns "DM with $username#discriminator".
-    pub fn name(&self) -> String { format!("DM with {}", self.recipient.read().tag()) }
+    pub fn name(&self) -> String {
+        format!("DM with {}", self.recipient.read().tag())
+    }
 
     /// Gets the list of [`User`]s who have reacted to a [`Message`] with a
     /// certain [`Emoji`].
@@ -209,16 +249,22 @@ impl PrivateChannel {
     /// [Read Message History]: ../permissions/struct.Permissions.html#associatedconstant.READ_MESSAGE_HISTORY
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn reaction_users<M, R, U>(&self,
+    pub async fn reaction_users<M, R, U>(
+        &self,
         http: impl AsRef<Http>,
         message_id: M,
         reaction_type: R,
         limit: Option<u8>,
         after: U,
-    ) -> Result<Vec<User>> where M: Into<MessageId>,
-                                 R: Into<ReactionType>,
-                                 U: Into<Option<UserId>> {
-        self.id.reaction_users(&http, message_id, reaction_type, limit, after).await
+    ) -> Result<Vec<User>>
+    where
+        M: Into<MessageId>,
+        R: Into<ReactionType>,
+        U: Into<Option<UserId>>,
+    {
+        self.id
+            .reaction_users(&http, message_id, reaction_type, limit, after)
+            .await
     }
 
     /// Pins a [`Message`] to the channel.
@@ -226,13 +272,21 @@ impl PrivateChannel {
     /// [`Message`]: struct.Message.html
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn pin<M: Into<MessageId>>(&self, http: impl AsRef<Http>, message_id: M) -> Result<()> { self.id.pin(&http, message_id).await }
+    pub async fn pin<M: Into<MessageId>>(
+        &self,
+        http: impl AsRef<Http>,
+        message_id: M,
+    ) -> Result<()> {
+        self.id.pin(&http, message_id).await
+    }
 
     /// Retrieves the list of messages that have been pinned in the private
     /// channel.
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn pins(&self, http: impl AsRef<Http>) -> Result<Vec<Message>> { self.id.pins(&http).await }
+    pub async fn pins(&self, http: impl AsRef<Http>) -> Result<Vec<Message>> {
+        self.id.pins(&http).await
+    }
 
     /// Sends a message with just the given message content in the channel.
     ///
@@ -246,7 +300,13 @@ impl PrivateChannel {
     /// [`ModelError::MessageTooLong`]: ../error/enum.Error.html#variant.MessageTooLong
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn say(&self, http: impl AsRef<Http>, content: impl std::fmt::Display) -> Result<Message> { self.id.say(&http, content).await }
+    pub async fn say(
+        &self,
+        http: impl AsRef<Http>,
+        content: impl std::fmt::Display,
+    ) -> Result<Message> {
+        self.id.say(&http, content).await
+    }
 
     /// Sends (a) file(s) along with optional message contents.
     ///
@@ -268,9 +328,17 @@ impl PrivateChannel {
     /// [Send Messages]: ../permissions/struct.Permissions.html#associatedconstant.SEND_MESSAGES
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn send_files<'a, F, T, It>(&self, http: impl AsRef<Http>, files: It, f: F) -> Result<Message>
-        where for <'b> F: FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a>,
-              T: Into<AttachmentType<'a>>, It: IntoIterator<Item=T> {
+    pub async fn send_files<'a, F, T, It>(
+        &self,
+        http: impl AsRef<Http>,
+        files: It,
+        f: F,
+    ) -> Result<Message>
+    where
+        for<'b> F: FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a>,
+        T: Into<AttachmentType<'a>>,
+        It: IntoIterator<Item = T>,
+    {
         self.id.send_files(&http, files, f).await
     }
 
@@ -291,7 +359,9 @@ impl PrivateChannel {
     #[cfg(feature = "http")]
     #[inline]
     pub async fn send_message<'a, F>(&self, http: impl AsRef<Http>, f: F) -> Result<Message>
-    where for <'b> F: FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a> {
+    where
+        for<'b> F: FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a>,
+    {
         self.id.send_message(&http, f).await
     }
 
@@ -303,7 +373,11 @@ impl PrivateChannel {
     /// [Manage Messages]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_MESSAGES
     #[cfg(feature = "http")]
     #[inline]
-    pub async fn unpin<M: Into<MessageId>>(&self, http: impl AsRef<Http>, message_id: M) -> Result<()> {
+    pub async fn unpin<M: Into<MessageId>>(
+        &self,
+        http: impl AsRef<Http>,
+        message_id: M,
+    ) -> Result<()> {
         self.id.unpin(&http, message_id).await
     }
 }

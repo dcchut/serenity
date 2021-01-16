@@ -1,6 +1,6 @@
 pub mod help_commands;
 pub mod macros {
-    pub use command_attr::{command, group, help, check};
+    pub use command_attr::{check, command, group, help};
 }
 
 mod args;
@@ -12,11 +12,11 @@ pub use args::{Args, Delimiter, Error as ArgError, Iter, RawArguments};
 pub use configuration::{Configuration, WithWhiteSpace};
 pub use structures::*;
 
-use structures::buckets::{Bucket, Ratelimit};
 pub use structures::buckets::BucketBuilder;
+use structures::buckets::{Bucket, Ratelimit};
 
-use parse::{ParseError, Invoke};
 use parse::map::{CommandMap, GroupMap, Map};
+use parse::{Invoke, ParseError};
 
 use super::Framework;
 use crate::client::Context;
@@ -29,7 +29,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use futures::{FutureExt, future::BoxFuture};
+use futures::{future::BoxFuture, FutureExt};
 use uwl::Stream;
 
 #[cfg(feature = "cache")]
@@ -81,7 +81,8 @@ pub enum DispatchError {
 
 pub type DispatchHook = dyn Fn(&mut Context, &Message, DispatchError) + Send + Sync + 'static;
 type BeforeHook = dyn Fn(&mut Context, &Message, &str) -> bool + Send + Sync + 'static;
-type AfterHook = dyn Fn(&mut Context, &Message, &str, Result<(), CommandError>) + Send + Sync + 'static;
+type AfterHook =
+    dyn Fn(&mut Context, &Message, &str, Result<(), CommandError>) + Send + Sync + 'static;
 type UnrecognisedHook = dyn Fn(&mut Context, &Message, &str) + Send + Sync + 'static;
 type NormalMessageHook = dyn Fn(&mut Context, &Message) + Send + Sync + 'static;
 type PrefixOnlyHook = dyn Fn(&mut Context, &Message) + Send + Sync + 'static;
@@ -158,8 +159,8 @@ impl StandardFramework {
     /// [`prefix`]: struct.Configuration.html#method.prefix
     /// [allowing whitespace between prefixes]: struct.Configuration.html#method.with_whitespace
     pub fn configure<F>(mut self, f: F) -> Self
-        where
-            F: FnOnce(&mut Configuration) -> &mut Configuration,
+    where
+        F: FnOnce(&mut Configuration) -> &mut Configuration,
     {
         f(&mut self.config);
 
@@ -198,10 +199,9 @@ impl StandardFramework {
     /// ```
     #[inline]
     pub fn bucket<F>(mut self, name: &str, f: F) -> Self
-        where
-            F: FnOnce(&mut BucketBuilder) -> &mut BucketBuilder
+    where
+        F: FnOnce(&mut BucketBuilder) -> &mut BucketBuilder,
     {
-
         let mut builder = BucketBuilder::default();
 
         f(&mut builder);
@@ -278,29 +278,36 @@ impl StandardFramework {
             }
 
             #[cfg(feature = "cache")]
+            {
+                if let Some(Channel::Guild(chan)) =
+                    msg.channel_id.to_channel_cached(&ctx.cache).await
                 {
-                    if let Some(Channel::Guild(chan)) = msg.channel_id.to_channel_cached(&ctx.cache).await {
-                        let guild_id = chan.read().await.guild_id;
+                    let guild_id = chan.read().await.guild_id;
 
-                        if self.config.blocked_guilds.contains(&guild_id) {
+                    if self.config.blocked_guilds.contains(&guild_id) {
+                        return Some(DispatchError::BlockedGuild);
+                    }
+
+                    if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
+                        let owner_id = guild.read().await.owner_id;
+                        if self.config.blocked_users.contains(&owner_id) {
                             return Some(DispatchError::BlockedGuild);
-                        }
-
-                        if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
-                            let owner_id = guild.read().await.owner_id;
-                            if self.config.blocked_users.contains(&owner_id) {
-                                return Some(DispatchError::BlockedGuild);
-                            }
                         }
                     }
                 }
+            }
 
-            if !self.config.allowed_channels.is_empty() &&
-                !self.config.allowed_channels.contains(&msg.channel_id) {
+            if !self.config.allowed_channels.is_empty()
+                && !self.config.allowed_channels.contains(&msg.channel_id)
+            {
                 return Some(DispatchError::BlockedChannel);
             }
 
-            if let Some(ref mut bucket) = command.bucket.as_ref().and_then(|b| self.buckets.get_mut(*b)) {
+            if let Some(ref mut bucket) = command
+                .bucket
+                .as_ref()
+                .and_then(|b| self.buckets.get_mut(*b))
+            {
                 let rate_limit = bucket.take(msg.author.id.0);
 
                 let apply = bucket.check.as_ref().map_or(true, |check| {
@@ -321,7 +328,8 @@ impl StandardFramework {
             }
 
             None
-        }.boxed()
+        }
+        .boxed()
     }
 
     /// Adds a group which can organize several related commands.
@@ -452,8 +460,8 @@ impl StandardFramework {
     /// # };
     /// ```
     pub fn on_dispatch_error<F>(mut self, f: F) -> Self
-        where
-            F: Fn(&mut Context, &Message, DispatchError) + Send + Sync + 'static,
+    where
+        F: Fn(&mut Context, &Message, DispatchError) + Send + Sync + 'static,
     {
         self.dispatch = Some(Arc::new(f));
 
@@ -462,8 +470,8 @@ impl StandardFramework {
 
     /// Specify the function to be called on messages comprised of only the prefix.
     pub fn prefix_only<F>(mut self, f: F) -> Self
-        where
-            F: Fn(&mut Context, &Message) + Send + Sync + 'static
+    where
+        F: Fn(&mut Context, &Message) + Send + Sync + 'static,
     {
         self.prefix_only = Some(Arc::new(f));
 
@@ -524,8 +532,8 @@ impl StandardFramework {
     /// ```
     ///
     pub fn before<F>(mut self, f: F) -> Self
-        where
-            F: Fn(&mut Context, &Message, &str) -> bool + Send + Sync + 'static,
+    where
+        F: Fn(&mut Context, &Message, &str) -> bool + Send + Sync + 'static,
     {
         self.before = Some(Arc::new(f));
 
@@ -560,8 +568,8 @@ impl StandardFramework {
     /// # };
     /// ```
     pub fn after<F>(mut self, f: F) -> Self
-        where
-            F: Fn(&mut Context, &Message, &str, Result<(), CommandError>) + Send + Sync + 'static,
+    where
+        F: Fn(&mut Context, &Message, &str, Result<(), CommandError>) + Send + Sync + 'static,
     {
         self.after = Some(Arc::new(f));
 
@@ -591,8 +599,8 @@ impl StandardFramework {
     /// # };
     /// ```
     pub fn unrecognised_command<F>(mut self, f: F) -> Self
-        where
-            F: Fn(&mut Context, &Message, &str) + Send + Sync + 'static,
+    where
+        F: Fn(&mut Context, &Message, &str) + Send + Sync + 'static,
     {
         self.unrecognised_command = Some(Arc::new(f));
 
@@ -622,8 +630,8 @@ impl StandardFramework {
     /// # };
     /// ```
     pub fn normal_message<F>(mut self, f: F) -> Self
-        where
-            F: Fn(&mut Context, &Message) + Send + Sync + 'static,
+    where
+        F: Fn(&mut Context, &Message) + Send + Sync + 'static,
     {
         self.normal_message = Some(Arc::new(f));
 
@@ -652,7 +660,6 @@ impl Framework for StandardFramework {
         let prefix = parse::prefix(&mut ctx, &msg, &mut stream, &self.config);
 
         if prefix.is_some() && stream.rest().is_empty() {
-
             if let Some(prefix_only) = &self.prefix_only {
                 let prefix_only = Arc::clone(&prefix_only);
                 let msg = msg.clone();
@@ -666,7 +673,6 @@ impl Framework for StandardFramework {
         }
 
         if prefix.is_none() && !(self.config.no_dm_prefix && msg.is_private()) {
-
             if let Some(normal) = &self.normal_message {
                 let normal = Arc::clone(&normal);
                 let msg = msg.clone();
@@ -680,7 +686,6 @@ impl Framework for StandardFramework {
         }
 
         if let Some(error) = self.should_fail_common(&msg) {
-
             if let Some(dispatch) = &self.dispatch {
                 dispatch(&mut ctx, &msg, error);
             }
@@ -695,7 +700,8 @@ impl Framework for StandardFramework {
             &self.groups,
             &self.config,
             self.help.as_ref().map(|h| h.options.names),
-        ).await;
+        )
+        .await;
 
         let invoke = match invocation {
             Ok(i) => i,
@@ -753,7 +759,10 @@ impl Framework for StandardFramework {
                         }
                     }
 
-                    let res = help.fun.help(&mut ctx, &msg, args, help.options, &groups, owners).await;
+                    let res = help
+                        .fun
+                        .help(&mut ctx, &msg, args, help.options, &groups, owners)
+                        .await;
 
                     if let Some(after) = after {
                         after(&mut ctx, &msg, name, res);
@@ -786,8 +795,9 @@ impl Framework for StandardFramework {
                     Args::new(stream.rest(), &delims)
                 };
 
-                if let Some(error) =
-                self.should_fail(&mut ctx, &msg, &mut args, &command.options, &group.options).await
+                if let Some(error) = self
+                    .should_fail(&mut ctx, &msg, &mut args, &command.options, &group.options)
+                    .await
                 {
                     if let Some(dispatch) = &self.dispatch {
                         dispatch(&mut ctx, &msg, error);
@@ -898,7 +908,9 @@ pub(crate) async fn has_correct_permissions(
         true
     } else if let Some(guild) = message.guild(&cache).await {
         let guild = guild.read().await;
-        let perms = guild.user_permissions_in(message.channel_id, message.author.id).await;
+        let perms = guild
+            .user_permissions_in(message.channel_id, message.author.id)
+            .await;
 
         perms.contains(*options.required_permissions())
     } else {
@@ -910,12 +922,13 @@ pub(crate) async fn has_correct_permissions(
 pub(crate) fn has_correct_roles(
     options: &impl CommonOptions,
     guild: &Guild,
-    member: &Member)
-    -> bool {
+    member: &Member,
+) -> bool {
     if options.allowed_roles().is_empty() {
         true
     } else {
-        options.allowed_roles()
+        options
+            .allowed_roles()
             .iter()
             .flat_map(|r| guild.role_by_name(r))
             .any(|g| member.roles.contains(&g.id))

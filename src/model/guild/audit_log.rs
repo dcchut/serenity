@@ -1,18 +1,8 @@
-use crate::internal::prelude::*;
-use serde::de::{
-    self,
-    Deserialize,
-    Deserializer,
-    MapAccess,
-    Visitor
-};
-use serde::ser::Serializer;
 use super::super::prelude::*;
-use std::{
-    collections::HashMap,
-    mem::transmute,
-    fmt,
-};
+use crate::internal::prelude::*;
+use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+use serde::ser::Serializer;
+use std::{collections::HashMap, fmt, mem::transmute};
 
 /// Determines to what entity an action was used on.
 #[derive(Debug)]
@@ -249,7 +239,6 @@ impl ActionMessage {
     }
 }
 
-
 #[derive(Debug)]
 #[repr(u8)]
 pub enum ActionIntegration {
@@ -273,10 +262,13 @@ impl ActionIntegration {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Change {
-    #[serde(rename = "key")] pub name: String,
+    #[serde(rename = "key")]
+    pub name: String,
     // TODO: Change these to an actual type.
-    #[serde(rename = "old_value")] pub old: Option<Value>,
-    #[serde(rename = "new_value")] pub new: Option<Value>,
+    #[serde(rename = "old_value")]
+    pub old: Option<Value>,
+    #[serde(rename = "new_value")]
+    pub new: Option<Value>,
 }
 
 #[derive(Debug)]
@@ -297,10 +289,7 @@ pub struct AuditLogEntry {
     /// Determines what action was done on a [`target`]
     ///
     /// [`target`]: #structfield.target
-    #[serde(
-        with = "action_handler",
-        rename = "action_type"
-    )]
+    #[serde(with = "action_handler", rename = "action_type")]
     pub action: Action,
     /// What was the reasoning by doing an action on a target? If there was one.
     pub reason: Option<String>,
@@ -356,7 +345,10 @@ mod option_u64_handler {
                 formatter.write_str("an optional integer or a string with a valid number inside")
             }
 
-            fn visit_some<D: Deserializer<'de>>(self, deserializer: D) -> StdResult<Self::Value, D::Error> {
+            fn visit_some<D: Deserializer<'de>>(
+                self,
+                deserializer: D,
+            ) -> StdResult<Self::Value, D::Error> {
                 deserializer.deserialize_any(OptionU64Visitor)
             }
 
@@ -419,10 +411,7 @@ mod action_handler {
         de.deserialize_any(ActionVisitor)
     }
 
-    pub fn serialize<S: Serializer>(
-        action: &Action,
-        serializer: S,
-    ) -> StdResult<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(action: &Action, serializer: S) -> StdResult<S::Ok, S::Error> {
         serializer.serialize_u8(action.num())
     }
 }
@@ -431,9 +420,12 @@ impl<'de> Deserialize<'de> for AuditLogs {
         #[derive(Deserialize)]
         #[serde(field_identifier)]
         enum Field {
-            #[serde(rename = "audit_log_entries")] Entries,
-            #[serde(rename = "webhooks")] Webhooks,
-            #[serde(rename = "users")] Users,
+            #[serde(rename = "audit_log_entries")]
+            Entries,
+            #[serde(rename = "webhooks")]
+            Webhooks,
+            #[serde(rename = "users")]
+            Users,
             // TODO(field added by Discord, undocumented) #[serde(rename = "integrations")] Integrations,
         }
 
@@ -475,15 +467,17 @@ impl<'de> Deserialize<'de> for AuditLogs {
                             users = Some(map.next_value::<Vec<User>>()?);
                         }
                         Ok(None) => break, // No more keys
-                        Err(e) => if e.to_string().contains("unknown field") {
-                            // e is of type <V as MapAccess>::Error, which is a macro-defined trait, ultimately
-                            // implemented by serde::de::value::Error. Seeing as every error is a simple string and not
-                            // using a proper Error num, the best we can do here is to check if the string contains
-                            // this error. This was added because Discord randomly started sending new fields.
-                            // But no JSON deserializer should ever error over this.
-                            map.next_value::<serde_json::Value>()?; // Actually read the value to avoid syntax errors
-                        } else {
-                            return Err(e)
+                        Err(e) => {
+                            if e.to_string().contains("unknown field") {
+                                // e is of type <V as MapAccess>::Error, which is a macro-defined trait, ultimately
+                                // implemented by serde::de::value::Error. Seeing as every error is a simple string and not
+                                // using a proper Error num, the best we can do here is to check if the string contains
+                                // this error. This was added because Discord randomly started sending new fields.
+                                // But no JSON deserializer should ever error over this.
+                                map.next_value::<serde_json::Value>()?; // Actually read the value to avoid syntax errors
+                            } else {
+                                return Err(e);
+                            }
                         }
                     }
                 }

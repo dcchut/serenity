@@ -1,44 +1,49 @@
+use super::{
+    bridge::gateway::event::ClientEvent,
+    event_handler::{EventHandler, RawEventHandler},
+    Context,
+};
 use crate::gateway::InterMessage;
 use crate::model::{
     channel::{Channel, Message},
     event::Event,
     guild::Member,
 };
-use std::sync::Arc;
-use futures::lock::Mutex;
-use super::{
-    bridge::gateway::event::ClientEvent,
-    event_handler::{EventHandler, RawEventHandler},
-    Context
-};
-use typemap::ShareMap;
 use futures::channel::mpsc::UnboundedSender;
+use futures::lock::Mutex;
+use std::sync::Arc;
+use typemap::ShareMap;
 
 use crate::http::Http;
 use crate::CacheAndHttp;
 
+#[cfg(feature = "cache")]
+use crate::cache::{Cache, CacheUpdate};
 #[cfg(feature = "framework")]
 use crate::framework::Framework;
+use crate::internal::AsyncRwLock;
 #[cfg(feature = "cache")]
 use crate::model::id::GuildId;
 #[cfg(feature = "cache")]
-use crate::cache::{Cache, CacheUpdate};
+use log::warn;
 #[cfg(feature = "cache")]
 use std::fmt;
-#[cfg(feature = "cache")]
-use log::warn;
-use crate::internal::AsyncRwLock;
 
 #[inline]
 #[cfg(feature = "cache")]
-async fn update<E: CacheUpdate + fmt::Debug>(cache_and_http: &Arc<CacheAndHttp>, event: &mut E) -> Option<E::Output> {
+async fn update<E: CacheUpdate + fmt::Debug>(
+    cache_and_http: &Arc<CacheAndHttp>,
+    event: &mut E,
+) -> Option<E::Output> {
     // TODO: use timeout here
     if let Some(_millis_timeout) = cache_and_http.update_cache_timeout {
-
         if let Some(mut lock) = cache_and_http.cache.try_write() {
             lock.update(event).await
         } else {
-            warn!("[dispatch] Possible deadlock: Couldn't unlock cache to update with event: {:?}", event);
+            warn!(
+                "[dispatch] Possible deadlock: Couldn't unlock cache to update with event: {:?}",
+                event
+            );
 
             None
         }
@@ -62,7 +67,13 @@ fn context(
     http: &Arc<Http>,
     cache: &Arc<AsyncRwLock<Cache>>,
 ) -> Context {
-    Context::new(Arc::clone(data), runner_tx.clone(), shard_id, Arc::clone(http), Arc::clone(cache))
+    Context::new(
+        Arc::clone(data),
+        runner_tx.clone(),
+        shard_id,
+        Arc::clone(http),
+        Arc::clone(cache),
+    )
 }
 
 #[cfg(not(feature = "cache"))]
@@ -72,7 +83,12 @@ fn context(
     shard_id: u64,
     http: &Arc<Http>,
 ) -> Context {
-    Context::new(Arc::clone(data), runner_tx.clone(), shard_id, Arc::clone(http))
+    Context::new(
+        Arc::clone(data),
+        runner_tx.clone(),
+        shard_id,
+        Arc::clone(http),
+    )
 }
 
 // Once we can use `Box` as part of a pattern, we will reconsider boxing.
@@ -107,18 +123,20 @@ pub(crate) async fn dispatch(
                 #[cfg(not(feature = "cache"))]
                 let context = context(data, runner_tx, shard_id, &cache_and_http.http);
                 #[cfg(feature = "cache")]
-                let context = context(data, runner_tx, shard_id, &cache_and_http.http, &cache_and_http.cache);
+                let context = context(
+                    data,
+                    runner_tx,
+                    shard_id,
+                    &cache_and_http.http,
+                    &cache_and_http.cache,
+                );
 
-                dispatch_message(
-                    context.clone(),
-                    event.message.clone(),
-                    h,
-                ).await;
+                dispatch_message(context.clone(), event.message.clone(), h).await;
 
                 if let Some(ref mut framework) = *framework.lock().await {
                     framework.dispatch(context, event.message).await;
                 }
-            },
+            }
             other => {
                 handle_event(
                     other,
@@ -127,7 +145,8 @@ pub(crate) async fn dispatch(
                     runner_tx,
                     shard_id,
                     Arc::clone(&cache_and_http),
-                ).await;
+                )
+                .await;
             }
         }
     };
@@ -135,9 +154,15 @@ pub(crate) async fn dispatch(
     if let Some(ref rh) = raw_event_handler {
         if let DispatchEvent::Model(e) = event {
             #[cfg(not(feature = "cache"))]
-                let context = context(data, runner_tx, shard_id, &cache_and_http.http);
+            let context = context(data, runner_tx, shard_id, &cache_and_http.http);
             #[cfg(feature = "cache")]
-                let context = context(data, runner_tx, shard_id, &cache_and_http.http, &cache_and_http.cache);
+            let context = context(
+                data,
+                runner_tx,
+                shard_id,
+                &cache_and_http.http,
+                &cache_and_http.cache,
+            );
 
             // TODO: investigate changes necessary here
             let event_handler = Arc::clone(rh);
@@ -157,70 +182,74 @@ pub(crate) async fn dispatch(
     cache_and_http: Arc<CacheAndHttp>,
 ) {
     match (event_handler, raw_event_handler) {
-        (None, None) => {}, // Do nothing
-        (Some(ref h), None) => {
-            match event {
-                DispatchEvent::Model(Event::MessageCreate(mut event)) => {
-                    update(&cache_and_http, &mut event);
+        (None, None) => {} // Do nothing
+        (Some(ref h), None) => match event {
+            DispatchEvent::Model(Event::MessageCreate(mut event)) => {
+                update(&cache_and_http, &mut event);
 
-                    #[cfg(not(feature = "cache"))]
-                    let context = context(data, runner_tx, shard_id, &cache_and_http.http);
-                    #[cfg(feature = "cache")]
-                    let context = context(data, runner_tx, shard_id, &cache_and_http.http, &cache_and_http.cache);
+                #[cfg(not(feature = "cache"))]
+                let context = context(data, runner_tx, shard_id, &cache_and_http.http);
+                #[cfg(feature = "cache")]
+                let context = context(
+                    data,
+                    runner_tx,
+                    shard_id,
+                    &cache_and_http.http,
+                    &cache_and_http.cache,
+                );
 
-                    dispatch_message(
-                        context.clone(),
-                        event.message.clone(),
-                        h,
-                    ).await;
-                },
-                other => {
-                    handle_event(
-                        other,
-                        data,
-                        h,
-                        runner_tx,
-                        shard_id,
-                        cache_and_http,
-                    ).await;
-                }
+                dispatch_message(context.clone(), event.message.clone(), h).await;
+            }
+            other => {
+                handle_event(other, data, h, runner_tx, shard_id, cache_and_http).await;
             }
         },
-        (None, Some(ref rh)) => {
-            match event {
-                DispatchEvent::Model(e) => {
-                    #[cfg(not(feature = "cache"))]
-                    let context = context(data, runner_tx, shard_id, &cache_and_http.http);
-                    #[cfg(feature = "cache")]
-                    let context = context(data, runner_tx, shard_id, &cache_and_http.http, &cache_and_http.cache);
+        (None, Some(ref rh)) => match event {
+            DispatchEvent::Model(e) => {
+                #[cfg(not(feature = "cache"))]
+                let context = context(data, runner_tx, shard_id, &cache_and_http.http);
+                #[cfg(feature = "cache")]
+                let context = context(
+                    data,
+                    runner_tx,
+                    shard_id,
+                    &cache_and_http.http,
+                    &cache_and_http.cache,
+                );
 
-                    let event_handler = Arc::clone(rh);
-                    tokio::spawn(async move {
-                        event_handler.raw_event(context, e).await;
-                    });
-                },
-                _ => {}
+                let event_handler = Arc::clone(rh);
+                tokio::spawn(async move {
+                    event_handler.raw_event(context, e).await;
+                });
             }
+            _ => {}
         },
         (Some(ref h), Some(ref rh)) => {
             match event {
-                DispatchEvent::Model(ref e) =>
-                    dispatch(DispatchEvent::Model(e.clone()),
-                             data,
-                             &None,
-                             raw_event_handler,
-                             runner_tx,
-                             shard_id,
-                             Arc::clone(&cache_and_http)).await,
+                DispatchEvent::Model(ref e) => {
+                    dispatch(
+                        DispatchEvent::Model(e.clone()),
+                        data,
+                        &None,
+                        raw_event_handler,
+                        runner_tx,
+                        shard_id,
+                        Arc::clone(&cache_and_http),
+                    )
+                    .await
+                }
                 _ => {}
             }
-            dispatch(event,
-                     data,
-                     event_handler,
-                     &None,
-                     runner_tx,
-                     shard_id,
-                     cache_and_http).await;
+            dispatch(
+                event,
+                data,
+                event_handler,
+                &None,
+                runner_tx,
+                shard_id,
+                cache_and_http,
+            )
+            .await;
         }
     };
 }
@@ -254,7 +283,13 @@ async fn handle_event(
     #[cfg(not(feature = "cache"))]
     let context = context(data, runner_tx, shard_id, &cache_and_http.http);
     #[cfg(feature = "cache")]
-    let context = context(data, runner_tx, shard_id, &cache_and_http.http, &cache_and_http.cache);
+    let context = context(
+        data,
+        runner_tx,
+        shard_id,
+        &cache_and_http.http,
+        &cache_and_http.cache,
+    );
 
     match event {
         DispatchEvent::Client(ClientEvent::ShardStageUpdate(event)) => {
@@ -276,81 +311,76 @@ async fn handle_event(
                     tokio::spawn(async move {
                         event_handler.private_channel_create(context, channel).await;
                     });
-                },
-                Channel::Group(_) => {},
+                }
+                Channel::Group(_) => {}
                 Channel::Guild(channel) => {
                     let event_handler = Arc::clone(event_handler);
 
                     tokio::spawn(async move {
                         event_handler.channel_create(context, channel).await;
                     });
-                },
+                }
                 Channel::Category(channel) => {
                     let event_handler = Arc::clone(event_handler);
 
                     tokio::spawn(async move {
                         event_handler.category_create(context, channel).await;
                     });
-                },
+                }
                 Channel::__Nonexhaustive => unreachable!(),
             }
-        },
+        }
         DispatchEvent::Model(Event::ChannelDelete(mut event)) => {
             update(&cache_and_http, &mut event).await;
 
             match event.channel {
-                Channel::Private(_) | Channel::Group(_) => {},
+                Channel::Private(_) | Channel::Group(_) => {}
                 Channel::Guild(channel) => {
                     let event_handler = Arc::clone(event_handler);
 
                     tokio::spawn(async move {
                         event_handler.channel_delete(context, channel).await;
                     });
-                },
+                }
                 Channel::Category(channel) => {
                     let event_handler = Arc::clone(event_handler);
 
                     tokio::spawn(async move {
                         event_handler.category_delete(context, channel).await;
                     });
-                },
+                }
                 Channel::__Nonexhaustive => unreachable!(),
             }
-        },
+        }
         DispatchEvent::Model(Event::ChannelPinsUpdate(event)) => {
-
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
                 event_handler.channel_pins_update(context, event).await;
             });
-        },
+        }
         DispatchEvent::Model(Event::ChannelRecipientAdd(mut event)) => {
             update(&cache_and_http, &mut event).await;
 
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.channel_recipient_addition(
-                    context,
-                    event.channel_id,
-                    event.user,
-                ).await;
+                event_handler
+                    .channel_recipient_addition(context, event.channel_id, event.user)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::ChannelRecipientRemove(mut event)) => {
             update(&cache_and_http, &mut event).await;
 
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.channel_recipient_removal(
-                    context,
-                    event.channel_id,
-                    event.user,
-                ).await;
+                event_handler
+                    .channel_recipient_removal(context, event.channel_id, event.user)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::ChannelUpdate(mut event)) => {
             let event_handler = Arc::clone(event_handler);
 
@@ -366,22 +396,25 @@ async fn handle_event(
                     event_handler.channel_update(context, event.channel).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildBanAdd(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.guild_ban_addition(context, event.guild_id, event.user).await;
+                event_handler
+                    .guild_ban_addition(context, event.guild_id, event.user)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildBanRemove(event)) => {
-
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.guild_ban_removal(context, event.guild_id, event.user).await;
+                event_handler
+                    .guild_ban_removal(context, event.guild_id, event.user)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildCreate(mut event)) => {
             #[cfg(feature = "cache")]
             let _is_new = {
@@ -420,7 +453,7 @@ async fn handle_event(
                     event_handler.guild_create(context, event.guild).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildDelete(mut event)) => {
             let _full = update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
@@ -432,31 +465,37 @@ async fn handle_event(
                     event_handler.guild_delete(context, event.guild).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildEmojisUpdate(mut event)) => {
             update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.guild_emojis_update(context, event.guild_id, event.emojis).await;
+                event_handler
+                    .guild_emojis_update(context, event.guild_id, event.emojis)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildIntegrationsUpdate(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.guild_integrations_update(context, event.guild_id).await;
+                event_handler
+                    .guild_integrations_update(context, event.guild_id)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildMemberAdd(mut event)) => {
             update(&cache_and_http, &mut event).await;
 
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.guild_member_addition(context, event.guild_id, event.member).await;
+                event_handler
+                    .guild_member_addition(context, event.guild_id, event.member)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildMemberRemove(mut event)) => {
             let _member = update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
@@ -468,7 +507,7 @@ async fn handle_event(
                     event_handler.guild_member_removal(context, event.guild_id, event.user).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildMemberUpdate(mut event)) => {
             let _before = update(&cache_and_http, &mut event).await;
             let _after: Option<Member> = feature_cache! {{
@@ -489,23 +528,27 @@ async fn handle_event(
                     event_handler.guild_member_update(context, event).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildMembersChunk(mut event)) => {
             update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.guild_members_chunk(context, event.guild_id, event.members).await;
+                event_handler
+                    .guild_members_chunk(context, event.guild_id, event.members)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildRoleCreate(mut event)) => {
             update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.guild_role_create(context, event.guild_id, event.role).await;
+                event_handler
+                    .guild_role_create(context, event.guild_id, event.role)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildRoleDelete(mut event)) => {
             let _role = update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
@@ -517,7 +560,7 @@ async fn handle_event(
                     event_handler.guild_role_delete(context, event.guild_id, event.role_id).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildRoleUpdate(mut event)) => {
             let _before = update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
@@ -529,15 +572,17 @@ async fn handle_event(
                     event_handler.guild_role_update(context, event.guild_id, event.role).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildUnavailable(mut event)) => {
             update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.guild_unavailable(context, event.guild_id).await;
+                event_handler
+                    .guild_unavailable(context, event.guild_id)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::GuildUpdate(mut event)) => {
             let event_handler = Arc::clone(event_handler);
 
@@ -557,23 +602,27 @@ async fn handle_event(
                     event_handler.guild_update(context, event.guild).await;
                 }}
             });
-        },
+        }
         // Already handled by the framework check macro
-        DispatchEvent::Model(Event::MessageCreate(_)) => {},
+        DispatchEvent::Model(Event::MessageCreate(_)) => {}
         DispatchEvent::Model(Event::MessageDeleteBulk(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.message_delete_bulk(context, event.channel_id, event.ids).await;
+                event_handler
+                    .message_delete_bulk(context, event.channel_id, event.ids)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::MessageDelete(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.message_delete(context, event.channel_id, event.message_id).await;
+                event_handler
+                    .message_delete(context, event.channel_id, event.message_id)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::MessageUpdate(mut event)) => {
             let _before = update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
@@ -586,15 +635,17 @@ async fn handle_event(
                     event_handler.message_update(context, event).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::PresencesReplace(mut event)) => {
             update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.presence_replace(context, event.presences).await;
+                event_handler
+                    .presence_replace(context, event.presences)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::PresenceUpdate(mut event)) => {
             update(&cache_and_http, &mut event).await;
 
@@ -603,28 +654,30 @@ async fn handle_event(
             tokio::spawn(async move {
                 event_handler.presence_update(context, event).await;
             });
-        },
+        }
         DispatchEvent::Model(Event::ReactionAdd(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
                 event_handler.reaction_add(context, event.reaction).await;
             });
-        },
+        }
         DispatchEvent::Model(Event::ReactionRemove(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
                 event_handler.reaction_remove(context, event.reaction).await;
             });
-        },
+        }
         DispatchEvent::Model(Event::ReactionRemoveAll(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.reaction_remove_all(context, event.channel_id, event.message_id).await;
+                event_handler
+                    .reaction_remove_all(context, event.channel_id, event.message_id)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::Ready(mut event)) => {
             update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(&event_handler);
@@ -632,28 +685,30 @@ async fn handle_event(
             tokio::spawn(async move {
                 event_handler.ready(context, event.ready).await;
             });
-        },
+        }
         DispatchEvent::Model(Event::Resumed(event)) => {
             let event_handler = Arc::clone(&event_handler);
 
             tokio::spawn(async move {
                 event_handler.resume(context, event).await;
             });
-        },
+        }
         DispatchEvent::Model(Event::TypingStart(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
                 event_handler.typing_start(context, event).await;
             });
-        },
+        }
         DispatchEvent::Model(Event::Unknown(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.unknown(context, event.kind, event.value).await;
+                event_handler
+                    .unknown(context, event.kind, event.value)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::UserUpdate(mut event)) => {
             let _before = update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
@@ -665,14 +720,14 @@ async fn handle_event(
                     event_handler.user_update(context, event.current_user).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::VoiceServerUpdate(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
                 event_handler.voice_server_update(context, event).await;
             });
-        },
+        }
         DispatchEvent::Model(Event::VoiceStateUpdate(mut event)) => {
             let _before = update(&cache_and_http, &mut event).await;
             let event_handler = Arc::clone(event_handler);
@@ -684,14 +739,16 @@ async fn handle_event(
                     event_handler.voice_state_update(context, event.guild_id, event.voice_state).await;
                 }}
             });
-        },
+        }
         DispatchEvent::Model(Event::WebhookUpdate(event)) => {
             let event_handler = Arc::clone(event_handler);
 
             tokio::spawn(async move {
-                event_handler.webhook_update(context, event.guild_id, event.channel_id).await;
+                event_handler
+                    .webhook_update(context, event.guild_id, event.channel_id)
+                    .await;
             });
-        },
+        }
         DispatchEvent::Model(Event::__Nonexhaustive) => unreachable!(),
         DispatchEvent::__Nonexhaustive => unreachable!(),
     }

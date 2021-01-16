@@ -1,13 +1,10 @@
+use super::{routing::RouteInfo, HttpError};
 use crate::constants;
 use reqwest::{
-    Client,
-    RequestBuilder as ReqwestRequestBuilder,
-    header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT, HeaderMap as Headers, HeaderValue},
-    Url,
-};
-use super::{
-    HttpError,
-    routing::RouteInfo,
+    header::{
+        HeaderMap as Headers, HeaderValue, AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT,
+    },
+    Client, RequestBuilder as ReqwestRequestBuilder, Url,
 };
 
 pub struct RequestBuilder<'a> {
@@ -57,12 +54,24 @@ pub struct Request<'a> {
 
 impl<'a> Request<'a> {
     pub fn new(builder: RequestBuilder<'a>) -> Self {
-        let RequestBuilder { body, headers, route } = builder;
+        let RequestBuilder {
+            body,
+            headers,
+            route,
+        } = builder;
 
-        Self { body, headers, route }
+        Self {
+            body,
+            headers,
+            route,
+        }
     }
 
-    pub fn build(&'a self, client: &Client, token: &str) -> Result<ReqwestRequestBuilder, HttpError> {
+    pub fn build(
+        &'a self,
+        client: &Client,
+        token: &str,
+    ) -> Result<ReqwestRequestBuilder, HttpError> {
         let Request {
             body,
             headers: ref request_headers,
@@ -71,10 +80,7 @@ impl<'a> Request<'a> {
 
         let (method, _, path) = route_info.deconstruct();
 
-        let mut builder = client.request(
-            method.reqwest_method(),
-            Url::parse(&path)?,
-        );
+        let mut builder = client.request(method.reqwest_method(), Url::parse(&path)?);
 
         let mut content_length = 0;
 
@@ -85,15 +91,23 @@ impl<'a> Request<'a> {
 
         let mut headers = Headers::with_capacity(4);
         headers.insert(USER_AGENT, HeaderValue::from_static(&constants::USER_AGENT));
-        headers.insert(AUTHORIZATION,
-            HeaderValue::from_str(&token).map_err(HttpError::InvalidHeader)?);
-        headers.insert(CONTENT_LENGTH, HeaderValue::from_str(&content_length.to_string())?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&token).map_err(HttpError::InvalidHeader)?,
+        );
+        headers.insert(
+            CONTENT_LENGTH,
+            HeaderValue::from_str(&content_length.to_string())?,
+        );
         // Discord will return a 400: Bad Request response if we set the content type header,
         // but don't give a body.
         if self.body.is_some() {
             headers.insert(CONTENT_TYPE, HeaderValue::from_static(&"application/json"));
         }
-        headers.insert("X-Ratelimit-Precision", HeaderValue::from_static("millisecond"));
+        headers.insert(
+            "X-Ratelimit-Precision",
+            HeaderValue::from_static("millisecond"),
+        );
 
         if let Some(ref request_headers) = request_headers {
             headers.extend(request_headers.clone());

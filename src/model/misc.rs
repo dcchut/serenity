@@ -2,19 +2,18 @@
 
 use super::prelude::*;
 
+#[cfg(all(feature = "model", any(feature = "cache", feature = "utils")))]
+use crate::utils;
 #[cfg(all(feature = "model", feature = "utils"))]
 use std::error::Error as StdError;
+#[cfg(all(feature = "model", feature = "utils"))]
+use std::fmt;
 #[cfg(all(feature = "model", feature = "utils"))]
 use std::result::Result as StdResult;
 #[cfg(all(feature = "model", feature = "utils"))]
 use std::str::FromStr;
-#[cfg(all(feature = "model", feature = "utils"))]
-use std::fmt;
-#[cfg(all(feature = "model", any(feature = "cache", feature = "utils")))]
-use crate::utils;
 
 use async_trait::async_trait;
-
 
 /// Allows something - such as a channel or role - to be mentioned in a message.
 #[async_trait]
@@ -26,7 +25,9 @@ pub trait Mentionable {
 
 #[async_trait]
 impl Mentionable for ChannelId {
-    async fn mention(&self) -> String { format!("<#{}>", self.0) }
+    async fn mention(&self) -> String {
+        format!("<#{}>", self.0)
+    }
 }
 
 #[async_trait]
@@ -36,19 +37,19 @@ impl Mentionable for Channel {
             Channel::Guild(ref x) => {
                 let guard = x.read().await;
                 guard.mention().await
-            },
+            }
             Channel::Private(ref x) => {
                 let guard = x.read().await;
                 guard.mention().await
-            },
+            }
             Channel::Group(ref x) => {
                 let guard = x.read().await;
                 guard.mention().await
-            },
+            }
             Channel::Category(ref x) => {
                 let guard = x.read().await;
                 guard.mention().await
-            },
+            }
             Channel::__Nonexhaustive => unreachable!(),
         }
     }
@@ -70,7 +71,9 @@ impl Mentionable for CurrentUser {
 
 #[async_trait]
 impl Mentionable for Emoji {
-    async fn mention(&self) -> String { format!("<:{}:{}>", self.name, self.id.0) }
+    async fn mention(&self) -> String {
+        format!("<:{}:{}>", self.name, self.id.0)
+    }
 }
 
 #[async_trait]
@@ -96,27 +99,37 @@ impl Mentionable for PrivateChannel {
 
 #[async_trait]
 impl Mentionable for RoleId {
-    async fn mention(&self) -> String { format!("<@&{}>", self.0) }
+    async fn mention(&self) -> String {
+        format!("<@&{}>", self.0)
+    }
 }
 
 #[async_trait]
 impl Mentionable for Role {
-    async fn mention(&self) -> String { format!("<@&{}>", self.id.0) }
+    async fn mention(&self) -> String {
+        format!("<@&{}>", self.id.0)
+    }
 }
 
 #[async_trait]
 impl Mentionable for UserId {
-    async fn mention(&self) -> String { format!("<@{}>", self.0) }
+    async fn mention(&self) -> String {
+        format!("<@{}>", self.0)
+    }
 }
 
 #[async_trait]
 impl Mentionable for User {
-    async fn mention(&self) -> String { format!("<@{}>", self.id.0) }
+    async fn mention(&self) -> String {
+        format!("<@{}>", self.id.0)
+    }
 }
 
 #[async_trait]
 impl Mentionable for GuildChannel {
-    async fn mention(&self) -> String { format!("<#{}>", self.id.0) }
+    async fn mention(&self) -> String {
+        format!("<#{}>", self.id.0)
+    }
 }
 
 #[cfg(all(feature = "model", feature = "utils"))]
@@ -227,16 +240,19 @@ pub struct EmojiIdentifier {
 impl EmojiIdentifier {
     /// Generates a URL to the emoji's image.
     #[inline]
-    pub fn url(&self) -> String { format!(cdn!("/emojis/{}.png"), self.id) }
+    pub fn url(&self) -> String {
+        format!(cdn!("/emojis/{}.png"), self.id)
+    }
 }
 
 #[cfg(all(feature = "model", feature = "utils"))]
 impl FromStr for EmojiIdentifier {
     type Err = ();
 
-    fn from_str(s: &str) -> StdResult<Self, ()> { utils::parse_emoji(s).ok_or_else(|| ()) }
+    fn from_str(s: &str) -> StdResult<Self, ()> {
+        utils::parse_emoji(s).ok_or_else(|| ())
+    }
 }
-
 
 /// A component that was affected during a service incident.
 ///
@@ -327,10 +343,10 @@ mod test {
 
     #[cfg(feature = "utils")]
     mod utils {
+        use crate::internal::{AsyncRwLock, SyncRwLock};
         use crate::model::prelude::*;
-        use crate::internal::{SyncRwLock, AsyncRwLock};
+        use crate::utils::{run_async_test, Colour};
         use std::sync::Arc;
-        use crate::utils::{Colour, run_async_test};
 
         #[test]
         fn test_mention() {

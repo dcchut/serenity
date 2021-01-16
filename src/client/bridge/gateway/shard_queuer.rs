@@ -1,34 +1,28 @@
+use super::super::super::{EventHandler, RawEventHandler};
+use super::{
+    ShardId, ShardManagerMessage, ShardQueuerMessage, ShardRunner, ShardRunnerInfo,
+    ShardRunnerOptions,
+};
+use crate::gateway::ConnectionStage;
 use crate::gateway::Shard;
 use crate::internal::prelude::*;
 use crate::internal::AsyncRwLock;
 use crate::CacheAndHttp;
 use futures::lock::Mutex;
+use log::{info, warn};
 use std::{
     collections::VecDeque,
-    sync::{
-        Arc
-    },
-    time::{Duration, Instant}
-};
-use super::super::super::{EventHandler, RawEventHandler};
-use super::{
-    ShardId,
-    ShardManagerMessage,
-    ShardQueuerMessage,
-    ShardRunner,
-    ShardRunnerInfo,
-    ShardRunnerOptions,
+    sync::Arc,
+    time::{Duration, Instant},
 };
 use typemap::ShareMap;
-use crate::gateway::ConnectionStage;
-use log::{info, warn};
 
 #[cfg(feature = "voice")]
 use crate::client::bridge::voice::ClientVoiceManager;
 #[cfg(feature = "framework")]
 use crate::framework::Framework;
 
-use futures::channel::mpsc::{UnboundedSender, UnboundedReceiver};
+use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures::stream::StreamExt;
 use tokio::time::sleep;
 
@@ -178,7 +172,8 @@ impl ShardQueuer {
             &self.cache_and_http.http.token,
             shard_info,
             self.guild_subscriptions,
-        ).await?;
+        )
+        .await?;
 
         let mut runner = ShardRunner::new(ShardRunnerOptions {
             data: Arc::clone(&self.data),
@@ -203,7 +198,9 @@ impl ShardQueuer {
             let _ = runner.run().await;
         });
 
-        self.manager_tx.unbounded_send(ShardManagerMessage::Start(ShardId(shard_id), runner_info)).unwrap();
+        self.manager_tx
+            .unbounded_send(ShardManagerMessage::Start(ShardId(shard_id), runner_info))
+            .unwrap();
 
         Ok(())
     }

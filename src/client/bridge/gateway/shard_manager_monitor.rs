@@ -1,9 +1,9 @@
-use futures::lock::Mutex;
-use std::sync::Arc;
 use super::{ShardManager, ShardManagerMessage};
-use log::debug;
 use futures::channel::mpsc::UnboundedReceiver;
+use futures::lock::Mutex;
 use futures::stream::StreamExt;
+use log::debug;
+use std::sync::Arc;
 
 /// The shard manager monitor does what it says on the tin -- it monitors the
 /// shard manager and performs actions on it as received.
@@ -47,11 +47,9 @@ impl ShardManagerMonitor {
                     guard.runners.insert(shard_id, shard_runner_info);
                 }
                 ShardManagerMessage::Restart(shard_id) => {
-                    {
-                        let mut guard = self.manager.lock().await;
-                        guard.restart(shard_id).await;
-                    }
-                },
+                    let mut guard = self.manager.lock().await;
+                    guard.restart(shard_id).await;
+                }
                 ShardManagerMessage::ShardUpdate { id, latency, stage } => {
                     let manager = self.manager.lock().await;
 
@@ -61,17 +59,13 @@ impl ShardManagerMonitor {
                     };
                 }
                 ShardManagerMessage::Shutdown(shard_id) => {
-                    {
-                        let mut guard = self.manager.lock().await;
-                        guard.shutdown(shard_id);
-                    }
-                },
+                    let mut guard = self.manager.lock().await;
+                    guard.shutdown(shard_id);
+                }
                 ShardManagerMessage::ShutdownAll => {
-                    {
-                        let mut guard = self.manager.lock().await;
-                        guard.shutdown_all();
-                    }
-                },
+                    let mut guard = self.manager.lock().await;
+                    guard.shutdown_all();
+                }
                 ShardManagerMessage::ShutdownInitiated => break,
                 ShardManagerMessage::ShutdownFinished(_shard_id) => {
                     /*
@@ -88,7 +82,7 @@ impl ShardManagerMonitor {
         }
     }
 
-        /*
+    /*
         while let Some(value) = self.rx.next().await {
             match value {
                 ShardManagerMessage::Restart(shard_id) => {

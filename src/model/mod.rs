@@ -40,17 +40,14 @@ pub mod webhook;
 pub use self::error::Error as ModelError;
 pub use self::permissions::Permissions;
 
-use crate::internal::prelude::*;
 use self::utils::*;
+use crate::internal::prelude::*;
 use serde::de::Visitor;
 use std::{
     collections::HashMap,
-    fmt::{
-        Formatter,
-        Result as FmtResult
-    },
+    fmt::{Formatter, Result as FmtResult},
+    result::Result as StdResult,
     sync::Arc,
-    result::Result as StdResult
 };
 
 #[cfg(feature = "utils")]

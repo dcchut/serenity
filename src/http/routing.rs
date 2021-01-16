@@ -1,8 +1,8 @@
+use super::LightMethod;
 use std::{
     borrow::Cow,
     fmt::{Display, Write},
 };
-use super::LightMethod;
 
 /// A representation of all routes registered within the library. These are safe
 /// and memory-efficient representations of each path that functions exist for
@@ -282,21 +282,19 @@ impl Route {
         channel_id: u64,
         message_id: u64,
         user_id: D,
-        reaction_type: T
-    ) -> String where D: Display, T: Display {
+        reaction_type: T,
+    ) -> String
+    where
+        D: Display,
+        T: Display,
+    {
         format!(
             api!("/channels/{}/messages/{}/reactions/{}/{}"),
-            channel_id,
-            message_id,
-            reaction_type,
-            user_id,
+            channel_id, message_id, reaction_type, user_id,
         )
     }
 
-    pub fn channel_message_reactions(
-        channel_id: u64,
-        message_id: u64,
-    ) -> String {
+    pub fn channel_message_reactions(channel_id: u64, message_id: u64) -> String {
         api!("/channels/{}/messages/{}/reactions", channel_id, message_id)
     }
 
@@ -309,10 +307,7 @@ impl Route {
     ) -> String {
         let mut uri = format!(
             api!("/channels/{}/messages/{}/reactions/{}?limit={}"),
-            channel_id,
-            message_id,
-            reaction,
-            limit,
+            channel_id, message_id, reaction, limit,
         );
 
         if let Some(after) = after {
@@ -377,10 +372,7 @@ impl Route {
         before: Option<u64>,
         limit: Option<u8>,
     ) -> String {
-        let mut s = format!(
-            api!("/guilds/{}/audit-logs?"),
-            guild_id,
-        );
+        let mut s = format!(api!("/guilds/{}/audit-logs?"), guild_id,);
 
         if let Some(action_type) = action_type {
             let _ = write!(s, "&action_type={}", action_type);
@@ -413,23 +405,14 @@ impl Route {
     ) -> String {
         format!(
             api!("/guilds/{}/bans/{}?delete-message-days={}&reason={}"),
-            guild_id,
-            user_id,
-            delete_message_days,
-            reason,
+            guild_id, user_id, delete_message_days, reason,
         )
     }
 
-    pub fn guild_kick_optioned(
-        guild_id: u64,
-        user_id: u64,
-        reason: &str,
-    ) -> String {
+    pub fn guild_kick_optioned(guild_id: u64, user_id: u64, reason: &str) -> String {
         format!(
             api!("/guilds/{}/members/{}?reason={}"),
-            guild_id,
-            user_id,
-            reason,
+            guild_id, user_id, reason,
         )
     }
 
@@ -453,21 +436,14 @@ impl Route {
         format!(api!("/guilds/{}/emojis/{}"), guild_id, emoji_id)
     }
 
-    pub fn guild_integration(
-        guild_id: u64,
-        integration_id: u64,
-    ) -> String {
+    pub fn guild_integration(guild_id: u64, integration_id: u64) -> String {
         format!(api!("/guilds/{}/integrations/{}"), guild_id, integration_id)
     }
 
-    pub fn guild_integration_sync(
-        guild_id: u64,
-        integration_id: u64,
-    ) -> String {
+    pub fn guild_integration_sync(guild_id: u64, integration_id: u64) -> String {
         format!(
             api!("/guilds/{}/integrations/{}/sync"),
-            guild_id,
-            integration_id,
+            guild_id, integration_id,
         )
     }
 
@@ -483,16 +459,10 @@ impl Route {
         format!(api!("/guilds/{}/members/{}"), guild_id, user_id)
     }
 
-    pub fn guild_member_role(
-        guild_id: u64,
-        user_id: u64,
-        role_id: u64,
-    ) -> String {
+    pub fn guild_member_role(guild_id: u64, user_id: u64, role_id: u64) -> String {
         format!(
             api!("/guilds/{}/members/{}/roles/{}"),
-            guild_id,
-            user_id,
-            role_id,
+            guild_id, user_id, role_id,
         )
     }
 
@@ -500,11 +470,7 @@ impl Route {
         format!(api!("/guilds/{}/members"), guild_id)
     }
 
-    pub fn guild_members_optioned(
-        guild_id: u64,
-        after: Option<u64>,
-        limit: Option<u64>,
-    ) -> String {
+    pub fn guild_members_optioned(guild_id: u64, after: Option<u64>, limit: Option<u64>) -> String {
         let mut s = format!(api!("/guilds/{}/members?"), guild_id);
 
         if let Some(after) = after {
@@ -622,12 +588,16 @@ impl Route {
     }
 
     pub fn webhook_with_token<D>(webhook_id: u64, token: D) -> String
-        where D: Display {
+    where
+        D: Display,
+    {
         format!(api!("/webhooks/{}/{}"), webhook_id, token)
     }
 
-    pub fn webhook_with_token_optioned<D>(webhook_id: u64, token: D, wait: bool)
-        -> String where D: Display {
+    pub fn webhook_with_token_optioned<D>(webhook_id: u64, token: D, wait: bool) -> String
+    where
+        D: Display,
+    {
         format!(api!("/webhooks/{}/{}?wait={}"), webhook_id, token, wait)
     }
 }
@@ -889,7 +859,7 @@ pub enum RouteInfo<'a> {
     KickMember {
         guild_id: u64,
         user_id: u64,
-        reason: &'a str
+        reason: &'a str,
     },
     LeaveGroup {
         group_id: u64,
@@ -941,7 +911,11 @@ impl<'a> RouteInfo<'a> {
                 Route::None,
                 Cow::from(Route::group_recipient(group_id, user_id)),
             ),
-            RouteInfo::AddMemberRole { guild_id, role_id, user_id } => (
+            RouteInfo::AddMemberRole {
+                guild_id,
+                role_id,
+                user_id,
+            } => (
                 LightMethod::Put,
                 Route::GuildsIdMembersIdRolesId(guild_id),
                 Cow::from(Route::guild_member_role(guild_id, user_id, role_id)),
@@ -977,12 +951,13 @@ impl<'a> RouteInfo<'a> {
                 Route::GuildsIdEmojis(guild_id),
                 Cow::from(Route::guild_emojis(guild_id)),
             ),
-            RouteInfo::CreateGuild => (
-                LightMethod::Post,
-                Route::Guilds,
-                Cow::from(Route::guilds()),
-            ),
-            RouteInfo::CreateGuildIntegration { guild_id, integration_id } => (
+            RouteInfo::CreateGuild => {
+                (LightMethod::Post, Route::Guilds, Cow::from(Route::guilds()))
+            }
+            RouteInfo::CreateGuildIntegration {
+                guild_id,
+                integration_id,
+            } => (
                 LightMethod::Post,
                 Route::GuildsIdIntegrationsId(guild_id),
                 Cow::from(Route::guild_integration(guild_id, integration_id)),
@@ -997,7 +972,10 @@ impl<'a> RouteInfo<'a> {
                 Route::ChannelsIdMessages(channel_id),
                 Cow::from(Route::channel_messages(channel_id, None)),
             ),
-            RouteInfo::CreatePermission { channel_id, target_id } => (
+            RouteInfo::CreatePermission {
+                channel_id,
+                target_id,
+            } => (
                 LightMethod::Put,
                 Route::ChannelsIdPermissionsOverwriteId(channel_id),
                 Cow::from(Route::channel_permission(channel_id, target_id)),
@@ -1007,14 +985,15 @@ impl<'a> RouteInfo<'a> {
                 Route::UsersMeChannels,
                 Cow::from(Route::user_dm_channels("@me")),
             ),
-            RouteInfo::CreateReaction { channel_id, message_id, reaction } => (
+            RouteInfo::CreateReaction {
+                channel_id,
+                message_id,
+                reaction,
+            } => (
                 LightMethod::Put,
                 Route::ChannelsIdMessagesIdReactionsUserIdType(channel_id),
                 Cow::from(Route::channel_message_reaction(
-                    channel_id,
-                    message_id,
-                    "@me",
-                    reaction,
+                    channel_id, message_id, "@me", reaction,
                 )),
             ),
             RouteInfo::CreateRole { guild_id } => (
@@ -1042,7 +1021,10 @@ impl<'a> RouteInfo<'a> {
                 Route::GuildsId(guild_id),
                 Cow::from(Route::guild(guild_id)),
             ),
-            RouteInfo::DeleteGuildIntegration { guild_id, integration_id } => (
+            RouteInfo::DeleteGuildIntegration {
+                guild_id,
+                integration_id,
+            } => (
                 LightMethod::Delete,
                 Route::GuildsIdIntegrationsId(guild_id),
                 Cow::from(Route::guild_integration(guild_id, integration_id)),
@@ -1052,15 +1034,18 @@ impl<'a> RouteInfo<'a> {
                 Route::InvitesCode,
                 Cow::from(Route::invite(code)),
             ),
-            RouteInfo::DeleteMessageReactions { channel_id, message_id } => (
+            RouteInfo::DeleteMessageReactions {
+                channel_id,
+                message_id,
+            } => (
                 LightMethod::Delete,
                 Route::ChannelsIdMessagesIdReactions(channel_id),
-                Cow::from(Route::channel_message_reactions(
-                    channel_id,
-                    message_id,
-                )),
+                Cow::from(Route::channel_message_reactions(channel_id, message_id)),
             ),
-            RouteInfo::DeleteMessage { channel_id, message_id } => (
+            RouteInfo::DeleteMessage {
+                channel_id,
+                message_id,
+            } => (
                 LightMethod::Delete,
                 Route::ChannelsIdMessagesId(LightMethod::Delete, message_id),
                 Cow::from(Route::channel_message(channel_id, message_id)),
@@ -1070,7 +1055,10 @@ impl<'a> RouteInfo<'a> {
                 Route::ChannelsIdMessagesBulkDelete(channel_id),
                 Cow::from(Route::channel_messages_bulk_delete(channel_id)),
             ),
-            RouteInfo::DeletePermission { channel_id, target_id } => (
+            RouteInfo::DeletePermission {
+                channel_id,
+                target_id,
+            } => (
                 LightMethod::Delete,
                 Route::ChannelsIdPermissionsOverwriteId(channel_id),
                 Cow::from(Route::channel_permission(channel_id, target_id)),
@@ -1084,11 +1072,8 @@ impl<'a> RouteInfo<'a> {
                 LightMethod::Delete,
                 Route::ChannelsIdMessagesIdReactionsUserIdType(channel_id),
                 Cow::from(Route::channel_message_reaction(
-                    channel_id,
-                    message_id,
-                    user,
-                    reaction,
-                ))
+                    channel_id, message_id, user, reaction,
+                )),
             ),
             RouteInfo::DeleteRole { guild_id, role_id } => (
                 LightMethod::Delete,
@@ -1135,7 +1120,10 @@ impl<'a> RouteInfo<'a> {
                 Route::GuildsIdMembersId(guild_id),
                 Cow::from(Route::guild_member(guild_id, user_id)),
             ),
-            RouteInfo::EditMessage { channel_id, message_id } => (
+            RouteInfo::EditMessage {
+                channel_id,
+                message_id,
+            } => (
                 LightMethod::Patch,
                 Route::ChannelsIdMessagesId(LightMethod::Patch, channel_id),
                 Cow::from(Route::channel_message(channel_id, message_id)),
@@ -1170,14 +1158,14 @@ impl<'a> RouteInfo<'a> {
                 Route::WebhooksId(webhook_id),
                 Cow::from(Route::webhook_with_token(webhook_id, token)),
             ),
-            RouteInfo::ExecuteWebhook { token, wait, webhook_id } => (
+            RouteInfo::ExecuteWebhook {
+                token,
+                wait,
+                webhook_id,
+            } => (
                 LightMethod::Post,
                 Route::WebhooksId(webhook_id),
-                Cow::from(Route::webhook_with_token_optioned(
-                    webhook_id,
-                    token,
-                    wait,
-                )),
+                Cow::from(Route::webhook_with_token_optioned(webhook_id, token, wait)),
             ),
             RouteInfo::GetActiveMaintenance => (
                 LightMethod::Get,
@@ -1266,7 +1254,11 @@ impl<'a> RouteInfo<'a> {
                 Route::GuildsIdInvites(guild_id),
                 Cow::from(Route::guild_invites(guild_id)),
             ),
-            RouteInfo::GetGuildMembers { after, guild_id, limit } => (
+            RouteInfo::GetGuildMembers {
+                after,
+                guild_id,
+                limit,
+            } => (
                 LightMethod::Get,
                 Route::GuildsIdMembers(guild_id),
                 Cow::from(Route::guild_members_optioned(guild_id, after, limit)),
@@ -1296,15 +1288,14 @@ impl<'a> RouteInfo<'a> {
                 Route::GuildsIdWebhooks(guild_id),
                 Cow::from(Route::guild_webhooks(guild_id)),
             ),
-            RouteInfo::GetGuilds { after, before, limit } => (
+            RouteInfo::GetGuilds {
+                after,
+                before,
+                limit,
+            } => (
                 LightMethod::Get,
                 Route::UsersMeGuilds,
-                Cow::from(Route::user_guilds_optioned(
-                    "@me",
-                    after,
-                    before,
-                    limit,
-                )),
+                Cow::from(Route::user_guilds_optioned("@me", after, before, limit)),
             ),
             RouteInfo::GetInvite { code, stats } => (
                 LightMethod::Get,
@@ -1316,18 +1307,21 @@ impl<'a> RouteInfo<'a> {
                 Route::GuildsIdMembersId(guild_id),
                 Cow::from(Route::guild_member(guild_id, user_id)),
             ),
-            RouteInfo::GetMessage { channel_id, message_id } => (
+            RouteInfo::GetMessage {
+                channel_id,
+                message_id,
+            } => (
                 LightMethod::Get,
                 Route::ChannelsIdMessagesId(LightMethod::Get, channel_id),
                 Cow::from(Route::channel_message(channel_id, message_id)),
             ),
-            RouteInfo::GetMessages { channel_id, ref query } => (
+            RouteInfo::GetMessages {
+                channel_id,
+                ref query,
+            } => (
                 LightMethod::Get,
                 Route::ChannelsIdMessages(channel_id),
-                Cow::from(Route::channel_messages(
-                    channel_id,
-                    Some(query.as_ref()),
-                )),
+                Cow::from(Route::channel_messages(channel_id, Some(query.as_ref()))),
             ),
             RouteInfo::GetPins { channel_id } => (
                 LightMethod::Get,
@@ -1344,11 +1338,7 @@ impl<'a> RouteInfo<'a> {
                 LightMethod::Get,
                 Route::ChannelsIdMessagesIdReactions(channel_id),
                 Cow::from(Route::channel_message_reactions_list(
-                    channel_id,
-                    message_id,
-                    reaction,
-                    limit,
-                    after,
+                    channel_id, message_id, reaction, limit, after,
                 )),
             ),
             RouteInfo::GetUnresolvedIncidents => (
@@ -1386,14 +1376,14 @@ impl<'a> RouteInfo<'a> {
                 Route::WebhooksId(webhook_id),
                 Cow::from(Route::webhook_with_token(webhook_id, token)),
             ),
-            RouteInfo::KickMember { guild_id, user_id, reason } => (
+            RouteInfo::KickMember {
+                guild_id,
+                user_id,
+                reason,
+            } => (
                 LightMethod::Delete,
                 Route::GuildsIdMembersId(guild_id),
-                Cow::from(Route::guild_kick_optioned(
-                        guild_id,
-                        user_id,
-                        reason,
-                    )),
+                Cow::from(Route::guild_kick_optioned(guild_id, user_id, reason)),
             ),
             RouteInfo::LeaveGroup { group_id } => (
                 LightMethod::Delete,
@@ -1410,7 +1400,10 @@ impl<'a> RouteInfo<'a> {
                 Route::None,
                 Cow::from(Route::group_recipient(group_id, user_id)),
             ),
-            RouteInfo::PinMessage { channel_id, message_id } => (
+            RouteInfo::PinMessage {
+                channel_id,
+                message_id,
+            } => (
                 LightMethod::Put,
                 Route::ChannelsIdPins(channel_id),
                 Cow::from(Route::channel_pin(channel_id, message_id)),
@@ -1420,7 +1413,11 @@ impl<'a> RouteInfo<'a> {
                 Route::GuildsIdBansUserId(guild_id),
                 Cow::from(Route::guild_ban(guild_id, user_id)),
             ),
-            RouteInfo::RemoveMemberRole { guild_id, role_id, user_id } => (
+            RouteInfo::RemoveMemberRole {
+                guild_id,
+                role_id,
+                user_id,
+            } => (
                 LightMethod::Delete,
                 Route::GuildsIdMembersIdRolesId(guild_id),
                 Cow::from(Route::guild_member_role(guild_id, user_id, role_id)),
@@ -1430,13 +1427,13 @@ impl<'a> RouteInfo<'a> {
                 Route::GuildsIdPrune(guild_id),
                 Cow::from(Route::guild_prune(guild_id, days)),
             ),
-            RouteInfo::StartIntegrationSync { guild_id, integration_id } => (
+            RouteInfo::StartIntegrationSync {
+                guild_id,
+                integration_id,
+            } => (
                 LightMethod::Post,
                 Route::GuildsIdIntegrationsId(guild_id),
-                Cow::from(Route::guild_integration_sync(
-                    guild_id,
-                    integration_id,
-                )),
+                Cow::from(Route::guild_integration_sync(guild_id, integration_id)),
             ),
             RouteInfo::StatusIncidentsUnresolved => (
                 LightMethod::Get,
@@ -1453,7 +1450,10 @@ impl<'a> RouteInfo<'a> {
                 Route::None,
                 Cow::from(Route::status_maintenances_upcoming()),
             ),
-            RouteInfo::UnpinMessage { channel_id, message_id } => (
+            RouteInfo::UnpinMessage {
+                channel_id,
+                message_id,
+            } => (
                 LightMethod::Delete,
                 Route::ChannelsIdPinsMessageId(channel_id),
                 Cow::from(Route::channel_pin(channel_id, message_id)),

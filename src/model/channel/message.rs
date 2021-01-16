@@ -2,22 +2,26 @@
 
 #[cfg(feature = "http")]
 use crate::http::CacheHttp;
+use crate::model::prelude::*;
 use chrono::{DateTime, FixedOffset};
-use crate::{model::prelude::*};
 use serde_json::Value;
 
+#[cfg(feature = "model")]
+use super::utils::U64Visitor;
 #[cfg(feature = "model")]
 use crate::builder::{CreateEmbed, EditMessage};
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::cache::CacheRwLock;
+#[cfg(feature = "http")]
+use crate::http::Http;
 #[cfg(all(feature = "cache", feature = "model"))]
 use crate::internal::AsyncRwLock;
-#[cfg(all(feature = "client", feature = "model"))]
-use serde_json::json;
-#[cfg(all(feature = "cache", feature = "model"))]
-use std::sync::Arc;
-#[cfg(all(feature = "cache", feature = "model"))]
-use std::fmt::Write;
+#[cfg(feature = "model")]
+use crate::{
+    constants,
+    model::id::{ChannelId, GuildId, MessageId},
+    utils as serenity_utils,
+};
 #[cfg(feature = "model")]
 use bitflags::__impl_bitflags;
 #[cfg(feature = "model")]
@@ -25,24 +29,14 @@ use serde::{
     de::{Deserialize, Deserializer},
     ser::{Serialize, Serializer},
 };
+#[cfg(all(feature = "client", feature = "model"))]
+use serde_json::json;
+#[cfg(all(feature = "cache", feature = "model"))]
+use std::fmt::Write;
 #[cfg(feature = "model")]
-use super::utils::U64Visitor;
-#[cfg(feature = "model")]
-use std::{
-    result::Result as StdResult,
-};
-#[cfg(feature = "model")]
-use crate::{
-    constants,
-    utils as serenity_utils,
-    model::id::{
-        MessageId,
-        GuildId,
-        ChannelId,
-    },
-};
-#[cfg(feature = "http")]
-use crate::http::Http;
+use std::result::Result as StdResult;
+#[cfg(all(feature = "cache", feature = "model"))]
+use std::sync::Arc;
 
 /// A representation of a message over a guild's text channel, a group, or a
 /// private channel.
@@ -160,7 +154,8 @@ impl Message {
             if let Some(cache) = cache_http.cache() {
                 let req = Permissions::MANAGE_MESSAGES;
                 let is_author = self.author.id == cache.read().await.user.id;
-                let has_perms = utils::user_has_perms(&cache, self.channel_id, self.guild_id, req).await?;
+                let has_perms =
+                    utils::user_has_perms(&cache, self.channel_id, self.guild_id, req).await?;
 
                 if !is_author && !has_perms {
                     return Err(Error::Model(ModelError::InvalidPermissions(req)));
@@ -198,7 +193,11 @@ impl Message {
             }
         }
 
-        cache_http.http().as_ref().delete_message_reactions(self.channel_id.0, self.id.0).await
+        cache_http
+            .http()
+            .as_ref()
+            .delete_message_reactions(self.channel_id.0, self.id.0)
+            .await
     }
 
     /// Edits this message, replacing the original content with new content.
@@ -235,11 +234,12 @@ impl Message {
     /// [`the limit`]: ../../builder/struct.EditMessage.html#method.content
     #[cfg(feature = "client")]
     pub async fn edit<F>(&mut self, cache_http: impl CacheHttp, f: F) -> Result<()>
-        where F: FnOnce(&mut EditMessage) -> &mut EditMessage {
+    where
+        F: FnOnce(&mut EditMessage) -> &mut EditMessage,
+    {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-
                 if self.author.id != cache.read().await.user.id {
                     return Err(Error::Model(ModelError::InvalidUser));
                 }
@@ -254,7 +254,7 @@ impl Message {
 
         if let Some(embed) = self.embeds.get(0) {
             let embed = CreateEmbed::from(embed.clone());
-            builder.embed( |e| {
+            builder.embed(|e| {
                 *e = embed;
                 e
             });
@@ -265,12 +265,16 @@ impl Message {
         let map = serenity_utils::hashmap_to_json_map(builder.0);
         let obj = Value::Object(map);
 
-        match cache_http.http().edit_message(self.channel_id.0, self.id.0, &obj).await {
+        match cache_http
+            .http()
+            .edit_message(self.channel_id.0, self.id.0, &obj)
+            .await
+        {
             Ok(edited) => {
                 *self = edited;
 
                 Ok(())
-            },
+            }
             Err(why) => Err(why),
         }
     }
@@ -282,7 +286,7 @@ impl Message {
                     "{} pinned a message to this channel. See all the pins.",
                     self.author.async_to_string().await
                 );
-            },
+            }
             MessageType::MemberJoin => {
                 let sec = self.timestamp.timestamp() as usize;
                 let chosen = constants::JOIN_MESSAGES[sec % constants::JOIN_MESSAGES.len()];
@@ -292,8 +296,8 @@ impl Message {
                 } else {
                     chosen.to_string()
                 };
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -354,9 +358,14 @@ impl Message {
         reaction_type: R,
         limit: Option<u8>,
         after: U,
-    ) -> Result<Vec<User>> where R: Into<ReactionType>,
-                                 U: Into<Option<UserId>> {
-        self.channel_id.reaction_users(&http, self.id, reaction_type, limit, after).await
+    ) -> Result<Vec<User>>
+    where
+        R: Into<ReactionType>,
+        U: Into<Option<UserId>>,
+    {
+        self.channel_id
+            .reaction_users(&http, self.id, reaction_type, limit, after)
+            .await
     }
 
     /// Returns the associated `Guild` for the message if one is in the cache.
@@ -432,7 +441,6 @@ impl Message {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-
                 if self.guild_id.is_some() {
                     let req = Permissions::MANAGE_MESSAGES;
 
@@ -463,7 +471,11 @@ impl Message {
     /// [permissions]: ../permissions/index.html
     #[inline]
     #[cfg(feature = "client")]
-    pub async fn react<R: Into<ReactionType>>(&self, cache_http: impl CacheHttp, reaction_type: R) -> Result<()> {
+    pub async fn react<R: Into<ReactionType>>(
+        &self,
+        cache_http: impl CacheHttp,
+        reaction_type: R,
+    ) -> Result<()> {
         let reaction_type = reaction_type.into();
         self._react(cache_http, &reaction_type).await
     }
@@ -473,7 +485,6 @@ impl Message {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-
                 if self.guild_id.is_some() {
                     let req = Permissions::ADD_REACTIONS;
 
@@ -484,7 +495,10 @@ impl Message {
             }
         }
 
-        cache_http.http().create_reaction(self.channel_id.0, self.id.0, reaction_type).await
+        cache_http
+            .http()
+            .create_reaction(self.channel_id.0, self.id.0, reaction_type)
+            .await
     }
 
     /// Replies to the user, mentioning them prior to the content in the form
@@ -510,7 +524,11 @@ impl Message {
     /// [`ModelError::MessageTooLong`]: ../error/enum.Error.html#variant.MessageTooLong
     /// [Send Messages]: ../permissions/struct.Permissions.html#associatedconstant.SEND_MESSAGES
     #[cfg(feature = "client")]
-    pub async fn reply(&self, cache_http: impl CacheHttp, content: impl AsRef<str>) -> Result<Message> {
+    pub async fn reply(
+        &self,
+        cache_http: impl CacheHttp,
+        content: impl AsRef<str>,
+    ) -> Result<Message> {
         let content = content.as_ref();
 
         if let Some(length_over) = Message::overflow_length(content) {
@@ -520,7 +538,6 @@ impl Message {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-
                 if self.guild_id.is_some() {
                     let req = Permissions::SEND_MESSAGES;
 
@@ -540,7 +557,10 @@ impl Message {
             "tts": false,
         });
 
-        cache_http.http().send_message(self.channel_id.0, &map).await
+        cache_http
+            .http()
+            .send_message(self.channel_id.0, &map)
+            .await
     }
 
     /// Checks whether the message mentions passed [`UserId`].
@@ -552,7 +572,9 @@ impl Message {
     }
 
     fn _mentions_user_id(&self, id: UserId) -> bool {
-        self.mentions.iter().any(|mentioned_user| mentioned_user.id.0 == id.0)
+        self.mentions
+            .iter()
+            .any(|mentioned_user| mentioned_user.id.0 == id.0)
     }
 
     /// Checks whether the message mentions passed [`User`].
@@ -579,7 +601,6 @@ impl Message {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
-
                 if self.guild_id.is_some() {
                     let req = Permissions::MANAGE_MESSAGES;
 
@@ -590,7 +611,10 @@ impl Message {
             }
         }
 
-        cache_http.http().unpin_message(self.channel_id.0, self.id.0).await
+        cache_http
+            .http()
+            .unpin_message(self.channel_id.0, self.id.0)
+            .await
     }
 
     /// Tries to return author's nickname in the current channel's guild.
@@ -681,12 +705,16 @@ impl AsRef<MessageId> for Message {
 
 impl From<Message> for MessageId {
     /// Gets the Id of a `Message`.
-    fn from(message: Message) -> MessageId { message.id }
+    fn from(message: Message) -> MessageId {
+        message.id
+    }
 }
 
 impl<'a> From<&'a Message> for MessageId {
     /// Gets the Id of a `Message`.
-    fn from(message: &Message) -> MessageId { message.id }
+    fn from(message: &Message) -> MessageId {
+        message.id
+    }
 }
 
 /// A representation of a reaction to a message.
@@ -741,22 +769,20 @@ pub enum MessageType {
     __Nonexhaustive,
 }
 
-enum_number!(
-    MessageType {
-        Regular,
-        GroupRecipientAddition,
-        GroupRecipientRemoval,
-        GroupCallCreation,
-        GroupNameUpdate,
-        GroupIconUpdate,
-        PinsAdd,
-        MemberJoin,
-        NitroBoost,
-        NitroTier1,
-        NitroTier2,
-        NitroTier3,
-    }
-);
+enum_number!(MessageType {
+    Regular,
+    GroupRecipientAddition,
+    GroupRecipientRemoval,
+    GroupCallCreation,
+    GroupNameUpdate,
+    GroupIconUpdate,
+    PinsAdd,
+    MemberJoin,
+    NitroBoost,
+    NitroTier1,
+    NitroTier2,
+    NitroTier3,
+});
 
 impl MessageType {
     pub fn num(self) -> u64 {
@@ -791,14 +817,12 @@ pub enum MessageActivityKind {
     __Nonexhaustive,
 }
 
-enum_number!(
-    MessageActivityKind {
-        JOIN,
-        SPECTATE,
-        LISTEN,
-        JOIN_REQUEST,
-    }
-);
+enum_number!(MessageActivityKind {
+    JOIN,
+    SPECTATE,
+    LISTEN,
+    JOIN_REQUEST,
+});
 
 impl MessageActivityKind {
     pub fn num(self) -> u64 {
@@ -892,7 +916,8 @@ __impl_bitflags! {
 #[cfg(feature = "model")]
 impl<'de> Deserialize<'de> for MessageFlags {
     fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error>
-    where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         Ok(MessageFlags::from_bits_truncate(
             deserializer.deserialize_u64(U64Visitor)?,
@@ -903,7 +928,8 @@ impl<'de> Deserialize<'de> for MessageFlags {
 #[cfg(feature = "model")]
 impl Serialize for MessageFlags {
     fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
-    where S: Serializer
+    where
+        S: Serializer,
     {
         serializer.serialize_u64(self.bits())
     }

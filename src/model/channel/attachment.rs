@@ -1,9 +1,9 @@
 use super::super::id::AttachmentId;
 
 #[cfg(feature = "model")]
-use reqwest::Client as ReqwestClient;
-#[cfg(feature = "model")]
 use crate::internal::prelude::*;
+#[cfg(feature = "model")]
+use reqwest::Client as ReqwestClient;
 //#[cfg(feature = "model")]
 //use std::io::Read;
 
@@ -122,9 +122,7 @@ impl Attachment {
     /// [`Message`]: struct.Message.html
     pub async fn download(&self) -> Result<Vec<u8>> {
         let reqwest = ReqwestClient::new();
-        let response = reqwest.get(&self.url).send().await?
-            .bytes()
-            .await?;
+        let response = reqwest.get(&self.url).send().await?.bytes().await?;
 
         Ok(response.into_iter().collect())
     }

@@ -37,19 +37,11 @@
 //! [`Role`]: ../model/guild/struct.Role.html
 //! [`http`]: ../http/index.html
 
-use std::str::FromStr;
-use crate::model::prelude::*;
 use crate::internal::{AsyncRwLock, SyncRwLock};
-use std::collections::{
-    HashMap,
-    HashSet,
-    VecDeque,
-};
-use std::{
-    default::Default,
-    ops::Deref,
-    sync::Arc,
-};
+use crate::model::prelude::*;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::str::FromStr;
+use std::{default::Default, ops::Deref, sync::Arc};
 
 mod cache_update;
 mod settings;
@@ -504,7 +496,10 @@ impl Cache {
     /// [`Guild`]: ../model/guild/struct.Guild.html
     /// [`channel`]: #method.channel
     #[inline]
-    pub fn guild_channel<C: Into<ChannelId>>(&self, id: C) -> Option<Arc<AsyncRwLock<GuildChannel>>> {
+    pub fn guild_channel<C: Into<ChannelId>>(
+        &self,
+        id: C,
+    ) -> Option<Arc<AsyncRwLock<GuildChannel>>> {
         self._guild_channel(id.into())
     }
 
@@ -598,7 +593,10 @@ impl Cache {
     /// [`members`]: ../model/guild/struct.Guild.html#structfield.members
     #[inline]
     pub async fn member<G, U>(&self, guild_id: G, user_id: U) -> Option<Member>
-        where G: Into<GuildId>, U: Into<UserId> {
+    where
+        G: Into<GuildId>,
+        U: Into<UserId>,
+    {
         self._member(guild_id.into(), user_id.into()).await
     }
 
@@ -648,14 +646,17 @@ impl Cache {
     /// [`Channel`]: ../model/channel/struct.Channel.html
     #[inline]
     pub fn message<C, M>(&self, channel_id: C, message_id: M) -> Option<Message>
-        where C: Into<ChannelId>, M: Into<MessageId> {
+    where
+        C: Into<ChannelId>,
+        M: Into<MessageId>,
+    {
         self._message(channel_id.into(), message_id.into())
     }
 
     fn _message(&self, channel_id: ChannelId, message_id: MessageId) -> Option<Message> {
-        self.messages.get(&channel_id).and_then(|messages| {
-            messages.get(&message_id).cloned()
-        })
+        self.messages
+            .get(&channel_id)
+            .and_then(|messages| messages.get(&message_id).cloned())
     }
 
     /// Retrieves a [`PrivateChannel`] from the cache's [`private_channels`]
@@ -694,9 +695,10 @@ impl Cache {
     ///
     /// [`private_channels`]: #structfield.private_channels
     #[inline]
-    pub fn private_channel<C: Into<ChannelId>>(&self,
-                                               channel_id: C)
-                                               -> Option<Arc<AsyncRwLock<PrivateChannel>>> {
+    pub fn private_channel<C: Into<ChannelId>>(
+        &self,
+        channel_id: C,
+    ) -> Option<Arc<AsyncRwLock<PrivateChannel>>> {
         self._private_channel(channel_id.into())
     }
 
@@ -733,7 +735,10 @@ impl Cache {
     /// ```
     #[inline]
     pub async fn role<G, R>(&self, guild_id: G, role_id: R) -> Option<Role>
-        where G: Into<GuildId>, R: Into<RoleId> {
+    where
+        G: Into<GuildId>,
+        R: Into<RoleId>,
+    {
         self._role(guild_id.into(), role_id.into()).await
     }
 
@@ -812,9 +817,10 @@ impl Cache {
     }
 
     #[inline]
-    pub fn categories<C: Into<ChannelId>>(&self,
-                                          channel_id: C)
-                                          -> Option<Arc<AsyncRwLock<ChannelCategory>>> {
+    pub fn categories<C: Into<ChannelId>>(
+        &self,
+        channel_id: C,
+    ) -> Option<Arc<AsyncRwLock<ChannelCategory>>> {
         self._categories(channel_id.into())
     }
 
@@ -838,7 +844,8 @@ impl Cache {
     }
 
     pub(crate) fn update_user_entry(&mut self, user: &User) {
-        self.users.insert(user.id, Arc::new(SyncRwLock::new(user.clone())));
+        self.users
+            .insert(user.id, Arc::new(SyncRwLock::new(user.clone())));
     }
 }
 
@@ -866,19 +873,16 @@ impl Default for Cache {
 
 #[cfg(test)]
 mod test {
-    use chrono::DateTime;
-    use serde_json::{Number, Value};
-    use std::{
-        collections::HashMap,
-        sync::Arc,
-    };
+    use crate::internal::AsyncRwLock;
+    use crate::model::guild::PremiumTier::Tier2;
     use crate::{
         cache::{Cache, CacheUpdate, Settings},
         model::prelude::*,
         utils::run_async_test,
     };
-    use crate::model::guild::PremiumTier::Tier2;
-    use crate::internal::AsyncRwLock;
+    use chrono::DateTime;
+    use serde_json::{Number, Value};
+    use std::{collections::HashMap, sync::Arc};
 
     #[test]
     fn test_cache_messages() {
@@ -891,7 +895,8 @@ mod test {
             let datetime = DateTime::parse_from_str(
                 "1983 Apr 13 12:09:14.274 +0000",
                 "%Y %b %d %H:%M:%S%.3f %z",
-            ).unwrap();
+            )
+            .unwrap();
             let mut event = MessageCreateEvent {
                 message: Message {
                     id: MessageId(3),
@@ -936,12 +941,18 @@ mod test {
             // None, it only returns the oldest message if the cache was already full.
             assert!(event.update(&mut cache).await.is_none());
             // Assert there's only 1 message in the channel's message cache.
-            assert_eq!(cache.messages.get(&event.message.channel_id).unwrap().len(), 1);
+            assert_eq!(
+                cache.messages.get(&event.message.channel_id).unwrap().len(),
+                1
+            );
 
             // Add a second message, assert that channel message cache length is 2.
             event.message.id = MessageId(4);
             assert!(event.update(&mut cache).await.is_none());
-            assert_eq!(cache.messages.get(&event.message.channel_id).unwrap().len(), 2);
+            assert_eq!(
+                cache.messages.get(&event.message.channel_id).unwrap().len(),
+                2
+            );
 
             // Add a third message, the first should now be removed.
             event.message.id = MessageId(5);
@@ -986,7 +997,10 @@ mod test {
             // is received.
             let mut guild_create = {
                 let mut channels = HashMap::new();
-                channels.insert(ChannelId(2), Arc::new(AsyncRwLock::new(guild_channel.clone())));
+                channels.insert(
+                    ChannelId(2),
+                    Arc::new(AsyncRwLock::new(guild_channel.clone())),
+                );
 
                 GuildCreateEvent {
                     guild: Guild {

@@ -83,7 +83,8 @@ impl EditProfile {
     ///
     /// [provided]: #method.password
     pub fn new_password(&mut self, new_password: &str) -> &mut Self {
-        self.0.insert("new_password", Value::String(new_password.to_string()));
+        self.0
+            .insert("new_password", Value::String(new_password.to_string()));
         self
     }
 
@@ -93,7 +94,8 @@ impl EditProfile {
     /// [modifying the password]: #method.new_password
     /// [modifying the associated email address]: #method.email
     pub fn password(&mut self, password: &str) -> &mut Self {
-        self.0.insert("password", Value::String(password.to_string()));
+        self.0
+            .insert("password", Value::String(password.to_string()));
         self
     }
 
@@ -104,7 +106,8 @@ impl EditProfile {
     /// If there are no available discriminators with the requested username,
     /// an error will occur.
     pub fn username<S: ToString>(&mut self, username: S) -> &mut Self {
-        self.0.insert("username", Value::String(username.to_string()));
+        self.0
+            .insert("username", Value::String(username.to_string()));
         self
     }
 }

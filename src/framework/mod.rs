@@ -101,7 +101,7 @@ pub trait Framework {
 
 #[async_trait]
 impl<F: Framework + ?Sized + Send> Framework for Box<F> {
-     #[inline]
+    #[inline]
     async fn dispatch(&mut self, ctx: Context, msg: Message) {
         (**self).dispatch(ctx, msg).await;
     }
@@ -119,7 +119,7 @@ impl<T: Framework + ?Sized + Send + Sync> Framework for Arc<T> {
 
 #[async_trait]
 impl<'a, F: Framework + ?Sized + Send> Framework for &'a mut F {
-     #[inline]
+    #[inline]
     async fn dispatch(&mut self, ctx: Context, msg: Message) {
         (**self).dispatch(ctx, msg).await;
     }

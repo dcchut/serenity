@@ -1,10 +1,6 @@
 use std::{
     error::Error as StdError,
-    fmt::{
-        Display,
-        Formatter,
-        Result as FmtResult
-    }
+    fmt::{Display, Formatter, Result as FmtResult},
 };
 use tungstenite::protocol::CloseFrame;
 

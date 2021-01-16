@@ -41,28 +41,20 @@
 
 pub use super::routing::Route;
 
-use reqwest::{
-    Client,
-    Response,
-    header::HeaderMap,
-    StatusCode,
-};
+use super::{HttpError, Request};
 use crate::internal::prelude::*;
+use crate::SyncRwLock;
+use futures::lock::Mutex;
+use log::debug;
+use reqwest::{header::HeaderMap, Client, Response, StatusCode};
 use std::{
     collections::HashMap,
-    sync::Arc,
-    str::{
-        self,
-        FromStr,
-    },
-    time::Duration,
     i64,
+    str::{self, FromStr},
+    sync::Arc,
+    time::Duration,
     u64,
 };
-use super::{HttpError, Request};
-use log::debug;
-use futures::lock::Mutex;
-use crate::SyncRwLock;
 use tokio::time::sleep;
 
 /// Ratelimiter for requests to the Discord API.
@@ -166,10 +158,7 @@ impl Ratelimiter {
             // - get the global rate;
             // - sleep if there is 0 remaining
             // - then, perform the request
-            let bucket = Arc::clone(&self.routes
-                .write()
-                .entry(route)
-                .or_default());
+            let bucket = Arc::clone(&self.routes.write().entry(route).or_default());
 
             bucket.lock().await.pre_hook(&route).await;
 
@@ -196,7 +185,9 @@ impl Ratelimiter {
                     let _ = self.global.lock();
 
                     Ok(
-                        if let Some(retry_after) = parse_header::<u64>(&response.headers(), "retry-after")? {
+                        if let Some(retry_after) =
+                            parse_header::<u64>(&response.headers(), "retry-after")?
+                        {
                             debug!("Ratelimited on route {:?} for {:?}ms", route, retry_after);
                             sleep(Duration::from_millis(retry_after)).await;
 
@@ -259,22 +250,21 @@ impl Ratelimit {
             return;
         }
 
-		let delay = self.get_delay();
+        let delay = self.get_delay();
 
-		if delay < 0 {
-			// We're probably in the past.
-			self.remaining = self.limit;
+        if delay < 0 {
+            // We're probably in the past.
+            self.remaining = self.limit;
 
-			return;
-		}
+            return;
+        }
 
         if self.remaining() == 0 {
             let delay = delay as u64;
 
             debug!(
                 "Pre-emptive ratelimit on route {:?} for {:?}ms",
-                route,
-                delay,
+                route, delay,
             );
 
             sleep(Duration::from_millis(delay)).await;
@@ -298,7 +288,9 @@ impl Ratelimit {
             self.reset = (reset * 1000f64) as i64;
         }
 
-        if let Some(reset_after) = parse_header::<f64>(&response.headers(), "x-ratelimit-reset-after")? {
+        if let Some(reset_after) =
+            parse_header::<f64>(&response.headers(), "x-ratelimit-reset-after")?
+        {
             self.reset_after = (reset_after * 1000f64) as i64;
         }
 
@@ -372,29 +364,22 @@ fn parse_header<T: FromStr>(headers: &HeaderMap, header: &str) -> Result<Option<
         None => return Ok(None),
     };
 
-    let unicode = str::from_utf8(&header.as_bytes()).map_err(|_| {
-        Error::from(HttpError::RateLimitUtf8)
-    })?;
+    let unicode =
+        str::from_utf8(&header.as_bytes()).map_err(|_| Error::from(HttpError::RateLimitUtf8))?;
 
-    let num = unicode.parse().map_err(|_| {
-        Error::from(HttpError::RateLimitI64F64)
-    })?;
+    let num = unicode
+        .parse()
+        .map_err(|_| Error::from(HttpError::RateLimitI64F64))?;
 
     Ok(Some(num))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        error::Error,
-        http::HttpError,
-    };
-    use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-    use std::{
-        error::Error as StdError,
-        result::Result as StdResult,
-    };
     use super::parse_header;
+    use crate::{error::Error, http::HttpError};
+    use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+    use std::{error::Error as StdError, result::Result as StdResult};
 
     type Result<T> = StdResult<T, Box<dyn StdError>>;
 
@@ -435,7 +420,10 @@ mod tests {
     fn test_parse_header_good() -> Result<()> {
         let headers = headers();
 
-        assert_eq!(parse_header::<i64>(&headers, "x-ratelimit-limit")?.unwrap(), 5);
+        assert_eq!(
+            parse_header::<i64>(&headers, "x-ratelimit-limit")?.unwrap(),
+            5
+        );
         assert_eq!(
             parse_header::<i64>(&headers, "x-ratelimit-remaining")?.unwrap(),
             4,

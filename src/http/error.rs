@@ -1,19 +1,9 @@
-use reqwest::{
-    Error as ReqwestError,
-    Response,
-    header::InvalidHeaderValue,
-    StatusCode,
-    Url,
-};
+use reqwest::{header::InvalidHeaderValue, Error as ReqwestError, Response, StatusCode, Url};
 use url::ParseError;
 
 use std::{
     error::Error as StdError,
-    fmt::{
-        Display,
-        Formatter,
-        Result as FmtResult
-    }
+    fmt::{Display, Formatter, Result as FmtResult},
 };
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
@@ -38,7 +28,7 @@ pub struct ErrorResponse {
 }
 
 impl ErrorResponse {
-    pub(crate) async fn async_from_response(r : Response) -> Self {
+    pub(crate) async fn async_from_response(r: Response) -> Self {
         ErrorResponse {
             status_code: r.status(),
             url: r.url().clone(),

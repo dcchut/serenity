@@ -2,8 +2,8 @@ use uwl::Stream;
 
 use std::error::Error as StdError;
 use std::marker::PhantomData;
-use std::{fmt, str::FromStr};
 use std::sync::{Arc, RwLock};
+use std::{fmt, str::FromStr};
 
 /// Defines how an operation on an `Args` method failed.
 #[derive(Debug)]
@@ -97,7 +97,10 @@ struct Token {
 impl Token {
     #[inline]
     fn new(kind: TokenKind, start: usize, end: usize) -> Self {
-        Token { kind, span: (start, end) }
+        Token {
+            kind,
+            span: (start, end),
+        }
     }
 }
 
@@ -725,7 +728,7 @@ impl Args {
             None => {
                 self.offset = before;
                 return Err(Error::Eos);
-            },
+            }
         };
 
         self.offset = pos;
@@ -768,7 +771,7 @@ impl Args {
             None => {
                 self.offset = before;
                 return Err(Error::Eos);
-            },
+            }
         };
 
         self.offset = pos;

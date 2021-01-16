@@ -1,9 +1,9 @@
+use super::{ShardClientMessage, ShardRunnerMessage};
 use crate::gateway::InterMessage;
 use crate::model::prelude::*;
-use super::{ShardClientMessage, ShardRunnerMessage};
-use tungstenite::Message;
-use futures::channel::mpsc::{UnboundedSender, SendError};
+use futures::channel::mpsc::{SendError, UnboundedSender};
 use futures::sink::SinkExt;
+use tungstenite::Message;
 
 /// A lightweight wrapper around an mpsc sender.
 ///
@@ -27,9 +27,7 @@ impl ShardMessenger {
     /// [`Client`]: ../../struct.Client.html
     #[inline]
     pub fn new(tx: UnboundedSender<InterMessage>) -> Self {
-        Self {
-            tx,
-        }
+        Self { tx }
     }
 
     /// Requests that one or multiple [`Guild`]s be chunked.
@@ -104,14 +102,18 @@ impl ShardMessenger {
         guild_ids: It,
         limit: Option<u16>,
         query: Option<String>,
-    ) where It: IntoIterator<Item=GuildId> {
+    ) where
+        It: IntoIterator<Item = GuildId>,
+    {
         let guilds = guild_ids.into_iter().collect::<Vec<GuildId>>();
 
-        let _ = self.send(ShardRunnerMessage::ChunkGuilds {
-            guild_ids: guilds,
-            limit,
-            query,
-        }).await;
+        let _ = self
+            .send(ShardRunnerMessage::ChunkGuilds {
+                guild_ids: guilds,
+                limit,
+                query,
+            })
+            .await;
     }
 
     /// Sets the user's current activity, if any.
@@ -179,7 +181,9 @@ impl ShardMessenger {
             status = OnlineStatus::Invisible;
         }
 
-        let _ = self.send(ShardRunnerMessage::SetPresence(status, activity)).await;
+        let _ = self
+            .send(ShardRunnerMessage::SetPresence(status, activity))
+            .await;
     }
 
     /// Sets the user's current online status.
@@ -221,7 +225,9 @@ impl ShardMessenger {
             online_status = OnlineStatus::Invisible;
         }
 
-        let _ = self.send(ShardRunnerMessage::SetStatus(online_status)).await;
+        let _ = self
+            .send(ShardRunnerMessage::SetStatus(online_status))
+            .await;
     }
 
     /// Shuts down the websocket by attempting to cleanly close the
@@ -244,8 +250,11 @@ impl ShardMessenger {
     }
 
     #[inline]
-    async fn send(&mut self, msg: ShardRunnerMessage)
-        -> Result<(), SendError> {
-        self.tx.send(InterMessage::Client(Box::new(ShardClientMessage::Runner(msg)))).await
+    async fn send(&mut self, msg: ShardRunnerMessage) -> Result<(), SendError> {
+        self.tx
+            .send(InterMessage::Client(Box::new(ShardClientMessage::Runner(
+                msg,
+            ))))
+            .await
     }
 }

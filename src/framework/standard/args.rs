@@ -102,14 +102,14 @@ impl Token {
 }
 
 fn lex(stream: &mut Stream<'_>, delims: &[&Delimiter]) -> Option<Token> {
-    if stream.at_end() {
+    if stream.is_empty() {
         return None;
     }
 
     for delim in delims {
         match delim {
             Delimiter::Single(c) => {
-                if stream.current()? == *c {
+                if stream.current()? == *c as u8 {
                     let start = stream.offset();
                     stream.next();
                     return Some(Token::new(TokenKind::Delimiter, start, c.len_utf8()));
@@ -129,13 +129,13 @@ fn lex(stream: &mut Stream<'_>, delims: &[&Delimiter]) -> Option<Token> {
         }
     }
 
-    if stream.current()? == '"' {
+    if stream.current()? == b'"' {
         let start = stream.offset();
         stream.next();
 
-        stream.take_until(|s| s == '"');
+        stream.take_until(|s| s == b'"');
 
-        let is_quote = stream.current().map_or(false, |s| s == '"');
+        let is_quote = stream.current().map_or(false, |s| s == b'"');
         stream.next();
 
         let end = stream.offset();
@@ -150,11 +150,11 @@ fn lex(stream: &mut Stream<'_>, delims: &[&Delimiter]) -> Option<Token> {
 
     let start = stream.offset();
 
-    'outer: while !stream.at_end() {
+    'outer: while !stream.is_empty() {
         for delim in delims {
             match delim {
                 Delimiter::Single(c) => {
-                    if stream.current()? == *c {
+                    if stream.current()? == *c as u8 {
                         break 'outer;
                     }
                 }

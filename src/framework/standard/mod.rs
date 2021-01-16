@@ -647,7 +647,7 @@ impl Framework for StandardFramework {
     async fn dispatch(&mut self, mut ctx: Context, msg: Message) {
         let mut stream = Stream::new(&msg.content);
 
-        stream.take_while(|s| s.is_whitespace());
+        stream.take_while(|s| s.is_ascii_whitespace());
 
         let prefix = parse::prefix(&mut ctx, &msg, &mut stream, &self.config);
 

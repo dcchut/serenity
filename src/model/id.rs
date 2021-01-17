@@ -1,11 +1,11 @@
 //! A collection of newtypes defining type-strong IDs.
 
-use chrono::{FixedOffset, DateTime, NaiveDateTime};
+use super::utils::U64Visitor;
 use crate::internal::prelude::*;
+use crate::model::channel::Channel;
+use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use serde::de::{Deserialize, Deserializer};
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use super::utils::U64Visitor;
-use crate::model::channel::Channel;
 
 macro_rules! id_u64 {
     ($($name:ident;)*) => {
@@ -98,13 +98,12 @@ pub struct ChannelId(pub u64);
 
 impl ChannelId {
     /// Gets the Id of a `Channel`.
-    pub async fn async_from<T : AsRef<Channel>>(channel: T) -> ChannelId {
+    pub async fn async_from<T: AsRef<Channel>>(channel: T) -> ChannelId {
         match channel.as_ref() {
             Channel::Group(group) => group.read().await.channel_id,
             Channel::Guild(ch) => ch.read().await.id,
             Channel::Private(ch) => ch.read().await.id,
             Channel::Category(ch) => ch.read().await.id,
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 }

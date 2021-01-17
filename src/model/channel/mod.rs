@@ -1,6 +1,7 @@
 //! Models relating to channels and types within channels.
 
 mod attachment;
+mod channel_category;
 mod channel_id;
 mod embed;
 mod group;
@@ -8,11 +9,9 @@ mod guild_channel;
 mod message;
 mod private_channel;
 mod reaction;
-mod channel_category;
 
-#[cfg(feature = "http")]
-use crate::http::CacheHttp;
 pub use self::attachment::*;
+pub use self::channel_category::*;
 pub use self::channel_id::*;
 pub use self::embed::*;
 pub use self::group::*;
@@ -20,31 +19,32 @@ pub use self::guild_channel::*;
 pub use self::message::*;
 pub use self::private_channel::*;
 pub use self::reaction::*;
-pub use self::channel_category::*;
+#[cfg(feature = "http")]
+use crate::http::CacheHttp;
 
+use super::utils::deserialize_u64;
 use crate::model::prelude::*;
 use serde::de::Error as DeError;
-use serde::ser::{SerializeStruct, Serialize, Serializer};
-use serde_json;
-use super::utils::deserialize_u64;
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 
+#[cfg(feature = "cache")]
+use crate::cache::CacheRwLock;
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
 use crate::cache::FromStrAndCache;
+#[cfg(feature = "cache")]
+use crate::internal::AsyncRwLock;
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
 use crate::model::misc::ChannelParseError;
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
 use crate::utils::parse_channel;
-#[cfg(feature = "cache")]
-use crate::cache::CacheRwLock;
-#[cfg(feature = "cache")]
-use std::sync::Arc;
-#[cfg(feature = "cache")]
-use crate::internal::AsyncRwLock;
 #[cfg(all(feature = "cache", feature = "model", feature = "utils"))]
 use async_trait::async_trait;
+#[cfg(feature = "cache")]
+use std::sync::Arc;
 
 /// A container for any channel.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum Channel {
     /// A group. A group comprises of only one channel.
     Group(Arc<AsyncRwLock<Group>>),
@@ -63,8 +63,6 @@ pub enum Channel {
     ///
     /// [`GuildChannel`]: struct.GuildChannel.html
     Category(Arc<AsyncRwLock<ChannelCategory>>),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Channel {
@@ -248,20 +246,19 @@ impl Channel {
             Channel::Group(ref group) => {
                 let g = group.read().await;
                 let _ = g.leave(cache_http.http()).await?;
-            },
+            }
             Channel::Guild(ref public_channel) => {
                 let g = public_channel.read().await;
                 let _ = g.delete(cache_http).await?;
-            },
+            }
             Channel::Private(ref private_channel) => {
                 let g = private_channel.read().await;
                 let _ = g.delete(cache_http.http()).await?;
-            },
+            }
             Channel::Category(ref category) => {
                 let g = category.read().await;
                 g.delete(cache_http).await?;
-            },
-            Channel::__Nonexhaustive => unreachable!(),
+            }
         }
 
         Ok(())
@@ -275,7 +272,6 @@ impl Channel {
             Channel::Guild(ref channel) => channel.read().await.is_nsfw(),
             Channel::Category(ref category) => category.read().await.is_nsfw(),
             Channel::Group(_) | Channel::Private(_) => false,
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 
@@ -291,7 +287,6 @@ impl Channel {
             Channel::Guild(ref ch) => ch.read().await.id,
             Channel::Private(ref ch) => ch.read().await.id,
             Channel::Category(ref category) => category.read().await.id,
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 
@@ -306,26 +301,23 @@ impl Channel {
         match *self {
             Channel::Guild(ref channel) => Some(channel.read().await.position),
             Channel::Category(ref catagory) => Some(catagory.read().await.position),
-            _ => None
+            _ => None,
         }
     }
 
     pub async fn async_to_string(&self) -> String {
         match *self {
-            Channel::Group(ref group) => {
-                group.read().await.name().to_string()
-            },
+            Channel::Group(ref group) => group.read().await.name().to_string(),
             Channel::Guild(ref ch) => {
                 let guard = ch.read().await;
                 guard.mention().await
-            },
+            }
             Channel::Private(ref ch) => {
                 let ch = ch.read().await;
                 let guard = ch.recipient.read();
                 guard.name.to_string()
-            },
+            }
             Channel::Category(ref category) => category.read().await.name.to_string(),
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -334,7 +326,9 @@ impl<'de> Deserialize<'de> for Channel {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         let v = JsonMap::deserialize(deserializer)?;
         let kind = {
-            let kind = v.get("type").ok_or_else(|| DeError::missing_field("type"))?;
+            let kind = v
+                .get("type")
+                .ok_or_else(|| DeError::missing_field("type"))?;
 
             kind.as_u64().unwrap()
         };
@@ -359,21 +353,22 @@ impl<'de> Deserialize<'de> for Channel {
 
 impl Serialize for Channel {
     fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
-        where S: Serializer {
+    where
+        S: Serializer,
+    {
         match *self {
             Channel::Category(ref c) => {
                 ChannelCategory::serialize(&*futures::executor::block_on(c.read()), serializer)
-            },
+            }
             Channel::Group(ref c) => {
                 Group::serialize(&*futures::executor::block_on(c.read()), serializer)
-            },
+            }
             Channel::Guild(ref c) => {
                 GuildChannel::serialize(&*futures::executor::block_on(c.read()), serializer)
-            },
+            }
             Channel::Private(ref c) => {
                 PrivateChannel::serialize(&*futures::executor::block_on(c.read()), serializer)
-            },
-            Channel::__Nonexhaustive => unreachable!(),
+            }
         }
     }
 }
@@ -410,13 +405,13 @@ impl Display for Channel {
                 Display::fmt(&channel.recipient.name, f)
             },
             Channel::Category(ref category) => Display::fmt(&futures::executor::block_on(category.read()).name, f),
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 }*/
 
 /// A representation of a type of channel.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum ChannelType {
     /// An indicator that the channel is a text [`GuildChannel`].
     ///
@@ -450,21 +445,17 @@ pub enum ChannelType {
     ///
     /// [`GuildChannel`]: struct.GuildChannel.html
     Store = 6,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
-enum_number!(
-    ChannelType {
-        Text,
-        Private,
-        Voice,
-        Group,
-        Category,
-        News,
-        Store,
-    }
-);
+enum_number!(ChannelType {
+    Text,
+    Private,
+    Voice,
+    Group,
+    Category,
+    News,
+    Store,
+});
 
 impl ChannelType {
     pub fn name(&self) -> &str {
@@ -476,7 +467,6 @@ impl ChannelType {
             ChannelType::Category => "category",
             ChannelType::News => "news",
             ChannelType::Store => "store",
-            ChannelType::__Nonexhaustive => unreachable!(),
         }
     }
 
@@ -489,7 +479,6 @@ impl ChannelType {
             ChannelType::Category => 4,
             ChannelType::News => 5,
             ChannelType::Store => 6,
-            ChannelType::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -498,8 +487,10 @@ impl ChannelType {
 struct PermissionOverwriteData {
     allow: Permissions,
     deny: Permissions,
-    #[serde(serialize_with = "serialize_u64", deserialize_with = "deserialize_u64")] id: u64,
-    #[serde(rename = "type")] kind: String,
+    #[serde(serialize_with = "serialize_u64", deserialize_with = "deserialize_u64")]
+    id: u64,
+    #[serde(rename = "type")]
+    kind: String,
 }
 
 /// A channel-specific permission overwrite for a member or role.
@@ -511,8 +502,9 @@ pub struct PermissionOverwrite {
 }
 
 impl<'de> Deserialize<'de> for PermissionOverwrite {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D)
-                                         -> StdResult<PermissionOverwrite, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> StdResult<PermissionOverwrite, D::Error> {
         let data = PermissionOverwriteData::deserialize(deserializer)?;
 
         let kind = match &data.kind[..] {
@@ -531,11 +523,12 @@ impl<'de> Deserialize<'de> for PermissionOverwrite {
 
 impl Serialize for PermissionOverwrite {
     fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
-        where S: Serializer {
+    where
+        S: Serializer,
+    {
         let (id, kind) = match self.kind {
             PermissionOverwriteType::Member(id) => (id.0, "member"),
             PermissionOverwriteType::Role(id) => (id.0, "role"),
-            PermissionOverwriteType::__Nonexhaustive => unreachable!(),
         };
 
         let mut state = serializer.serialize_struct("PermissionOverwrite", 4)?;
@@ -554,24 +547,23 @@ impl Serialize for PermissionOverwrite {
 ///
 /// [`GuildChannel::create_permission`]: struct.GuildChannel.html#method.create_permission
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum PermissionOverwriteType {
     /// A member which is having its permission overwrites edited.
     Member(UserId),
     /// A role which is having its permission overwrites edited.
     Role(RoleId),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 #[cfg(test)]
 mod test {
     #[cfg(all(feature = "model", feature = "utils"))]
     mod model_utils {
+        use crate::internal::{AsyncRwLock, SyncRwLock};
         use crate::model::prelude::*;
-        use crate::internal::{SyncRwLock, AsyncRwLock};
+        use crate::utils::run_async_test;
         use std::collections::HashMap;
         use std::sync::Arc;
-        use crate::utils::run_async_test;
 
         fn group() -> Group {
             Group {
@@ -582,7 +574,6 @@ mod test {
                 name: None,
                 owner_id: UserId(2),
                 recipients: HashMap::new(),
-                _nonexhaustive: (),
             }
         }
 
@@ -602,7 +593,6 @@ mod test {
                 user_limit: None,
                 nsfw: false,
                 slow_mode_rate: Some(0),
-                _nonexhaustive: (),
             }
         }
 
@@ -618,9 +608,7 @@ mod test {
                     bot: false,
                     discriminator: 1,
                     name: "ab".to_string(),
-                    _nonexhaustive: (),
                 })),
-                _nonexhaustive: (),
             }
         }
 
@@ -668,11 +656,9 @@ impl FromStrAndCache for Channel {
 
     async fn from_str(cache: &CacheRwLock, s: &str) -> StdResult<Self, Self::Err> {
         match parse_channel(s) {
-            Some(x) => {
-                match ChannelId(x).to_channel_cached(&cache).await {
-                    Some(channel) => Ok(channel),
-                    _ => Err(ChannelParseError::NotPresentInCache),
-                }
+            Some(x) => match ChannelId(x).to_channel_cached(&cache).await {
+                Some(channel) => Ok(channel),
+                _ => Err(ChannelParseError::NotPresentInCache),
             },
             _ => Err(ChannelParseError::InvalidChannel),
         }

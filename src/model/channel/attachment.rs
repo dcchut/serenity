@@ -1,9 +1,9 @@
 use super::super::id::AttachmentId;
 
 #[cfg(feature = "model")]
-use reqwest::Client as ReqwestClient;
-#[cfg(feature = "model")]
 use crate::internal::prelude::*;
+#[cfg(feature = "model")]
+use reqwest::Client as ReqwestClient;
 //#[cfg(feature = "model")]
 //use std::io::Read;
 
@@ -11,6 +11,7 @@ use crate::internal::prelude::*;
 ///
 /// [`Embed`]: struct.Embed.html
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Attachment {
     /// The unique ID given to this attachment.
     pub id: AttachmentId,
@@ -27,8 +28,6 @@ pub struct Attachment {
     pub url: String,
     /// If the attachment is an image, then the width of the image is provided.
     pub width: Option<u64>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -122,9 +121,7 @@ impl Attachment {
     /// [`Message`]: struct.Message.html
     pub async fn download(&self) -> Result<Vec<u8>> {
         let reqwest = ReqwestClient::new();
-        let response = reqwest.get(&self.url).send().await?
-            .bytes()
-            .await?;
+        let response = reqwest.get(&self.url).send().await?.bytes().await?;
 
         Ok(response.into_iter().collect())
     }

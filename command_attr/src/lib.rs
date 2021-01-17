@@ -8,7 +8,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
 use syn::{
     parse::{Error, Parse, ParseStream, Result},
     parse_macro_input, parse_quote,
@@ -234,7 +234,8 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
         };
 
         #fun
-    }).into()
+    })
+    .into()
 }
 
 /// A brother macro to [`command`], but for the help command.
@@ -757,5 +758,6 @@ pub fn check(_attr: TokenStream, input: TokenStream) -> TokenStream {
         };
 
         #fun
-    }).into()
+    })
+    .into()
 }

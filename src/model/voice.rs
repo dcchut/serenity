@@ -4,6 +4,7 @@ use super::id::{ChannelId, UserId};
 
 /// Information about an available voice region.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceRegion {
     /// Whether it is a custom voice region, which is used for events.
     pub custom: bool,
@@ -21,12 +22,11 @@ pub struct VoiceRegion {
     pub sample_port: u64,
     /// Indicator of whether the voice region is only for VIP guilds.
     pub vip: bool,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// A user's state within a voice channel.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceState {
     pub channel_id: Option<ChannelId>,
     pub deaf: bool,
@@ -37,6 +37,4 @@ pub struct VoiceState {
     pub suppress: bool,
     pub token: Option<String>,
     pub user_id: UserId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }

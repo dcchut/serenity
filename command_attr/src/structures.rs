@@ -2,14 +2,13 @@ use crate::consts::CHECK;
 use crate::util::{Argument, AsOption, IdentExt2, Parenthesised};
 use proc_macro2::Span;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, ToTokens, format_ident};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
     braced,
     parse::{Error, Parse, ParseStream, Result},
     spanned::Spanned,
-    Lifetime,
-    Attribute, Block, FnArg, Ident, Pat, Path, PathSegment, ReturnType, Stmt, Token, Type,
-    Visibility,
+    Attribute, Block, FnArg, Ident, Lifetime, Pat, Path, PathSegment, ReturnType, Stmt, Token,
+    Type, Visibility,
 };
 
 #[derive(Debug, PartialEq)]
@@ -93,7 +92,7 @@ fn parse_argument(arg: FnArg) -> Result<Argument> {
 pub enum CommandFunKind {
     Command,
     Help,
-    Check
+    Check,
 }
 
 #[derive(Debug)]
@@ -166,14 +165,20 @@ impl Parse for CommandFun {
     }
 }
 
-fn visit_reference_arguments(args: &Vec<Argument>) -> (Vec<Argument>, Vec<Lifetime>, Vec<TokenStream2>, Vec<TokenStream2>) {
+fn visit_reference_arguments(
+    args: &[Argument],
+) -> (
+    Vec<Argument>,
+    Vec<Lifetime>,
+    Vec<TokenStream2>,
+    Vec<TokenStream2>,
+) {
     let mut counter = 1;
     let mut modified_arguments = Vec::new();
     let mut lifetimes = Vec::new();
 
     for arg in args.iter() {
         let mut current_arg = arg.clone();
-
 
         // is this a reference argument?
         if let Type::Reference(rt) = &mut current_arg.kind {
@@ -196,10 +201,14 @@ fn visit_reference_arguments(args: &Vec<Argument>) -> (Vec<Argument>, Vec<Lifeti
     for lifetime in lifetimes.iter() {
         lifetime_requirements.push(quote!(#lifetime: 'async_trait));
         simple_lifetime_requirements.push(quote!(#lifetime: 'async_trait));
-
     }
 
-    (modified_arguments, lifetimes, lifetime_requirements, simple_lifetime_requirements)
+    (
+        modified_arguments,
+        lifetimes,
+        lifetime_requirements,
+        simple_lifetime_requirements,
+    )
 }
 
 impl ToTokens for CommandFun {
@@ -215,23 +224,26 @@ impl ToTokens for CommandFun {
             kind,
         } = self;
 
-        let (args, lifetimes, lifetime_requirements, simple_lifetime_requirements) = visit_reference_arguments(args);
+        let (args, lifetimes, lifetime_requirements, simple_lifetime_requirements) =
+            visit_reference_arguments(args);
 
         let arg_names = args.iter().map(|a| a.name.clone()).collect::<Vec<_>>();
-
 
         let struct_name = format_ident!("_{}", name);
 
         let (fn_name, async_command) = match kind.as_ref().unwrap() {
-            CommandFunKind::Command => {
-                (quote!(command), quote!(serenity::framework::standard::AsyncCommand))
-            },
-            CommandFunKind::Check => {
-                (quote!(check),quote!(serenity::framework::standard::AsyncCheckFunction))
-            },
-            CommandFunKind::Help => {
-                (quote!(help), quote!(serenity::framework::standard::AsyncHelpCommand))
-            }
+            CommandFunKind::Command => (
+                quote!(command),
+                quote!(serenity::framework::standard::AsyncCommand),
+            ),
+            CommandFunKind::Check => (
+                quote!(check),
+                quote!(serenity::framework::standard::AsyncCheckFunction),
+            ),
+            CommandFunKind::Help => (
+                quote!(help),
+                quote!(serenity::framework::standard::AsyncHelpCommand),
+            ),
         };
 
         let output = quote! {
@@ -418,11 +430,10 @@ pub struct Options {
 impl Options {
     #[inline]
     pub fn new() -> Self {
-        let mut options = Self::default();
-
-        options.help_available = true;
-
-        options
+        Self {
+            help_available: true,
+            ..Default::default()
+        }
     }
 }
 
@@ -590,10 +601,9 @@ pub struct GroupOptions {
 impl GroupOptions {
     #[inline]
     pub fn new() -> Self {
-        let mut options = Self::default();
-
-        options.help_available = true;
-
-        options
+        Self {
+            help_available: true,
+            ..Default::default()
+        }
     }
 }

@@ -1,32 +1,26 @@
-use std::{
-    collections::HashSet,
-    fmt,
-};
-use crate::client::Context;
-use crate::model::{
-    channel::Message,
-    permissions::Permissions,
-    id::UserId,
-};
-use crate::utils::Colour;
 use super::Args;
+use crate::client::Context;
+use crate::model::{channel::Message, id::UserId, permissions::Permissions};
+use crate::utils::Colour;
+use std::{collections::HashSet, fmt};
 
-mod check;
 pub mod buckets;
+mod check;
 
 pub use self::check::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OnlyIn {
     Dm,
     Guild,
     None,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Default for OnlyIn {
-    fn default() -> Self { Self::None }
+    fn default() -> Self {
+        Self::None
+    }
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -84,17 +78,13 @@ pub trait AsyncCommand: Send + Sync {
         msg: &'life2 Message,
         args: Args,
     ) -> core::pin::Pin<
-        Box<
-            dyn core::future::Future<Output = CommandResult>
-            + core::marker::Send
-            + 'async_trait,
-        >,
+        Box<dyn core::future::Future<Output = CommandResult> + core::marker::Send + 'async_trait>,
     >
-        where
-            'life0: 'async_trait,
-            'life1: 'async_trait,
-            'life2: 'async_trait,
-            Self: 'async_trait;
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        'life2: 'async_trait,
+        Self: 'async_trait;
 }
 
 pub type CommandResult = ::std::result::Result<(), CommandError>;
@@ -115,9 +105,9 @@ impl fmt::Debug for Command {
 
 impl PartialEq for Command {
     #[inline]
+    #[allow(clippy::vtable_address_comparisons)]
     fn eq(&self, other: &Command) -> bool {
-        // TODO: does this even make sense?
-        (self.fun as *const _) == (other.fun as *const _) && (self.options == other.options)
+        std::ptr::eq(self.fun, other.fun) && (self.options == other.options)
     }
 }
 
@@ -131,18 +121,14 @@ pub trait AsyncHelpCommand: Send + Sync {
         groups: &'life3 [&'static CommandGroup],
         owners: HashSet<UserId>,
     ) -> core::pin::Pin<
-        Box<
-            dyn core::future::Future<Output = CommandResult>
-            + core::marker::Send
-            + 'async_trait,
-        >,
+        Box<dyn core::future::Future<Output = CommandResult> + core::marker::Send + 'async_trait>,
     >
-        where
-            'life0: 'async_trait,
-            'life1: 'async_trait,
-            'life2: 'async_trait,
-            'life3: 'async_trait,
-            Self: 'async_trait;
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        'life2: 'async_trait,
+        'life3: 'async_trait,
+        Self: 'async_trait;
 }
 
 //let res = (help.fun)(&mut ctx, &msg, args, help.options, &groups, owners);
@@ -172,9 +158,9 @@ impl fmt::Debug for HelpCommand {
 
 impl PartialEq for HelpCommand {
     #[inline]
+    #[allow(clippy::vtable_address_comparisons)]
     fn eq(&self, other: &HelpCommand) -> bool {
-        // TODO: does this even make sense?
-        (self.fun as *const _) == (other.fun as *const _) && (self.options == other.options)
+        std::ptr::eq(self.fun, other.fun) && (self.options == other.options)
     }
 }
 
@@ -184,6 +170,7 @@ impl PartialEq for HelpCommand {
 /// Lacking required roles to execute the command.
 /// The command can't be used in the current channel (as in `DM only` or `guild only`).
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum HelpBehaviour {
     /// The command will be displayed, hence nothing will be done.
     Nothing,
@@ -191,8 +178,6 @@ pub enum HelpBehaviour {
     Strike,
     /// Does not list a command in the help-menu.
     Hide,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -297,26 +282,53 @@ mod levenshtein_tests {
 
     #[test]
     fn help_behaviour_eq() {
-        assert_eq!(HelpBehaviour::Hide, std::cmp::max(HelpBehaviour::Hide, HelpBehaviour::Hide));
-        assert_eq!(HelpBehaviour::Strike, std::cmp::max(HelpBehaviour::Strike, HelpBehaviour::Strike));
-        assert_eq!(HelpBehaviour::Nothing, std::cmp::max(HelpBehaviour::Nothing, HelpBehaviour::Nothing));
+        assert_eq!(
+            HelpBehaviour::Hide,
+            std::cmp::max(HelpBehaviour::Hide, HelpBehaviour::Hide)
+        );
+        assert_eq!(
+            HelpBehaviour::Strike,
+            std::cmp::max(HelpBehaviour::Strike, HelpBehaviour::Strike)
+        );
+        assert_eq!(
+            HelpBehaviour::Nothing,
+            std::cmp::max(HelpBehaviour::Nothing, HelpBehaviour::Nothing)
+        );
     }
 
     #[test]
     fn help_behaviour_hide() {
-        assert_eq!(HelpBehaviour::Hide, std::cmp::max(HelpBehaviour::Hide, HelpBehaviour::Nothing));
-        assert_eq!(HelpBehaviour::Hide, std::cmp::max(HelpBehaviour::Hide, HelpBehaviour::Strike));
+        assert_eq!(
+            HelpBehaviour::Hide,
+            std::cmp::max(HelpBehaviour::Hide, HelpBehaviour::Nothing)
+        );
+        assert_eq!(
+            HelpBehaviour::Hide,
+            std::cmp::max(HelpBehaviour::Hide, HelpBehaviour::Strike)
+        );
     }
 
     #[test]
     fn help_behaviour_strike() {
-        assert_eq!(HelpBehaviour::Strike, std::cmp::max(HelpBehaviour::Strike, HelpBehaviour::Nothing));
-        assert_eq!(HelpBehaviour::Hide, std::cmp::max(HelpBehaviour::Strike, HelpBehaviour::Hide));
+        assert_eq!(
+            HelpBehaviour::Strike,
+            std::cmp::max(HelpBehaviour::Strike, HelpBehaviour::Nothing)
+        );
+        assert_eq!(
+            HelpBehaviour::Hide,
+            std::cmp::max(HelpBehaviour::Strike, HelpBehaviour::Hide)
+        );
     }
 
     #[test]
     fn help_behaviour_nothing() {
-        assert_eq!(HelpBehaviour::Strike, std::cmp::max(HelpBehaviour::Nothing, HelpBehaviour::Strike));
-        assert_eq!(HelpBehaviour::Hide, std::cmp::max(HelpBehaviour::Nothing, HelpBehaviour::Hide));
+        assert_eq!(
+            HelpBehaviour::Strike,
+            std::cmp::max(HelpBehaviour::Nothing, HelpBehaviour::Strike)
+        );
+        assert_eq!(
+            HelpBehaviour::Hide,
+            std::cmp::max(HelpBehaviour::Nothing, HelpBehaviour::Hide)
+        );
     }
 }

@@ -1,13 +1,12 @@
 //! Models pertaining to the gateway.
 
-use serde::de::Error as DeError;
-use serde::ser::{SerializeStruct, Serialize, Serializer};
-use serde_json;
-use std::sync::Arc;
-use super::utils::*;
 use super::prelude::*;
+use super::utils::*;
 use crate::internal::SyncRwLock;
 use bitflags::bitflags;
+use serde::de::Error as DeError;
+use serde::ser::{Serialize, SerializeStruct, Serializer};
+use std::sync::Arc;
 
 /// A representation of the data retrieved from the bot gateway endpoint.
 ///
@@ -16,6 +15,7 @@ use bitflags::bitflags;
 ///
 /// This is only applicable to bot users.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct BotGateway {
     /// Information describing how many gateway sessions you can initiate within
     /// a ratelimit period.
@@ -25,12 +25,11 @@ pub struct BotGateway {
     pub shards: u64,
     /// The gateway to connect to.
     pub url: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Representation of an activity that a [`User`] is performing.
 #[derive(Clone, Debug, Serialize)]
+#[non_exhaustive]
 pub struct Activity {
     /// The ID of the application for the activity.
     pub application_id: Option<ApplicationId>,
@@ -62,8 +61,6 @@ pub struct Activity {
     /// [`ActivityType::Streaming`]: enum.ActivityType.html#variant.Streaming
     /// [`kind`]: #structfield.kind
     pub url: Option<String>,
-    #[serde(skip_serializing)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -110,7 +107,6 @@ impl Activity {
             emoji: None,
             timestamps: None,
             url: None,
-            _nonexhaustive: (),
         }
     }
 
@@ -159,7 +155,6 @@ impl Activity {
             emoji: None,
             timestamps: None,
             url: Some(url.to_string()),
-            _nonexhaustive: (),
         }
     }
 
@@ -205,7 +200,6 @@ impl Activity {
             emoji: None,
             timestamps: None,
             url: None,
-            _nonexhaustive: (),
         }
     }
 }
@@ -235,10 +229,12 @@ impl<'de> Deserialize<'de> for Activity {
             Some(v) => serde_json::from_value::<Option<_>>(v).map_err(DeError::custom)?,
             None => None,
         };
-        let kind = map.remove("type")
+        let kind = map
+            .remove("type")
             .and_then(|v| ActivityType::deserialize(v).ok())
             .unwrap_or(ActivityType::Playing);
-        let name = map.remove("name")
+        let name = map
+            .remove("name")
             .and_then(|v| String::deserialize(v).ok())
             .unwrap_or_else(String::new);
         let party = match map.remove("party") {
@@ -261,7 +257,8 @@ impl<'de> Deserialize<'de> for Activity {
             Some(v) => serde_json::from_value::<Option<_>>(v).map_err(DeError::custom)?,
             None => None,
         };
-        let url = map.remove("url")
+        let url = map
+            .remove("url")
             .and_then(|v| serde_json::from_value::<String>(v).ok());
 
         Ok(Activity {
@@ -278,13 +275,13 @@ impl<'de> Deserialize<'de> for Activity {
             emoji,
             timestamps,
             url,
-            _nonexhaustive: (),
         })
     }
 }
 
 /// The assets for an activity.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ActivityAssets {
     /// The ID for a large asset of the activity, usually a snowflake.
     pub large_image: Option<String>,
@@ -294,8 +291,6 @@ pub struct ActivityAssets {
     pub small_image: Option<String>,
     /// Text displayed when hovering over the small image of the activity.
     pub small_text: Option<String>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 bitflags! {
@@ -319,17 +314,17 @@ bitflags! {
 
 /// Information about an activity's party.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ActivityParty {
     /// The ID of the party.
     pub id: Option<String>,
     /// Used to show the party's current and maximum size.
     pub size: Option<[u64; 2]>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Secrets for an activity.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ActivitySecrets {
     /// The secret for joining a party.
     pub join: Option<String>,
@@ -338,8 +333,6 @@ pub struct ActivitySecrets {
     pub match_: Option<String>,
     /// The secret for spectating an activity.
     pub spectate: Option<String>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Representation of an emoji used in a custom status
@@ -353,8 +346,8 @@ pub struct ActivityEmoji {
     pub animated: Option<bool>,
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum ActivityType {
     /// An indicator that the user is playing a game.
     Playing = 0,
@@ -364,18 +357,14 @@ pub enum ActivityType {
     Listening = 2,
     /// An indicator that the user uses custum statuses
     Custom = 4,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
-enum_number!(
-    ActivityType {
-        Playing,
-        Streaming,
-        Listening,
-        Custom,
-    }
-);
+enum_number!(ActivityType {
+    Playing,
+    Streaming,
+    Listening,
+    Custom,
+});
 
 impl ActivityType {
     pub fn num(self) -> u64 {
@@ -386,13 +375,14 @@ impl ActivityType {
             Streaming => 1,
             Listening => 2,
             Custom => 4,
-            __Nonexhaustive => unreachable!(),
         }
     }
 }
 
 impl Default for ActivityType {
-    fn default() -> Self { ActivityType::Playing }
+    fn default() -> Self {
+        ActivityType::Playing
+    }
 }
 
 /// A representation of the data retrieved from the gateway endpoint.
@@ -401,11 +391,10 @@ impl Default for ActivityType {
 ///
 /// [`BotGateway`]: struct.BotGateway.html
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Gateway {
     /// The gateway to connect to.
     pub url: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Information detailing the current active status of a [`User`].
@@ -422,6 +411,7 @@ pub struct ClientStatus {
 ///
 /// [`User`]: ../user/struct.User.html
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct Presence {
     /// The activity that a [`User`] is performing.
     ///
@@ -440,20 +430,19 @@ pub struct Presence {
     pub user_id: UserId,
     /// The associated user instance.
     pub user: Option<Arc<SyncRwLock<User>>>,
-    pub(crate) _nonexhaustive: (),
 }
 
 impl<'de> Deserialize<'de> for Presence {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Presence, D::Error> {
         let mut map = JsonMap::deserialize(deserializer)?;
-        let mut user_map = map.remove("user")
+        let mut user_map = map
+            .remove("user")
             .ok_or_else(|| DeError::custom("expected presence user"))
             .and_then(JsonMap::deserialize)
             .map_err(DeError::custom)?;
 
         let (user_id, user) = if user_map.len() > 1 {
-            let user = User::deserialize(Value::Object(user_map))
-                .map_err(DeError::custom)?;
+            let user = User::deserialize(Value::Object(user_map)).map_err(DeError::custom)?;
 
             (user.id, Some(Arc::new(SyncRwLock::new(user))))
         } else {
@@ -467,8 +456,7 @@ impl<'de> Deserialize<'de> for Presence {
         };
 
         let activity = match map.remove("game") {
-            Some(v) => serde_json::from_value::<Option<Activity>>(v)
-                .map_err(DeError::custom)?,
+            Some(v) => serde_json::from_value::<Option<Activity>>(v).map_err(DeError::custom)?,
             None => None,
         };
 
@@ -478,16 +466,14 @@ impl<'de> Deserialize<'de> for Presence {
             }
             None => None,
         };
-        
+
         let last_modified = match map.remove("last_modified") {
-            Some(v) => serde_json::from_value::<Option<u64>>(v)
-                .map_err(DeError::custom)?,
+            Some(v) => serde_json::from_value::<Option<u64>>(v).map_err(DeError::custom)?,
             None => None,
         };
 
         let nick = match map.remove("nick") {
-            Some(v) => serde_json::from_value::<Option<String>>(v)
-                .map_err(DeError::custom)?,
+            Some(v) => serde_json::from_value::<Option<String>>(v).map_err(DeError::custom)?,
             None => None,
         };
 
@@ -505,14 +491,15 @@ impl<'de> Deserialize<'de> for Presence {
             status,
             user,
             user_id,
-            _nonexhaustive: (),
         })
     }
 }
 
 impl Serialize for Presence {
     fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
-        where S: Serializer {
+    where
+        S: Serializer,
+    {
         #[derive(Serialize)]
         struct UserId {
             id: u64,
@@ -542,11 +529,20 @@ impl Serialize for Presence {
 
 /// An initial set of information given after IDENTIFYing to the gateway.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Ready {
     pub guilds: Vec<GuildStatus>,
-    #[serde(default, serialize_with = "serialize_presences", deserialize_with = "deserialize_presences")]
+    #[serde(
+        default,
+        serialize_with = "serialize_presences",
+        deserialize_with = "deserialize_presences"
+    )]
     pub presences: HashMap<UserId, Presence>,
-    #[serde(default, serialize_with = "serialize_private_channels", deserialize_with = "deserialize_private_channels")]
+    #[serde(
+        default,
+        serialize_with = "serialize_private_channels",
+        deserialize_with = "deserialize_private_channels"
+    )]
     pub private_channels: HashMap<ChannelId, Channel>,
     pub session_id: String,
     pub shard: Option<[u64; 2]>,
@@ -555,13 +551,12 @@ pub struct Ready {
     pub user: CurrentUser,
     #[serde(rename = "v")]
     pub version: u64,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Information describing how many gateway sessions you can initiate within a
 /// ratelimit period.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct SessionStartLimit {
     /// The number of sessions that you can still initiate within the current
     /// ratelimit period.
@@ -570,14 +565,11 @@ pub struct SessionStartLimit {
     pub reset_after: u64,
     /// The total number of session starts within the ratelimit period allowed.
     pub total: u64,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 /// Timestamps of when a user started and/or is ending their activity.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ActivityTimestamps {
     pub end: Option<u64>,
     pub start: Option<u64>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }

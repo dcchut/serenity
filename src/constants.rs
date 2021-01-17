@@ -65,6 +65,7 @@ pub static JOIN_MESSAGES: &[&str] = &[
 
 /// Enum to map gateway opcodes.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum OpCode {
     /// Dispatches an event.
     Event = 0,
@@ -90,26 +91,22 @@ pub enum OpCode {
     Hello = 10,
     /// Sent immediately following a client heartbeat that was received.
     HeartbeatAck = 11,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
-enum_number!(
-    OpCode {
-        Event,
-        Heartbeat,
-        Identify,
-        StatusUpdate,
-        VoiceStateUpdate,
-        VoiceServerPing,
-        Resume,
-        Reconnect,
-        GetGuildMembers,
-        InvalidSession,
-        Hello,
-        HeartbeatAck,
-    }
-);
+enum_number!(OpCode {
+    Event,
+    Heartbeat,
+    Identify,
+    StatusUpdate,
+    VoiceStateUpdate,
+    VoiceServerPing,
+    Resume,
+    Reconnect,
+    GetGuildMembers,
+    InvalidSession,
+    Hello,
+    HeartbeatAck,
+});
 
 impl OpCode {
     pub fn num(self) -> u64 {
@@ -126,13 +123,13 @@ impl OpCode {
             OpCode::InvalidSession => 9,
             OpCode::Hello => 10,
             OpCode::HeartbeatAck => 11,
-            OpCode::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 /// Enum to map voice opcodes.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum VoiceOpCode {
     /// Used to begin a voice websocket connection.
     Identify = 0,
@@ -158,26 +155,22 @@ pub enum VoiceOpCode {
     ClientConnect = 12,
     /// Message indicating that another user has disconnected from the voice channel.
     ClientDisconnect = 13,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
-enum_number!(
-    VoiceOpCode {
-        Identify,
-        SelectProtocol,
-        Ready,
-        Heartbeat,
-        SessionDescription,
-        Speaking,
-        HeartbeatAck,
-        Resume,
-        Hello,
-        Resumed,
-        ClientConnect,
-        ClientDisconnect,
-    }
-);
+enum_number!(VoiceOpCode {
+    Identify,
+    SelectProtocol,
+    Ready,
+    Heartbeat,
+    SessionDescription,
+    Speaking,
+    HeartbeatAck,
+    Resume,
+    Hello,
+    Resumed,
+    ClientConnect,
+    ClientDisconnect,
+});
 
 impl VoiceOpCode {
     pub fn num(self) -> u64 {
@@ -194,7 +187,6 @@ impl VoiceOpCode {
             VoiceOpCode::Resumed => 9,
             VoiceOpCode::ClientConnect => 12,
             VoiceOpCode::ClientDisconnect => 13,
-            VoiceOpCode::__Nonexhaustive => unreachable!(),
         }
     }
 }

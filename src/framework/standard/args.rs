@@ -2,18 +2,17 @@ use uwl::Stream;
 
 use std::error::Error as StdError;
 use std::marker::PhantomData;
-use std::{fmt, str::FromStr};
 use std::sync::{Arc, RwLock};
+use std::{fmt, str::FromStr};
 
 /// Defines how an operation on an `Args` method failed.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error<E> {
     /// "END-OF-STRING". We reached the end. There's nothing to parse anymore.
     Eos,
     /// Parsing operation failed. Contains how it did.
     Parse(E),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl<E> From<E> for Error<E> {
@@ -29,7 +28,6 @@ impl<E: fmt::Display> fmt::Display for Error<E> {
         match *self {
             Eos => write!(f, "ArgError(\"end of string\")"),
             Parse(ref e) => write!(f, "ArgError(\"{}\")", e),
-            __Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -39,7 +37,6 @@ impl<E: fmt::Debug + fmt::Display> StdError for Error<E> {
         match self {
             Error::Eos => "end-of-string",
             Error::Parse(_) => "parse-failure",
-            Error::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -97,19 +94,22 @@ struct Token {
 impl Token {
     #[inline]
     fn new(kind: TokenKind, start: usize, end: usize) -> Self {
-        Token { kind, span: (start, end) }
+        Token {
+            kind,
+            span: (start, end),
+        }
     }
 }
 
 fn lex(stream: &mut Stream<'_>, delims: &[&Delimiter]) -> Option<Token> {
-    if stream.at_end() {
+    if stream.is_empty() {
         return None;
     }
 
     for delim in delims {
         match delim {
             Delimiter::Single(c) => {
-                if stream.current()? == *c {
+                if stream.current()? == *c as u8 {
                     let start = stream.offset();
                     stream.next();
                     return Some(Token::new(TokenKind::Delimiter, start, c.len_utf8()));
@@ -129,13 +129,13 @@ fn lex(stream: &mut Stream<'_>, delims: &[&Delimiter]) -> Option<Token> {
         }
     }
 
-    if stream.current()? == '"' {
+    if stream.current()? == b'"' {
         let start = stream.offset();
         stream.next();
 
-        stream.take_until(|s| s == '"');
+        stream.take_until(|s| s == b'"');
 
-        let is_quote = stream.current().map_or(false, |s| s == '"');
+        let is_quote = stream.current().map_or(false, |s| s == b'"');
         stream.next();
 
         let end = stream.offset();
@@ -150,11 +150,11 @@ fn lex(stream: &mut Stream<'_>, delims: &[&Delimiter]) -> Option<Token> {
 
     let start = stream.offset();
 
-    'outer: while !stream.at_end() {
+    'outer: while !stream.is_empty() {
         for delim in delims {
             match delim {
                 Delimiter::Single(c) => {
-                    if stream.current()? == *c {
+                    if stream.current()? == *c as u8 {
                         break 'outer;
                     }
                 }
@@ -413,7 +413,7 @@ impl Args {
         }
 
         let mut s = s;
-        let state = self.state.read().unwrap().clone();
+        let state = *self.state.read().unwrap();
 
         match state {
             State::None => {}
@@ -493,7 +493,7 @@ impl Args {
             return self;
         }
 
-        let state = self.state.read().unwrap().clone();
+        let state = *self.state.read().unwrap();
 
         match state {
             State::None => self.update_state(State::Trimmed),
@@ -529,7 +529,7 @@ impl Args {
 
         if is_quoted {
             // We explicitly clone the state here so that we don't deadlock
-            let state = self.state.read().unwrap().clone();
+            let state = *self.state.read().unwrap();
 
             match state {
                 State::None => self.update_state(State::Quoted),
@@ -725,7 +725,7 @@ impl Args {
             None => {
                 self.offset = before;
                 return Err(Error::Eos);
-            },
+            }
         };
 
         self.offset = pos;
@@ -768,7 +768,7 @@ impl Args {
             None => {
                 self.offset = before;
                 return Err(Error::Eos);
-            },
+            }
         };
 
         self.offset = pos;

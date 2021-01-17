@@ -92,27 +92,27 @@ pub use crate::client::Client;
 
 #[cfg(feature = "cache")]
 use crate::cache::CacheRwLock;
-#[cfg(feature = "cache")]
-use std::time::Duration;
-#[cfg(feature = "client")]
-use std::sync::Arc;
 #[cfg(feature = "client")]
 use crate::http::Http;
-
+#[cfg(feature = "client")]
+use std::sync::Arc;
+#[cfg(feature = "cache")]
+use std::time::Duration;
 
 #[cfg(feature = "client")]
 #[derive(Default)]
+#[non_exhaustive]
 pub struct CacheAndHttp {
     #[cfg(feature = "cache")]
     pub cache: CacheRwLock,
     #[cfg(feature = "cache")]
     pub update_cache_timeout: Option<Duration>,
     pub http: Arc<Http>,
-    __nonexhaustive: (),
 }
 
 // For the procedural macros defined in `command_attr`; do not remove!
 #[allow(clippy::useless_attribute)]
+#[allow(unused_attributes)]
 #[allow(rust_2018_idioms)]
 extern crate self as serenity;
 

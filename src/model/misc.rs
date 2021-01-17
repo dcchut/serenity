@@ -2,19 +2,18 @@
 
 use super::prelude::*;
 
+#[cfg(all(feature = "model", any(feature = "cache", feature = "utils")))]
+use crate::utils;
 #[cfg(all(feature = "model", feature = "utils"))]
 use std::error::Error as StdError;
+#[cfg(all(feature = "model", feature = "utils"))]
+use std::fmt;
 #[cfg(all(feature = "model", feature = "utils"))]
 use std::result::Result as StdResult;
 #[cfg(all(feature = "model", feature = "utils"))]
 use std::str::FromStr;
-#[cfg(all(feature = "model", feature = "utils"))]
-use std::fmt;
-#[cfg(all(feature = "model", any(feature = "cache", feature = "utils")))]
-use crate::utils;
 
 use async_trait::async_trait;
-
 
 /// Allows something - such as a channel or role - to be mentioned in a message.
 #[async_trait]
@@ -26,7 +25,9 @@ pub trait Mentionable {
 
 #[async_trait]
 impl Mentionable for ChannelId {
-    async fn mention(&self) -> String { format!("<#{}>", self.0) }
+    async fn mention(&self) -> String {
+        format!("<#{}>", self.0)
+    }
 }
 
 #[async_trait]
@@ -36,20 +37,19 @@ impl Mentionable for Channel {
             Channel::Guild(ref x) => {
                 let guard = x.read().await;
                 guard.mention().await
-            },
+            }
             Channel::Private(ref x) => {
                 let guard = x.read().await;
                 guard.mention().await
-            },
+            }
             Channel::Group(ref x) => {
                 let guard = x.read().await;
                 guard.mention().await
-            },
+            }
             Channel::Category(ref x) => {
                 let guard = x.read().await;
                 guard.mention().await
-            },
-            Channel::__Nonexhaustive => unreachable!(),
+            }
         }
     }
 }
@@ -70,7 +70,9 @@ impl Mentionable for CurrentUser {
 
 #[async_trait]
 impl Mentionable for Emoji {
-    async fn mention(&self) -> String { format!("<:{}:{}>", self.name, self.id.0) }
+    async fn mention(&self) -> String {
+        format!("<:{}:{}>", self.name, self.id.0)
+    }
 }
 
 #[async_trait]
@@ -96,36 +98,45 @@ impl Mentionable for PrivateChannel {
 
 #[async_trait]
 impl Mentionable for RoleId {
-    async fn mention(&self) -> String { format!("<@&{}>", self.0) }
+    async fn mention(&self) -> String {
+        format!("<@&{}>", self.0)
+    }
 }
 
 #[async_trait]
 impl Mentionable for Role {
-    async fn mention(&self) -> String { format!("<@&{}>", self.id.0) }
+    async fn mention(&self) -> String {
+        format!("<@&{}>", self.id.0)
+    }
 }
 
 #[async_trait]
 impl Mentionable for UserId {
-    async fn mention(&self) -> String { format!("<@{}>", self.0) }
+    async fn mention(&self) -> String {
+        format!("<@{}>", self.0)
+    }
 }
 
 #[async_trait]
 impl Mentionable for User {
-    async fn mention(&self) -> String { format!("<@{}>", self.id.0) }
+    async fn mention(&self) -> String {
+        format!("<@{}>", self.id.0)
+    }
 }
 
 #[async_trait]
 impl Mentionable for GuildChannel {
-    async fn mention(&self) -> String { format!("<#{}>", self.id.0) }
+    async fn mention(&self) -> String {
+        format!("<#{}>", self.id.0)
+    }
 }
 
 #[cfg(all(feature = "model", feature = "utils"))]
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum UserParseError {
     InvalidUsername,
     Rest(Box<Error>),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 #[cfg(all(feature = "model", feature = "utils"))]
@@ -134,7 +145,6 @@ impl fmt::Display for UserParseError {
         match self {
             UserParseError::InvalidUsername => f.write_str("invalid username"),
             UserParseError::Rest(_) => f.write_str("could not fetch"),
-            UserParseError::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -227,31 +237,34 @@ pub struct EmojiIdentifier {
 impl EmojiIdentifier {
     /// Generates a URL to the emoji's image.
     #[inline]
-    pub fn url(&self) -> String { format!(cdn!("/emojis/{}.png"), self.id) }
+    pub fn url(&self) -> String {
+        format!(cdn!("/emojis/{}.png"), self.id)
+    }
 }
 
 #[cfg(all(feature = "model", feature = "utils"))]
 impl FromStr for EmojiIdentifier {
     type Err = ();
 
-    fn from_str(s: &str) -> StdResult<Self, ()> { utils::parse_emoji(s).ok_or_else(|| ()) }
+    fn from_str(s: &str) -> StdResult<Self, ()> {
+        utils::parse_emoji(s).ok_or(())
+    }
 }
-
 
 /// A component that was affected during a service incident.
 ///
 /// This is pulled from the Discord status page.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct AffectedComponent {
     pub name: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// An incident retrieved from the Discord status page.
 ///
 /// This is not necessarily a representation of an ongoing incident.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Incident {
     pub created_at: String,
     pub id: String,
@@ -264,8 +277,6 @@ pub struct Incident {
     pub short_link: String,
     pub status: String,
     pub updated_at: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// An update to an incident from the Discord status page.
@@ -273,6 +284,7 @@ pub struct Incident {
 /// This will typically state what new information has been discovered about an
 /// incident.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct IncidentUpdate {
     pub affected_components: Vec<AffectedComponent>,
     pub body: String,
@@ -282,34 +294,30 @@ pub struct IncidentUpdate {
     pub incident_id: String,
     pub status: IncidentStatus,
     pub updated_at: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// The type of status update during a service incident.
 #[derive(Copy, Clone, Debug, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum IncidentStatus {
     Identified,
     Investigating,
     Monitoring,
     Postmortem,
     Resolved,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 /// A Discord status maintenance message. This can be either for active
 /// maintenances or for scheduled maintenances.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Maintenance {
     pub description: String,
     pub id: String,
     pub name: String,
     pub start: String,
     pub stop: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(test)]
@@ -327,10 +335,10 @@ mod test {
 
     #[cfg(feature = "utils")]
     mod utils {
+        use crate::internal::{AsyncRwLock, SyncRwLock};
         use crate::model::prelude::*;
-        use crate::internal::{SyncRwLock, AsyncRwLock};
+        use crate::utils::{run_async_test, Colour};
         use std::sync::Arc;
-        use crate::utils::{Colour, run_async_test};
 
         #[test]
         fn test_mention() {
@@ -350,7 +358,6 @@ mod test {
                     user_limit: None,
                     nsfw: false,
                     slow_mode_rate: Some(0),
-                    _nonexhaustive: (),
                 })));
                 let emoji = Emoji {
                     animated: false,
@@ -359,7 +366,6 @@ mod test {
                     managed: true,
                     require_colons: true,
                     roles: vec![],
-                    _nonexhaustive: (),
                 };
                 let role = Role {
                     id: RoleId(2),
@@ -370,7 +376,6 @@ mod test {
                     name: "fake role".to_string(),
                     permissions: Permissions::empty(),
                     position: 1,
-                    _nonexhaustive: (),
                 };
                 let user = User {
                     id: UserId(6),
@@ -378,7 +383,6 @@ mod test {
                     bot: false,
                     discriminator: 4132,
                     name: "fake".to_string(),
-                    _nonexhaustive: (),
                 };
                 let member = Member {
                     deaf: false,
@@ -388,7 +392,6 @@ mod test {
                     nick: None,
                     roles: vec![],
                     user: Arc::new(SyncRwLock::new(user.clone())),
-                    _nonexhaustive: (),
                 };
 
                 assert_eq!(ChannelId(1).mention().await, "<#1>");

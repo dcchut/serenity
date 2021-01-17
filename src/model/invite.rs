@@ -1,28 +1,29 @@
 //! Models for server and channel invites.
 
+use super::prelude::*;
 #[cfg(feature = "http")]
 use crate::http::CacheHttp;
 use chrono::{DateTime, FixedOffset};
-use super::prelude::*;
 
+#[cfg(all(feature = "cache", feature = "model"))]
+use super::{utils as model_utils, Permissions};
 #[cfg(feature = "model")]
 use crate::builder::CreateInvite;
-#[cfg(feature = "model")]
-use crate::internal::prelude::*;
-#[cfg(all(feature = "cache", feature = "model"))]
-use super::{Permissions, utils as model_utils};
-#[cfg(feature = "model")]
-use crate::utils;
 #[cfg(feature = "cache")]
 use crate::cache::CacheRwLock;
 #[cfg(feature = "http")]
 use crate::http::Http;
+#[cfg(feature = "model")]
+use crate::internal::prelude::*;
+#[cfg(feature = "model")]
+use crate::utils;
 use std::ops::Deref;
 
 /// Information about an invite code.
 ///
 /// Information can not be accessed for guilds the current user is banned from.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Invite {
     /// The approximate number of [`Member`]s in the related [`Guild`].
     ///
@@ -63,8 +64,6 @@ pub struct Invite {
     ///
     /// [`User`]: ../user/struct.User.html
     pub inviter: Option<InviteUser>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -89,13 +88,22 @@ impl Invite {
     /// [permission]: ../permissions/index.html
     #[cfg(feature = "client")]
     pub async fn create<C, F>(cache_http: impl CacheHttp, channel_id: C, f: F) -> Result<RichInvite>
-        where C: Into<ChannelId>, F: FnOnce(CreateInvite) -> CreateInvite {
+    where
+        C: Into<ChannelId>,
+        F: FnOnce(CreateInvite) -> CreateInvite,
+    {
         Self::_create(cache_http, channel_id.into(), f).await
     }
 
     #[cfg(feature = "client")]
-    async fn _create<F>(cache_http: impl CacheHttp, channel_id: ChannelId, f: F) -> Result<RichInvite>
-        where F: FnOnce(CreateInvite) -> CreateInvite {
+    async fn _create<F>(
+        cache_http: impl CacheHttp,
+        channel_id: ChannelId,
+        f: F,
+    ) -> Result<RichInvite>
+    where
+        F: FnOnce(CreateInvite) -> CreateInvite,
+    {
         #[cfg(feature = "cache")]
         {
             if let Some(cache) = cache_http.cache() {
@@ -196,18 +204,21 @@ impl Invite {
     /// assert_eq!(invite.url(), "https://discord.gg/WxZumR");
     /// # }
     /// ```
-    pub fn url(&self) -> String { format!("https://discord.gg/{}", self.code) }
+    pub fn url(&self) -> String {
+        format!("https://discord.gg/{}", self.code)
+    }
 }
 
 /// A minimal amount of information about the inviter (person who created the invite).
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct InviteUser {
     pub id: UserId,
-    #[serde(rename = "username")] pub name: String,
-    #[serde(deserialize_with = "deserialize_u16")] pub discriminator: u16,
+    #[serde(rename = "username")]
+    pub name: String,
+    #[serde(deserialize_with = "deserialize_u16")]
+    pub discriminator: u16,
     pub avatar: Option<String>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// InviteUser implements a Deref to UserId so it gains the convenience methods
@@ -224,16 +235,17 @@ impl Deref for InviteUser {
 
 /// A minimal amount of information about the channel an invite points to.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct InviteChannel {
     pub id: ChannelId,
     pub name: String,
-    #[serde(rename = "type")] pub kind: ChannelType,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
+    #[serde(rename = "type")]
+    pub kind: ChannelType,
 }
 
 /// A minimal amount of information about the guild an invite points to.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct InviteGuild {
     pub id: GuildId,
     pub icon: Option<String>,
@@ -241,8 +253,6 @@ pub struct InviteGuild {
     pub splash_hash: Option<String>,
     pub text_channel_count: Option<u64>,
     pub voice_channel_count: Option<u64>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -259,7 +269,9 @@ impl InviteGuild {
     /// [`utils::shard_id`]: ../../utils/fn.shard_id.html
     #[cfg(all(feature = "cache", feature = "utils"))]
     #[inline]
-    pub async fn shard_id(&self, cache: impl AsRef<CacheRwLock>) -> u64 { self.id.shard_id(&cache).await }
+    pub async fn shard_id(&self, cache: impl AsRef<CacheRwLock>) -> u64 {
+        self.id.shard_id(&cache).await
+    }
 
     /// Returns the Id of the shard associated with the guild.
     ///
@@ -283,7 +295,9 @@ impl InviteGuild {
     /// ```
     #[cfg(all(feature = "utils", not(feature = "cache")))]
     #[inline]
-    pub fn shard_id(&self, shard_count: u64) -> u64 { self.id.shard_id(shard_count) }
+    pub fn shard_id(&self, shard_count: u64) -> u64 {
+        self.id.shard_id(shard_count)
+    }
 }
 
 /// Detailed information about an invite.
@@ -294,6 +308,7 @@ impl InviteGuild {
 /// [`Invite`]: struct.Invite.html
 /// [Manage Guild]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_GUILD
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct RichInvite {
     /// A representation of the minimal amount of information needed about the
     /// channel being invited to.
@@ -331,8 +346,6 @@ pub struct RichInvite {
     pub temporary: bool,
     /// The amount of times that an invite has been used.
     pub uses: u64,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -417,5 +430,7 @@ impl RichInvite {
     /// assert_eq!(invite.url(), "https://discord.gg/WxZumR");
     /// # }
     /// ```
-    pub fn url(&self) -> String { format!("https://discord.gg/{}", self.code) }
+    pub fn url(&self) -> String {
+        format!("https://discord.gg/{}", self.code)
+    }
 }

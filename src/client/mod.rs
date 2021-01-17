@@ -41,21 +41,21 @@ pub use crate::cache::{Cache, CacheRwLock};
 #[cfg(feature = "cache")]
 use std::time::Duration;
 
+use self::bridge::gateway::{ShardManager, ShardManagerMonitor, ShardManagerOptions};
 use crate::internal::prelude::*;
 use crate::internal::AsyncRwLock;
 use futures::lock::Mutex;
-use self::bridge::gateway::{ShardManager, ShardManagerMonitor, ShardManagerOptions};
+use log::{debug, error, info};
 use std::sync::Arc;
 use typemap::ShareMap;
-use log::{error, debug, info};
 
-#[cfg(feature = "framework")]
-use crate::framework::Framework;
-#[cfg(feature = "voice")]
-use crate::model::id::UserId;
 #[cfg(feature = "voice")]
 use self::bridge::voice::ClientVoiceManager;
+#[cfg(feature = "framework")]
+use crate::framework::Framework;
 use crate::http::Http;
+#[cfg(feature = "voice")]
+use crate::model::id::UserId;
 
 /// The Client is the way to be able to start sending authenticated requests
 /// over the REST API, as well as initializing a WebSocket connection through
@@ -192,7 +192,8 @@ pub struct Client {
     ///
     /// [`Event::Ready`]: ../model/event/enum.Event.html#variant.Ready
     /// [`on_ready`]: #method.on_ready
-    #[cfg(feature = "framework")] framework: Arc<Mutex<Option<Box<dyn Framework + Send>>>>,
+    #[cfg(feature = "framework")]
+    framework: Arc<Mutex<Option<Box<dyn Framework + Send>>>>,
     /// A HashMap of all shards instantiated by the Client.
     ///
     /// The key is the shard ID and the value is the shard itself.
@@ -236,7 +237,7 @@ pub struct Client {
     ///         println!("Shard count instantiated: {}",
     ///                  guard.shards_instantiated().len());
     ///
-    ///         tokio::time::delay_for(Duration::from_millis(5000)).await;
+    ///         tokio::time::sleep(Duration::from_millis(5000)).await;
     ///     }
     /// });
     /// #     Ok(())
@@ -271,7 +272,7 @@ pub struct Client {
     /// // Create a thread which will sleep for 60 seconds and then have the
     /// // shard manager shutdown.
     /// tokio::spawn(async move {
-    ///     tokio::time::delay_for(Duration::from_secs(60)).await;
+    ///     tokio::time::sleep(Duration::from_secs(60)).await;
     ///
     ///     shard_manager.lock().await.shutdown_all();
     ///
@@ -340,15 +341,24 @@ impl Client {
     /// #    try_main().await.unwrap();
     /// # }
     /// ```
-    pub async fn new<H: EventHandler + 'static>(token: impl AsRef<str>, handler: H) -> Result<Self> {
+    pub async fn new<H: EventHandler + 'static>(
+        token: impl AsRef<str>,
+        handler: H,
+    ) -> Result<Self> {
         Self::new_with_extras(token, |e| e.event_handler(handler)).await
     }
 
     /// Creates a client with an optional Handler. If you pass `None`, events are never parsed, but
     /// they can be received by registering a RawHandler.
     #[deprecated(since = "0.8.0", note = "Replaced by `new_with_extras`.")]
-    pub async fn new_with_handlers<H, RH>(token: impl AsRef<str>, handler: Option<H>, raw_handler: Option<RH>) -> Result<Self>
-        where H: EventHandler + 'static, RH: RawEventHandler + 'static
+    pub async fn new_with_handlers<H, RH>(
+        token: impl AsRef<str>,
+        handler: Option<H>,
+        raw_handler: Option<RH>,
+    ) -> Result<Self>
+    where
+        H: EventHandler + 'static,
+        RH: RawEventHandler + 'static,
     {
         Self::new_with_extras(token, |e| {
             if let Some(handler) = handler {
@@ -360,7 +370,8 @@ impl Client {
             }
 
             e
-        }).await
+        })
+        .await
     }
 
     /// Creates a Client for a bot user and sets a cache update timeout.
@@ -371,8 +382,13 @@ impl Client {
     /// a write-lock until success and potentially deadlock.
     #[cfg(feature = "cache")]
     #[deprecated(since = "0.8.0", note = "Replaced by `new_with_extras`.")]
-    pub async fn new_with_cache_update_timeout<H>(token: impl AsRef<str>, handler: H, duration: Option<Duration>) -> Result<Self>
-        where H: EventHandler + 'static
+    pub async fn new_with_cache_update_timeout<H>(
+        token: impl AsRef<str>,
+        handler: H,
+        duration: Option<Duration>,
+    ) -> Result<Self>
+    where
+        H: EventHandler + 'static,
     {
         Self::new_with_extras(token, |e| {
             e.event_handler(handler);
@@ -382,12 +398,15 @@ impl Client {
             }
 
             e
-        }).await
+        })
+        .await
     }
 
     /// Creates a client with extra configuration.
-    pub async fn new_with_extras(token: impl AsRef<str>, f: impl FnOnce(&mut Extras) -> &mut Extras) -> Result<Self>
-    {
+    pub async fn new_with_extras(
+        token: impl AsRef<str>,
+        f: impl FnOnce(&mut Extras) -> &mut Extras,
+    ) -> Result<Self> {
         let token = token.as_ref().trim();
 
         let token = if token.starts_with("Bot ") {
@@ -416,10 +435,7 @@ impl Client {
         #[cfg(feature = "framework")]
         let framework = Arc::new(Mutex::new(None));
         #[cfg(feature = "voice")]
-        let voice_manager = Arc::new(Mutex::new(ClientVoiceManager::new(
-            0,
-            UserId(0),
-        )));
+        let voice_manager = Arc::new(Mutex::new(ClientVoiceManager::new(0, UserId(0))));
 
         let cache_and_http = Arc::new(CacheAndHttp {
             #[cfg(feature = "cache")]
@@ -427,7 +443,6 @@ impl Client {
             #[cfg(feature = "cache")]
             update_cache_timeout: timeout,
             http: Arc::new(http),
-            __nonexhaustive: (),
         });
 
         let (shard_manager, shard_manager_worker) = {
@@ -445,7 +460,8 @@ impl Client {
                 ws_url: &url,
                 cache_and_http: &cache_and_http,
                 guild_subscriptions,
-            }).await
+            })
+            .await
         };
 
         Ok(Client {
@@ -825,7 +841,8 @@ impl Client {
     /// [`start_shard_range`]: #method.start_shard_range
     /// [Gateway docs]: ../gateway/index.html#sharding
     pub async fn start_shards(&mut self, total_shards: u64) -> Result<()> {
-        self.start_connection([0, total_shards - 1, total_shards]).await
+        self.start_connection([0, total_shards - 1, total_shards])
+            .await
     }
 
     /// Establish a range of sharded connections and start listening for events.
@@ -898,7 +915,8 @@ impl Client {
     /// [`start_shards`]: #method.start_shards
     /// [Gateway docs]: ../gateway/index.html#sharding
     pub async fn start_shard_range(&mut self, range: [u64; 2], total_shards: u64) -> Result<()> {
-        self.start_connection([range[0], range[1], total_shards]).await
+        self.start_connection([range[0], range[1], total_shards])
+            .await
     }
 
     // Shard data layout is:
@@ -934,9 +952,7 @@ impl Client {
 
             debug!(
                 "Initializing shard info: {} - {}/{}",
-                shard_data[0],
-                init,
-                shard_data[2],
+                shard_data[0], init, shard_data[2],
             );
 
             if let Err(why) = manager.initialize().await {
@@ -948,9 +964,9 @@ impl Client {
                 return Err(Error::Client(ClientError::ShardBootFailure));
             }
         }
-        
+
         self.shard_manager_worker.run().await;
-        
+
         Ok(())
     }
 }

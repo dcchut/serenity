@@ -7,8 +7,8 @@ pub mod map;
 
 use map::{CommandMap, GroupMap, ParseMap};
 
-use std::borrow::Cow;
 use futures::future::{BoxFuture, FutureExt};
+use std::borrow::Cow;
 
 #[inline]
 fn to_lowercase<'a>(config: &Configuration, s: &'a str) -> Cow<'a, str> {
@@ -25,7 +25,7 @@ fn to_lowercase<'a>(config: &Configuration, s: &'a str) -> Cow<'a, str> {
 ///
 /// [`Configuration::on_mention`]: ../struct.Configuration.html#method.on_mention
 pub fn mention<'a>(stream: &mut Stream<'a>, config: &Configuration) -> Option<&'a str> {
-    let on_mention = config.on_mention.as_ref().map(String::as_str)?;
+    let on_mention = config.on_mention.as_deref()?;
 
     let start = stream.offset();
 
@@ -36,7 +36,7 @@ pub fn mention<'a>(stream: &mut Stream<'a>, config: &Configuration) -> Option<&'
     // Optional.
     stream.eat("!");
 
-    let id = stream.take_while(|s| s.is_numeric());
+    let id = stream.take_while(|s| s.is_ascii_digit());
 
     if !stream.eat(">") {
         // Backtrack to where we were.
@@ -64,7 +64,7 @@ fn find_prefix<'a>(
         let peeked = stream.peek_for(prefix.chars().count());
         let peeked = to_lowercase(config, peeked);
 
-        if prefix == &peeked {
+        if prefix == peeked {
             Some(peeked)
         } else {
             None
@@ -101,7 +101,7 @@ pub fn prefix<'a>(
     config: &Configuration,
 ) -> Option<Cow<'a, str>> {
     if let Some(id) = mention(stream, config) {
-        stream.take_while(|s| s.is_whitespace());
+        stream.take_while(|s| s.is_ascii_whitespace());
 
         return Some(Cow::Borrowed(id));
     }
@@ -113,7 +113,7 @@ pub fn prefix<'a>(
     }
 
     if config.with_whitespace.prefixes {
-        stream.take_while(|s| s.is_whitespace());
+        stream.take_while(|s| s.is_ascii_whitespace());
     }
 
     prefix
@@ -139,32 +139,34 @@ async fn check_discrepancy(
     }
 
     #[cfg(feature = "cache")]
-        {
-            if let Some(guild_id) = msg.guild_id {
-                let guild = match guild_id.to_guild_cached(&ctx).await {
-                    Some(g) => g,
-                    None => return Ok(()),
-                };
+    {
+        if let Some(guild_id) = msg.guild_id {
+            let guild = match guild_id.to_guild_cached(&ctx).await {
+                Some(g) => g,
+                None => return Ok(()),
+            };
 
-                let guild = guild.read().await;
+            let guild = guild.read().await;
 
-                let perms = guild.user_permissions_in(msg.channel_id, msg.author.id).await;
+            let perms = guild
+                .user_permissions_in(msg.channel_id, msg.author.id)
+                .await;
 
-                if !perms.contains(*options.required_permissions())
-                    && !(options.owner_privilege() && config.owners.contains(&msg.author.id))
-                {
-                    return Err(DispatchError::LackingPermissions(
-                        *options.required_permissions(),
-                    ));
-                }
+            if !(perms.contains(*options.required_permissions())
+                || options.owner_privilege() && config.owners.contains(&msg.author.id))
+            {
+                return Err(DispatchError::LackingPermissions(
+                    *options.required_permissions(),
+                ));
+            }
 
-                if let Some(member) = guild.members.get(&msg.author.id) {
-                    if !perms.administrator() && !has_correct_roles(options, &guild, &member) {
-                        return Err(DispatchError::LackingRole);
-                    }
+            if let Some(member) = guild.members.get(&msg.author.id) {
+                if !perms.administrator() && !has_correct_roles(options, &guild, &member) {
+                    return Err(DispatchError::LackingRole);
                 }
             }
         }
+    }
 
     Ok(())
 }
@@ -176,7 +178,7 @@ fn try_parse<M: ParseMap>(
     f: impl Fn(&str) -> String,
 ) -> (String, Option<M::Storage>) {
     if by_space {
-        let n = f(stream.peek_until(|s| s.is_whitespace()));
+        let n = f(stream.peek_until(|s| s.is_ascii_whitespace()));
 
         let o = map.get(&n);
 
@@ -219,7 +221,7 @@ fn parse_cmd<'a>(
             stream.increment(n.len());
 
             if config.with_whitespace.commands {
-                stream.take_while(|s| s.is_whitespace());
+                stream.take_while(|s| s.is_ascii_whitespace());
             }
 
             check_discrepancy(ctx, msg, config, &cmd.options).await?;
@@ -235,7 +237,8 @@ fn parse_cmd<'a>(
         }
 
         Err(ParseError::UnrecognisedCommand(Some(n.to_string())))
-    }.boxed()
+    }
+    .boxed()
 }
 
 fn parse_group<'a>(
@@ -252,7 +255,7 @@ fn parse_group<'a>(
             stream.increment(n.len());
 
             if config.with_whitespace.groups {
-                stream.take_while(|s| s.is_whitespace());
+                stream.take_while(|s| s.is_ascii_whitespace());
             }
 
             check_discrepancy(ctx, msg, config, &group.options).await?;
@@ -268,9 +271,9 @@ fn parse_group<'a>(
         }
 
         Err(ParseError::UnrecognisedCommand(None))
-    }.boxed()
+    }
+    .boxed()
 }
-
 
 #[inline]
 async fn handle_command<'a>(
@@ -341,7 +344,7 @@ pub async fn command(
             if name == &n {
                 stream.increment(n.len());
 
-                stream.take_while(|s| s.is_whitespace());
+                stream.take_while(|s| s.is_ascii_whitespace());
 
                 return Ok(Invoke::Help(name));
             }

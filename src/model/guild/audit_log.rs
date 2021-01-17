@@ -1,22 +1,13 @@
-use crate::internal::prelude::*;
-use serde::de::{
-    self,
-    Deserialize,
-    Deserializer,
-    MapAccess,
-    Visitor
-};
-use serde::ser::Serializer;
 use super::super::prelude::*;
-use std::{
-    collections::HashMap,
-    mem::transmute,
-    fmt,
-};
+use crate::internal::prelude::*;
+use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+use serde::ser::Serializer;
+use std::{collections::HashMap, fmt, mem::transmute};
 
 /// Determines to what entity an action was used on.
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum Target {
     Guild = 10,
     Channel = 20,
@@ -26,12 +17,11 @@ pub enum Target {
     Webhook = 60,
     Emoji = 70,
     Integration = 80,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 /// Determines the action that was done on a target.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Action {
     GuildUpdate,
     Channel(ActionChannel),
@@ -43,8 +33,6 @@ pub enum Action {
     Emoji(ActionEmoji),
     Message(ActionMessage),
     Integration(ActionIntegration),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Action {
@@ -62,19 +50,17 @@ impl Action {
             Action::Emoji(ref x) => x.num(),
             Action::Message(ref x) => x.num(),
             Action::Integration(ref x) => x.num(),
-            Action::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionChannel {
     Create = 10,
     Update = 11,
     Delete = 12,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionChannel {
@@ -83,19 +69,17 @@ impl ActionChannel {
             ActionChannel::Create => 10,
             ActionChannel::Update => 11,
             ActionChannel::Delete => 12,
-            ActionChannel::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionChannelOverwrite {
     Create = 13,
     Update = 14,
     Delete = 15,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionChannelOverwrite {
@@ -104,13 +88,13 @@ impl ActionChannelOverwrite {
             ActionChannelOverwrite::Create => 13,
             ActionChannelOverwrite::Update => 14,
             ActionChannelOverwrite::Delete => 15,
-            ActionChannelOverwrite::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionMember {
     Kick = 20,
     Prune = 21,
@@ -121,8 +105,6 @@ pub enum ActionMember {
     MemberMove = 26,
     MemberDisconnect = 27,
     BotAdd = 28,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionMember {
@@ -137,19 +119,17 @@ impl ActionMember {
             ActionMember::MemberMove => 26,
             ActionMember::MemberDisconnect => 27,
             ActionMember::BotAdd => 28,
-            ActionMember::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionRole {
     Create = 30,
     Update = 31,
     Delete = 32,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionRole {
@@ -158,19 +138,17 @@ impl ActionRole {
             ActionRole::Create => 30,
             ActionRole::Update => 31,
             ActionRole::Delete => 32,
-            ActionRole::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionInvite {
     Create = 40,
     Update = 41,
     Delete = 42,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionInvite {
@@ -179,19 +157,17 @@ impl ActionInvite {
             ActionInvite::Create => 40,
             ActionInvite::Update => 41,
             ActionInvite::Delete => 42,
-            ActionInvite::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionWebhook {
     Create = 50,
     Update = 51,
     Delete = 52,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionWebhook {
@@ -200,19 +176,17 @@ impl ActionWebhook {
             ActionWebhook::Create => 50,
             ActionWebhook::Update => 51,
             ActionWebhook::Delete => 52,
-            ActionWebhook::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionEmoji {
     Create = 60,
     Delete = 61,
     Update = 62,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionEmoji {
@@ -221,20 +195,18 @@ impl ActionEmoji {
             ActionEmoji::Create => 60,
             ActionEmoji::Update => 61,
             ActionEmoji::Delete => 62,
-            ActionEmoji::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionMessage {
     Delete = 72,
     BulkDelete = 73,
     Pin = 74,
     Unpin = 75,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionMessage {
@@ -244,20 +216,17 @@ impl ActionMessage {
             ActionMessage::BulkDelete => 73,
             ActionMessage::Pin => 74,
             ActionMessage::Unpin => 75,
-            ActionMessage::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
-
 #[derive(Debug)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionIntegration {
     Create = 80,
     Update = 81,
     Delete = 82,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ActionIntegration {
@@ -266,28 +235,31 @@ impl ActionIntegration {
             ActionIntegration::Create => 80,
             ActionIntegration::Update => 81,
             ActionIntegration::Delete => 82,
-            ActionIntegration::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Change {
-    #[serde(rename = "key")] pub name: String,
+    #[serde(rename = "key")]
+    pub name: String,
     // TODO: Change these to an actual type.
-    #[serde(rename = "old_value")] pub old: Option<Value>,
-    #[serde(rename = "new_value")] pub new: Option<Value>,
+    #[serde(rename = "old_value")]
+    pub old: Option<Value>,
+    #[serde(rename = "new_value")]
+    pub new: Option<Value>,
 }
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct AuditLogs {
     pub entries: HashMap<AuditLogEntryId, AuditLogEntry>,
     pub webhooks: Vec<Webhook>,
     pub users: Vec<User>,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct AuditLogEntry {
     /// Determines to what entity an [`action`] was used on.
     ///
@@ -297,10 +269,7 @@ pub struct AuditLogEntry {
     /// Determines what action was done on a [`target`]
     ///
     /// [`target`]: #structfield.target
-    #[serde(
-        with = "action_handler",
-        rename = "action_type"
-    )]
+    #[serde(with = "action_handler", rename = "action_type")]
     pub action: Action,
     /// What was the reasoning by doing an action on a target? If there was one.
     pub reason: Option<String>,
@@ -312,11 +281,10 @@ pub struct AuditLogEntry {
     pub id: AuditLogEntryId,
     /// Some optional data assosiated with this entry.
     pub options: Option<Options>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Options {
     /// Number of days after which inactive members were kicked.
     #[serde(default, with = "option_u64_handler")]
@@ -339,8 +307,6 @@ pub struct Options {
     /// Name of the role if type is "role"
     #[serde(default)]
     pub role_name: Option<String>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 mod option_u64_handler {
@@ -356,7 +322,10 @@ mod option_u64_handler {
                 formatter.write_str("an optional integer or a string with a valid number inside")
             }
 
-            fn visit_some<D: Deserializer<'de>>(self, deserializer: D) -> StdResult<Self::Value, D::Error> {
+            fn visit_some<D: Deserializer<'de>>(
+                self,
+                deserializer: D,
+            ) -> StdResult<Self::Value, D::Error> {
                 deserializer.deserialize_any(OptionU64Visitor)
             }
 
@@ -419,10 +388,7 @@ mod action_handler {
         de.deserialize_any(ActionVisitor)
     }
 
-    pub fn serialize<S: Serializer>(
-        action: &Action,
-        serializer: S,
-    ) -> StdResult<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(action: &Action, serializer: S) -> StdResult<S::Ok, S::Error> {
         serializer.serialize_u8(action.num())
     }
 }
@@ -431,9 +397,12 @@ impl<'de> Deserialize<'de> for AuditLogs {
         #[derive(Deserialize)]
         #[serde(field_identifier)]
         enum Field {
-            #[serde(rename = "audit_log_entries")] Entries,
-            #[serde(rename = "webhooks")] Webhooks,
-            #[serde(rename = "users")] Users,
+            #[serde(rename = "audit_log_entries")]
+            Entries,
+            #[serde(rename = "webhooks")]
+            Webhooks,
+            #[serde(rename = "users")]
+            Users,
             // TODO(field added by Discord, undocumented) #[serde(rename = "integrations")] Integrations,
         }
 
@@ -475,15 +444,17 @@ impl<'de> Deserialize<'de> for AuditLogs {
                             users = Some(map.next_value::<Vec<User>>()?);
                         }
                         Ok(None) => break, // No more keys
-                        Err(e) => if e.to_string().contains("unknown field") {
-                            // e is of type <V as MapAccess>::Error, which is a macro-defined trait, ultimately
-                            // implemented by serde::de::value::Error. Seeing as every error is a simple string and not
-                            // using a proper Error num, the best we can do here is to check if the string contains
-                            // this error. This was added because Discord randomly started sending new fields.
-                            // But no JSON deserializer should ever error over this.
-                            map.next_value::<serde_json::Value>()?; // Actually read the value to avoid syntax errors
-                        } else {
-                            return Err(e)
+                        Err(e) => {
+                            if e.to_string().contains("unknown field") {
+                                // e is of type <V as MapAccess>::Error, which is a macro-defined trait, ultimately
+                                // implemented by serde::de::value::Error. Seeing as every error is a simple string and not
+                                // using a proper Error num, the best we can do here is to check if the string contains
+                                // this error. This was added because Discord randomly started sending new fields.
+                                // But no JSON deserializer should ever error over this.
+                                map.next_value::<serde_json::Value>()?; // Actually read the value to avoid syntax errors
+                            } else {
+                                return Err(e);
+                            }
                         }
                     }
                 }
@@ -496,7 +467,6 @@ impl<'de> Deserialize<'de> for AuditLogs {
                         .collect(),
                     webhooks: webhooks.unwrap(),
                     users: users.unwrap(),
-                    _nonexhaustive: (),
                 })
             }
         }

@@ -51,15 +51,10 @@ mod shard;
 mod ws_client_ext;
 
 pub use self::{
-    error::Error as GatewayError,
-    shard::Shard,
-    ws_client_ext::WebSocketGatewayClientExt
+    error::Error as GatewayError, shard::Shard, ws_client_ext::WebSocketGatewayClientExt,
 };
 
-use crate::model::{
-    gateway::Activity,
-    user::OnlineStatus,
-};
+use crate::model::{gateway::Activity, user::OnlineStatus};
 use serde_json::Value;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use tungstenite::protocol::WebSocket;
@@ -84,6 +79,7 @@ pub type WsClient = WebSocket<AutoStream>;
 ///
 /// [`Shard`]: struct.Shard.html
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum ConnectionStage {
     /// Indicator that the [`Shard`] is normally connected and is not in, e.g.,
     /// a resume phase.
@@ -114,8 +110,6 @@ pub enum ConnectionStage {
     ///
     /// [`Shard`]: struct.Shard.html
     Resuming,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl ConnectionStage {
@@ -158,7 +152,6 @@ impl ConnectionStage {
         match self {
             Connecting | Handshake | Identifying | Resuming => true,
             Connected | Disconnected => false,
-            __Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -174,7 +167,6 @@ impl Display for ConnectionStage {
             Handshake => "handshaking",
             Identifying => "identifying",
             Resuming => "resuming",
-            __Nonexhaustive => unreachable!(),
         })
     }
 }
@@ -185,28 +177,25 @@ impl Display for ConnectionStage {
 /// the lower-level internals of the `client`, `gateway, and `voice` modules it
 /// may be necessary.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum InterMessage {
     #[cfg(feature = "client")]
     Client(Box<ShardClientMessage>),
     Json(Value),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
+#[non_exhaustive]
 pub enum ShardAction {
     Heartbeat,
     Identify,
     Reconnect(ReconnectType),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 /// The type of reconnection that should be performed.
+#[non_exhaustive]
 pub enum ReconnectType {
     /// Indicator that a new connection should be made by sending an IDENTIFY.
     Reidentify,
     /// Indicator that a new connection should be made by sending a RESUME.
     Resume,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }

@@ -201,7 +201,9 @@ pub fn create_declaration_validations(fun: &mut CommandFun, dec_for: DeclarFor) 
 
     let mut spoof_or_check = |kind: Type, name: &str| {
         match fun.args.get(index) {
-            Some(x) => fun.body.insert(0, generate_type_validation(x.kind.clone(), kind)),
+            Some(x) => fun
+                .body
+                .insert(0, generate_type_validation(x.kind.clone(), kind)),
             None => fun.args.push(Argument {
                 mutable: None,
                 name: Ident::new(name, Span::call_site()),

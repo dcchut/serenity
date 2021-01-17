@@ -555,8 +555,7 @@ impl GuildId {
         cache: impl AsRef<CacheRwLock>,
     ) -> Option<Arc<AsyncRwLock<Guild>>> {
         let guard = cache.as_ref().read().await;
-        let res = guard.guild(self);
-        res
+        guard.guild(self)
     }
 
     /// Requests [`PartialGuild`] over REST API.
@@ -829,9 +828,7 @@ impl GuildId {
     #[inline]
     pub async fn shard_id(self, cache: impl AsRef<CacheRwLock>) -> u64 {
         let guard = cache.as_ref().read().await;
-        let res = crate::utils::shard_id(self.0, guard.shard_count);
-
-        res
+        crate::utils::shard_id(self.0, guard.shard_count)
     }
 
     /// Returns the Id of the shard associated with the guild.

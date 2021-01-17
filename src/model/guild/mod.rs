@@ -1076,13 +1076,7 @@ impl Guild {
         let (name, discrim) = if let Some(pos) = name.rfind('#') {
             let split = name.split_at(pos + 1);
 
-            let split2 = (
-                match split.0.get(0..split.0.len() - 1) {
-                    Some(s) => s,
-                    None => "",
-                },
-                split.1,
-            );
+            let split2 = (split.0.get(0..split.0.len() - 1).unwrap_or(""), split.1);
 
             match split2.1.parse::<u16>() {
                 Ok(discrim_int) => (split2.0, Some(discrim_int)),

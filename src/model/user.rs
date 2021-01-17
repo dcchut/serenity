@@ -5,7 +5,6 @@ use super::utils::deserialize_u16;
 #[cfg(feature = "http")]
 use crate::http::CacheHttp;
 use crate::{internal::prelude::*, internal::SyncRwLock, model::misc::Mentionable};
-use serde_json;
 
 #[cfg(feature = "model")]
 use crate::builder::{CreateMessage, EditProfile};
@@ -907,7 +906,7 @@ impl User {
             .member(cache_http, &self.id)
             .await
             .ok()
-            .and_then(|member| member.nick.clone())
+            .and_then(|member| member.nick)
     }
 
     /// Returns a string representing the user.
@@ -952,9 +951,7 @@ impl UserId {
         cache: impl AsRef<CacheRwLock>,
     ) -> Option<Arc<SyncRwLock<User>>> {
         let guard = cache.as_ref().read().await;
-        let res = guard.user(self);
-
-        res
+        guard.user(self)
     }
 
     /// First attempts to find a [`User`] by its Id in the cache,

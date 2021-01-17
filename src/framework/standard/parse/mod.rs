@@ -25,7 +25,7 @@ fn to_lowercase<'a>(config: &Configuration, s: &'a str) -> Cow<'a, str> {
 ///
 /// [`Configuration::on_mention`]: ../struct.Configuration.html#method.on_mention
 pub fn mention<'a>(stream: &mut Stream<'a>, config: &Configuration) -> Option<&'a str> {
-    let on_mention = config.on_mention.as_ref().map(String::as_str)?;
+    let on_mention = config.on_mention.as_deref()?;
 
     let start = stream.offset();
 
@@ -64,7 +64,7 @@ fn find_prefix<'a>(
         let peeked = stream.peek_for(prefix.chars().count());
         let peeked = to_lowercase(config, peeked);
 
-        if prefix == &peeked {
+        if prefix == peeked {
             Some(peeked)
         } else {
             None
@@ -152,8 +152,8 @@ async fn check_discrepancy(
                 .user_permissions_in(msg.channel_id, msg.author.id)
                 .await;
 
-            if !perms.contains(*options.required_permissions())
-                && !(options.owner_privilege() && config.owners.contains(&msg.author.id))
+            if !(perms.contains(*options.required_permissions())
+                || options.owner_privilege() && config.owners.contains(&msg.author.id))
             {
                 return Err(DispatchError::LackingPermissions(
                     *options.required_permissions(),

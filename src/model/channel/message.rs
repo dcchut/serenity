@@ -118,9 +118,7 @@ impl Message {
     #[inline]
     pub async fn channel(&self, cache: impl AsRef<CacheRwLock>) -> Option<Channel> {
         let guard = cache.as_ref().read().await;
-        let res = guard.channel(self.channel_id);
-
-        res
+        guard.channel(self.channel_id)
     }
 
     /// A util function for determining whether this message was sent by someone else, or the
@@ -378,9 +376,7 @@ impl Message {
     #[cfg(feature = "cache")]
     pub async fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<AsyncRwLock<Guild>>> {
         let guard = cache.as_ref().read().await;
-        let res = guard.guild(self.guild_id?);
-
-        res
+        guard.guild(self.guild_id?)
     }
 
     /// True if message was sent using direct messages.

@@ -8,7 +8,6 @@ use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use serde::de::Error as DeError;
 use serde::ser::{Serialize, SerializeSeq, Serializer};
-use serde_json;
 use std::collections::HashMap;
 
 #[cfg(feature = "cache")]
@@ -715,10 +714,7 @@ impl<'de> Deserialize<'de> for GuildMembersChunkEvent {
             })
             .map_err(DeError::custom)?;
 
-        Ok(GuildMembersChunkEvent {
-            guild_id,
-            members,
-        })
+        Ok(GuildMembersChunkEvent { guild_id, members })
     }
 }
 
@@ -735,16 +731,13 @@ impl CacheUpdate for GuildRoleCreateEvent {
     type Output = ();
 
     async fn update(&mut self, cache: &mut Cache) -> Option<()> {
-        match cache.guilds.get_mut(&self.guild_id) {
-            Some(guild) => {
-                guild
-                    .write()
-                    .await
-                    .roles
-                    .insert(self.role.id, self.role.clone());
-            }
-            None => {}
-        };
+        if let Some(guild) = cache.guilds.get_mut(&self.guild_id) {
+            guild
+                .write()
+                .await
+                .roles
+                .insert(self.role.id, self.role.clone());
+        }
 
         None
     }
@@ -1126,9 +1119,7 @@ impl<'de> Deserialize<'de> for PresencesReplaceEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         let presences: Vec<Presence> = Deserialize::deserialize(deserializer)?;
 
-        Ok(Self {
-            presences,
-        })
+        Ok(Self { presences })
     }
 }
 
@@ -1445,7 +1436,10 @@ impl<'de> Deserialize<'de> for GatewayEvent {
                     .map_err(DeError::custom)?;
                 let payload = map
                     .remove("d")
-                    .ok_or_else(|| Error::Decode("expected gateway event d", Value::Object(map)))
+                    .ok_or(Error::Decode(
+                        "expected gateway event d",
+                        Value::Object(map),
+                    ))
                     .map_err(DeError::custom)?;
 
                 let x = deserialize_event_with_type(kind, payload).map_err(DeError::custom)?;
@@ -1699,10 +1693,7 @@ pub fn deserialize_event_with_type(kind: EventType, v: Value) -> Result<Event> {
         EventType::VoiceServerUpdate => Event::VoiceServerUpdate(serde_json::from_value(v)?),
         EventType::VoiceStateUpdate => Event::VoiceStateUpdate(serde_json::from_value(v)?),
         EventType::WebhookUpdate => Event::WebhookUpdate(serde_json::from_value(v)?),
-        EventType::Other(kind) => Event::Unknown(UnknownEvent {
-            kind: kind.to_owned(),
-            value: v,
-        }),
+        EventType::Other(kind) => Event::Unknown(UnknownEvent { kind, value: v }),
     })
 }
 
@@ -2025,9 +2016,7 @@ pub struct VoiceHeartbeatAck {
 
 impl<'de> Deserialize<'de> for VoiceHeartbeatAck {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
-        deserialize_u64(deserializer).map(|nonce| Self {
-            nonce,
-        })
+        deserialize_u64(deserializer).map(|nonce| Self { nonce })
     }
 }
 

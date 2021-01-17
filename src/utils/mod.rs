@@ -20,7 +20,6 @@ use crate::internal::AsyncRwLock;
 #[cfg(feature = "cache")]
 use crate::model::id::{ChannelId, GuildId, RoleId, UserId};
 use crate::model::{id::EmojiId, misc::EmojiIdentifier};
-use base64;
 use std::{
     collections::HashMap,
     ffi::OsStr,
@@ -280,7 +279,7 @@ pub fn parse_emoji(mention: impl AsRef<str>) -> Option<EmojiIdentifier> {
 
     let len = mention.len();
 
-    if len < 6 || len > 56 {
+    if !(6..=56).contains(&len) {
         return None;
     }
 

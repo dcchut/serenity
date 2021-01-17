@@ -26,7 +26,6 @@ use super::utils::deserialize_u64;
 use crate::model::prelude::*;
 use serde::de::Error as DeError;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
-use serde_json;
 
 #[cfg(feature = "cache")]
 use crate::cache::CacheRwLock;
@@ -45,7 +44,8 @@ use std::sync::Arc;
 
 /// A container for any channel.
 #[derive(Clone, Debug)]
-#[non_exhaustive]  pub enum Channel {
+#[non_exhaustive]
+pub enum Channel {
     /// A group. A group comprises of only one channel.
     Group(Arc<AsyncRwLock<Group>>),
     /// A [text] or [voice] channel within a [`Guild`].
@@ -547,7 +547,8 @@ impl Serialize for PermissionOverwrite {
 ///
 /// [`GuildChannel::create_permission`]: struct.GuildChannel.html#method.create_permission
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]  pub enum PermissionOverwriteType {
+#[non_exhaustive]
+pub enum PermissionOverwriteType {
     /// A member which is having its permission overwrites edited.
     Member(UserId),
     /// A role which is having its permission overwrites edited.

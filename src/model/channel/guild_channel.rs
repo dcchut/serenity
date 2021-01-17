@@ -447,9 +447,7 @@ impl GuildChannel {
     #[cfg(feature = "cache")]
     pub async fn guild(&self, cache: impl AsRef<CacheRwLock>) -> Option<Arc<AsyncRwLock<Guild>>> {
         let guard = cache.as_ref().read().await;
-        let res = guard.guild(self.guild_id);
-
-        res
+        guard.guild(self.guild_id)
     }
 
     /// Gets all of the channel's invites.

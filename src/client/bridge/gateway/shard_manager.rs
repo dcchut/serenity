@@ -261,7 +261,7 @@ impl ShardManager {
         let mut shard_ids = Vec::new();
 
         for v in self.runners.iter() {
-            shard_ids.push(v.key().clone());
+            shard_ids.push(*v.key());
         }
 
         shard_ids
@@ -320,10 +320,7 @@ impl ShardManager {
                 return;
             }
 
-            self.runners
-                .iter()
-                .map(|v| v.key().clone())
-                .collect::<Vec<_>>()
+            self.runners.iter().map(|v| *v.key()).collect::<Vec<_>>()
         };
 
         info!("Shutting down all shards");

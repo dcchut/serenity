@@ -1034,7 +1034,7 @@ impl EmbedMessageBuilding for MessageBuilder {
     }
 
     fn push_named_link_safe<T: I, U: I>(&mut self, name: T, url: U) -> &mut Self {
-        self.0.push_str("[");
+        self.0.push('[');
         {
             let mut c = name.into();
             c.inner = normalize(&c.inner).replace("]", " ");
@@ -1046,7 +1046,7 @@ impl EmbedMessageBuilding for MessageBuilder {
             c.inner = normalize(&c.inner).replace(")", " ");
             self.0.push_str(&c.to_string());
         }
-        self.0.push_str(")");
+        self.0.push(')');
 
         self
     }
@@ -1163,6 +1163,7 @@ impl Content {
         }
     }
 
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         trait UnwrapWith {
             fn unwrap_with(&self, n: usize) -> usize;

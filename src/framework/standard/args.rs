@@ -413,7 +413,7 @@ impl Args {
         }
 
         let mut s = s;
-        let state = self.state.read().unwrap().clone();
+        let state = *self.state.read().unwrap();
 
         match state {
             State::None => {}
@@ -493,7 +493,7 @@ impl Args {
             return self;
         }
 
-        let state = self.state.read().unwrap().clone();
+        let state = *self.state.read().unwrap();
 
         match state {
             State::None => self.update_state(State::Trimmed),
@@ -529,7 +529,7 @@ impl Args {
 
         if is_quoted {
             // We explicitly clone the state here so that we don't deadlock
-            let state = self.state.read().unwrap().clone();
+            let state = *self.state.read().unwrap();
 
             match state {
                 State::None => self.update_state(State::Quoted),

@@ -1720,7 +1720,7 @@ impl Http {
                 AttachmentType::Path(path) => {
                     let file_name = path
                         .file_name()
-                        .and_then(|filename| Some(filename.to_string_lossy().into_owned()));
+                        .map(|filename| filename.to_string_lossy().into_owned());
                     let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
                     let mime = mime_guess::from_ext(ext).first_or_octet_stream();

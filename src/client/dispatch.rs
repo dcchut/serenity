@@ -383,7 +383,8 @@ async fn handle_event(
 
             tokio::spawn(async move {
                 feature_cache! {{
-                    let before = cache_and_http.cache.as_ref().read().await.channel(event.channel.id().await);
+                    let channel_id = event.channel.id().await;
+                    let before = cache_and_http.cache.as_ref().read().await.channel(channel_id);
                     update(&cache_and_http, &mut event).await;
 
                     event_handler.channel_update(context, before, event.channel).await;

@@ -105,9 +105,9 @@ impl fmt::Debug for Command {
 
 impl PartialEq for Command {
     #[inline]
+    #[allow(clippy::vtable_address_comparisons)]
     fn eq(&self, other: &Command) -> bool {
-        // TODO: does this even make sense?
-        (self.fun as *const _) == (other.fun as *const _) && (self.options == other.options)
+        std::ptr::eq(self.fun, other.fun) && (self.options == other.options)
     }
 }
 
@@ -158,9 +158,9 @@ impl fmt::Debug for HelpCommand {
 
 impl PartialEq for HelpCommand {
     #[inline]
+    #[allow(clippy::vtable_address_comparisons)]
     fn eq(&self, other: &HelpCommand) -> bool {
-        // TODO: does this even make sense?
-        (self.fun as *const _) == (other.fun as *const _) && (self.options == other.options)
+        std::ptr::eq(self.fun, other.fun) && (self.options == other.options)
     }
 }
 

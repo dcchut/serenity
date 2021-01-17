@@ -476,11 +476,7 @@ impl ChannelId {
     /// Returns the name of whatever channel this id holds.
     #[cfg(all(feature = "model", feature = "cache"))]
     pub async fn name(self, cache: impl AsRef<CacheRwLock>) -> Option<String> {
-        let channel = if let Some(c) = self.to_channel_cached(&cache).await {
-            c
-        } else {
-            return None;
-        };
+        let channel = self.to_channel_cached(&cache).await?;
 
         Some(match channel {
             Channel::Guild(channel) => channel.read().await.name().to_string(),
@@ -496,9 +492,7 @@ impl ChannelId {
             Channel::Category(category) => category.read().await.name().to_string(),
             Channel::Private(channel) => {
                 let guard = channel.read().await;
-                let res = guard.name();
-
-                res
+                guard.name()
             }
         })
     }

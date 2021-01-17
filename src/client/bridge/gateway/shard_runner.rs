@@ -282,7 +282,7 @@ impl ShardRunner {
                     query,
                 }) => self
                     .shard
-                    .chunk_guilds(guild_ids, limit, query.as_ref().map(String::as_str))
+                    .chunk_guilds(guild_ids, limit, query.as_deref())
                     .is_ok(),
                 ShardClientMessage::Runner(ShardRunnerMessage::Close(code, reason)) => {
                     let reason = reason.unwrap_or_else(String::new);

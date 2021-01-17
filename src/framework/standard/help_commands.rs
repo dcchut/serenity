@@ -1118,9 +1118,7 @@ async fn send_suggestion_embed(
     suggestions: &Suggestions,
     colour: Colour,
 ) -> Result<Message, Error> {
-    let text = help_description
-        .replace("{}", &suggestions.join("`, `"))
-        .to_string();
+    let text = help_description.replace("{}", &suggestions.join("`, `"));
 
     channel_id
         .send_message(&http, |m| {

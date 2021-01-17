@@ -6,7 +6,6 @@ use crate::internal::SyncRwLock;
 use bitflags::bitflags;
 use serde::de::Error as DeError;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
-use serde_json;
 use std::sync::Arc;
 
 /// A representation of the data retrieved from the bot gateway endpoint.

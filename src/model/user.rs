@@ -33,6 +33,7 @@ use std::sync::Arc;
 
 /// Information about the current user.
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct CurrentUser {
     pub id: UserId,
     pub avatar: Option<String>,
@@ -45,8 +46,6 @@ pub struct CurrentUser {
     #[serde(rename = "username")]
     pub name: String,
     pub verified: Option<bool>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -376,6 +375,7 @@ impl CurrentUser {
 ///
 /// [`name`]: #method.name
 #[derive(Copy, Clone, Debug, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[non_exhaustive]
 pub enum DefaultAvatar {
     /// The avatar when the result is `0`.
     #[serde(rename = "6debd47ed13483642cf09e832ed0bc1b")]
@@ -392,8 +392,6 @@ pub enum DefaultAvatar {
     /// The avatar when the result is `4`.
     #[serde(rename = "1cbd08c76f8af6dddce02c5138971129")]
     Red,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl DefaultAvatar {
@@ -413,6 +411,7 @@ impl DefaultAvatar {
 /// [`DoNotDisturb`]: #variant.DoNotDisturb
 /// [`Invisible`]: #variant.Invisible
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize)]
+#[non_exhaustive]
 pub enum OnlineStatus {
     #[serde(rename = "dnd")]
     DoNotDisturb,
@@ -424,8 +423,6 @@ pub enum OnlineStatus {
     Offline,
     #[serde(rename = "online")]
     Online,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl OnlineStatus {
@@ -436,7 +433,6 @@ impl OnlineStatus {
             OnlineStatus::Invisible => "invisible",
             OnlineStatus::Offline => "offline",
             OnlineStatus::Online => "online",
-            OnlineStatus::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -449,6 +445,7 @@ impl Default for OnlineStatus {
 
 /// Information about a user.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct User {
     /// The unique Id of the user. Can be used to calculate the account's
     /// creation date.
@@ -468,8 +465,6 @@ pub struct User {
     /// change if the username+discriminator pair becomes non-unique.
     #[serde(rename = "username")]
     pub name: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -772,7 +767,6 @@ impl User {
                         return Err(Error::Model(ModelError::ItemMissing));
                     }
                 }
-                GuildContainer::__Nonexhaustive => unreachable!(),
             }
         }
 
@@ -814,7 +808,6 @@ impl User {
                         Err(Error::Model(ModelError::ItemMissing))
                     }
             },
-            GuildContainer::__Nonexhaustive => unreachable!(),
         }*/
     }
 
@@ -995,7 +988,6 @@ impl From<CurrentUser> for User {
             discriminator: user.discriminator,
             id: user.id,
             name: user.name,
-            _nonexhaustive: (),
         }
     }
 }
@@ -1008,7 +1000,6 @@ impl<'a> From<&'a CurrentUser> for User {
             discriminator: user.discriminator,
             id: user.id,
             name: user.name.clone(),
-            _nonexhaustive: (),
         }
     }
 }
@@ -1105,7 +1096,6 @@ mod test {
                 bot: true,
                 discriminator: 1432,
                 name: "test".to_string(),
-                _nonexhaustive: (),
             }
         }
 

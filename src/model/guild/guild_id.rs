@@ -133,7 +133,7 @@ impl GuildId {
         // consider removing
         // `http.as_ref().get_channels(self.0)?()`:
         // `http.as_ref().get_channels(self.0)?`.
-        #[allow(clippy::identity_conversion)]
+        #[allow(clippy::useless_conversion)]
         for channel in http.as_ref().get_channels(self.0).await? {
             channels.insert(channel.id, channel);
         }

@@ -10,6 +10,7 @@ use std::{
 ///
 /// [`http`]: ../index.html
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum Route {
     /// Route for the `/channels/:channel_id` path.
     ///
@@ -261,8 +262,6 @@ pub enum Route {
     /// This is a special case, in that if the route is `None` then pre- and
     /// post-hooks are not executed.
     None,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Route {
@@ -603,6 +602,7 @@ impl Route {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum RouteInfo<'a> {
     AddGroupRecipient {
         group_id: u64,
@@ -899,8 +899,6 @@ pub enum RouteInfo<'a> {
         channel_id: u64,
         message_id: u64,
     },
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl<'a> RouteInfo<'a> {
@@ -1458,7 +1456,6 @@ impl<'a> RouteInfo<'a> {
                 Route::ChannelsIdPinsMessageId(channel_id),
                 Cow::from(Route::channel_pin(channel_id, message_id)),
             ),
-            RouteInfo::__Nonexhaustive => unreachable!(),
         }
     }
 }

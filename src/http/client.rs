@@ -1361,7 +1361,6 @@ impl Http {
         let (after, before) = match *target {
             GuildPagination::After(id) => (Some(id.0), None),
             GuildPagination::Before(id) => (None, Some(id.0)),
-            GuildPagination::__Nonexhaustive => unreachable!(),
         };
 
         self.fire(Request {
@@ -1750,7 +1749,6 @@ impl Http {
                             .file_name(filename.to_string()),
                     );
                 }
-                AttachmentType::__Nonexhaustive => unreachable!(),
             }
 
             unsafe {

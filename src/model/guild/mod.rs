@@ -55,6 +55,7 @@ pub struct Ban {
 
 /// Information about a Discord guild, such as channels, emojis, etc.
 #[derive(Clone, Debug, Serialize)]
+#[non_exhaustive]
 pub struct Guild {
     /// Id of a voice channel that's considered the AFK channel.
     pub afk_channel_id: Option<ChannelId>,
@@ -165,8 +166,6 @@ pub struct Guild {
     /// The preferred locale of this guild only set if guild has the "DISCOVERABLE"
     /// feature, defaults to en-US.
     pub preferred_locale: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -2092,7 +2091,6 @@ impl<'de> Deserialize<'de> for Guild {
             banner,
             vanity_url_code,
             preferred_locale,
-            _nonexhaustive: (),
         })
     }
 }
@@ -2139,13 +2137,12 @@ fn closest_to_origin(origin: &str, word_a: &str, word_b: &str) -> std::cmp::Orde
 /// a guild needs to be retrieved from the cache.
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum GuildContainer {
     /// A guild which can have its contents directly searched.
     Guild(PartialGuild),
     /// A guild's id, which can be used to search the cache for a guild.
     Id(GuildId),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 /// Information relating to a guild's widget embed.
@@ -2238,12 +2235,11 @@ pub struct GuildUnavailable {
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
+#[non_exhaustive]
 pub enum GuildStatus {
     OnlinePartialGuild(PartialGuild),
     OnlineGuild(Guild),
     Offline(GuildUnavailable),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 #[cfg(feature = "model")]
@@ -2256,36 +2252,40 @@ impl GuildStatus {
             GuildStatus::Offline(offline) => offline.id,
             GuildStatus::OnlineGuild(ref guild) => guild.id,
             GuildStatus::OnlinePartialGuild(ref partial_guild) => partial_guild.id,
-            GuildStatus::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 /// Default message notification level for a guild.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum DefaultMessageNotificationLevel {
     /// Receive notifications for everything.
     All = 0,
     /// Receive only mentions.
     Mentions = 1,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
-enum_number!(DefaultMessageNotificationLevel { All, Mentions });
+#[rustfmt::skip]
+enum_number!(
+    DefaultMessageNotificationLevel {
+        All,
+        Mentions,
+    }
+);
 
 impl DefaultMessageNotificationLevel {
     pub fn num(self) -> u64 {
         match self {
             DefaultMessageNotificationLevel::All => 0,
             DefaultMessageNotificationLevel::Mentions => 1,
-            DefaultMessageNotificationLevel::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 /// Setting used to filter explicit messages from members.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum ExplicitContentFilter {
     /// Don't scan any messages.
     None = 0,
@@ -2293,15 +2293,16 @@ pub enum ExplicitContentFilter {
     WithoutRole = 1,
     /// Scan messages sent by all members.
     All = 2,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
-enum_number!(ExplicitContentFilter {
-    None,
-    WithoutRole,
-    All,
-});
+#[rustfmt::skip]
+enum_number!(
+    ExplicitContentFilter {
+        None,
+        WithoutRole,
+        All,
+    }
+);
 
 impl ExplicitContentFilter {
     pub fn num(self) -> u64 {
@@ -2309,36 +2310,40 @@ impl ExplicitContentFilter {
             ExplicitContentFilter::None => 0,
             ExplicitContentFilter::WithoutRole => 1,
             ExplicitContentFilter::All => 2,
-            ExplicitContentFilter::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 /// Multi-Factor Authentication level for guild moderators.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum MfaLevel {
     /// MFA is disabled.
     None = 0,
     /// MFA is enabled.
     Elevated = 1,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
-enum_number!(MfaLevel { None, Elevated });
+#[rustfmt::skip]
+enum_number!(
+    MfaLevel {
+        None,
+        Elevated,
+    }
+);
 
 impl MfaLevel {
     pub fn num(self) -> u64 {
         match self {
             MfaLevel::None => 0,
             MfaLevel::Elevated => 1,
-            MfaLevel::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 /// The name of a region that a voice server can be located in.
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize)]
+#[non_exhaustive]
 pub enum Region {
     #[serde(rename = "amsterdam")]
     Amsterdam,
@@ -2376,8 +2381,6 @@ pub enum Region {
     VipUsEast,
     #[serde(rename = "vip-us-west")]
     VipUsWest,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Region {
@@ -2401,7 +2404,6 @@ impl Region {
             Region::VipAmsterdam => "vip-amsterdam",
             Region::VipUsEast => "vip-us-east",
             Region::VipUsWest => "vip-us-west",
-            Region::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -2411,6 +2413,7 @@ impl Region {
 ///
 /// [`Guild`]: struct.Guild.html
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum VerificationLevel {
     /// Does not require any verification.
     None = 0,
@@ -2422,8 +2425,6 @@ pub enum VerificationLevel {
     High = 3,
     /// Must have a verified phone on the user's Discord account.
     Higher = 4,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 enum_number!(VerificationLevel {
@@ -2442,7 +2443,6 @@ impl VerificationLevel {
             VerificationLevel::Medium => 2,
             VerificationLevel::High => 3,
             VerificationLevel::Higher => 4,
-            VerificationLevel::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -2465,7 +2465,6 @@ mod test {
                 bot: true,
                 discriminator: 1432,
                 name: "test".to_string(),
-                _nonexhaustive: (),
             }
         }
 
@@ -2484,7 +2483,6 @@ mod test {
                 nick: Some("aaaa".to_string()),
                 roles: vec1,
                 user: u,
-                _nonexhaustive: (),
             }
         }
 
@@ -2538,7 +2536,6 @@ mod test {
                 banner: None,
                 vanity_url_code: Some("bruhmoment".to_string()),
                 preferred_locale: "en-US".to_string(),
-                _nonexhaustive: (),
             }
         }
 

@@ -45,7 +45,7 @@ use std::sync::Arc;
 
 /// A container for any channel.
 #[derive(Clone, Debug)]
-pub enum Channel {
+#[non_exhaustive]  pub enum Channel {
     /// A group. A group comprises of only one channel.
     Group(Arc<AsyncRwLock<Group>>),
     /// A [text] or [voice] channel within a [`Guild`].
@@ -63,8 +63,6 @@ pub enum Channel {
     ///
     /// [`GuildChannel`]: struct.GuildChannel.html
     Category(Arc<AsyncRwLock<ChannelCategory>>),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Channel {
@@ -261,7 +259,6 @@ impl Channel {
                 let g = category.read().await;
                 g.delete(cache_http).await?;
             }
-            Channel::__Nonexhaustive => unreachable!(),
         }
 
         Ok(())
@@ -275,7 +272,6 @@ impl Channel {
             Channel::Guild(ref channel) => channel.read().await.is_nsfw(),
             Channel::Category(ref category) => category.read().await.is_nsfw(),
             Channel::Group(_) | Channel::Private(_) => false,
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 
@@ -291,7 +287,6 @@ impl Channel {
             Channel::Guild(ref ch) => ch.read().await.id,
             Channel::Private(ref ch) => ch.read().await.id,
             Channel::Category(ref category) => category.read().await.id,
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 
@@ -323,7 +318,6 @@ impl Channel {
                 guard.name.to_string()
             }
             Channel::Category(ref category) => category.read().await.name.to_string(),
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -375,7 +369,6 @@ impl Serialize for Channel {
             Channel::Private(ref c) => {
                 PrivateChannel::serialize(&*futures::executor::block_on(c.read()), serializer)
             }
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -412,13 +405,13 @@ impl Display for Channel {
                 Display::fmt(&channel.recipient.name, f)
             },
             Channel::Category(ref category) => Display::fmt(&futures::executor::block_on(category.read()).name, f),
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 }*/
 
 /// A representation of a type of channel.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum ChannelType {
     /// An indicator that the channel is a text [`GuildChannel`].
     ///
@@ -452,8 +445,6 @@ pub enum ChannelType {
     ///
     /// [`GuildChannel`]: struct.GuildChannel.html
     Store = 6,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 enum_number!(ChannelType {
@@ -476,7 +467,6 @@ impl ChannelType {
             ChannelType::Category => "category",
             ChannelType::News => "news",
             ChannelType::Store => "store",
-            ChannelType::__Nonexhaustive => unreachable!(),
         }
     }
 
@@ -489,7 +479,6 @@ impl ChannelType {
             ChannelType::Category => 4,
             ChannelType::News => 5,
             ChannelType::Store => 6,
-            ChannelType::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -540,7 +529,6 @@ impl Serialize for PermissionOverwrite {
         let (id, kind) = match self.kind {
             PermissionOverwriteType::Member(id) => (id.0, "member"),
             PermissionOverwriteType::Role(id) => (id.0, "role"),
-            PermissionOverwriteType::__Nonexhaustive => unreachable!(),
         };
 
         let mut state = serializer.serialize_struct("PermissionOverwrite", 4)?;
@@ -559,13 +547,11 @@ impl Serialize for PermissionOverwrite {
 ///
 /// [`GuildChannel::create_permission`]: struct.GuildChannel.html#method.create_permission
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum PermissionOverwriteType {
+#[non_exhaustive]  pub enum PermissionOverwriteType {
     /// A member which is having its permission overwrites edited.
     Member(UserId),
     /// A role which is having its permission overwrites edited.
     Role(RoleId),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 #[cfg(test)]
@@ -587,7 +573,6 @@ mod test {
                 name: None,
                 owner_id: UserId(2),
                 recipients: HashMap::new(),
-                _nonexhaustive: (),
             }
         }
 
@@ -607,7 +592,6 @@ mod test {
                 user_limit: None,
                 nsfw: false,
                 slow_mode_rate: Some(0),
-                _nonexhaustive: (),
             }
         }
 
@@ -623,9 +607,7 @@ mod test {
                     bot: false,
                     discriminator: 1,
                     name: "ab".to_string(),
-                    _nonexhaustive: (),
                 })),
-                _nonexhaustive: (),
             }
         }
 

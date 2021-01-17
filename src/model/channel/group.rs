@@ -17,6 +17,7 @@ use std::borrow::Cow;
 /// [`Guild`]: ../guild/struct.Guild.html
 /// [`User`]: ../user/struct.User.html
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Group {
     /// The Id of the group channel.
     #[serde(rename = "id")]
@@ -37,8 +38,6 @@ pub struct Group {
         serialize_with = "serialize_users"
     )]
     pub recipients: HashMap<UserId, Arc<SyncRwLock<User>>>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]

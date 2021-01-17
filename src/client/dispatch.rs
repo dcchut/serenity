@@ -94,11 +94,10 @@ fn context(
 // Once we can use `Box` as part of a pattern, we will reconsider boxing.
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
+#[non_exhaustive]
 pub(crate) enum DispatchEvent {
     Client(ClientEvent),
     Model(Event),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 #[cfg(feature = "framework")]
@@ -327,7 +326,6 @@ async fn handle_event(
                         event_handler.category_create(context, channel).await;
                     });
                 }
-                Channel::__Nonexhaustive => unreachable!(),
             }
         }
         DispatchEvent::Model(Event::ChannelDelete(mut event)) => {
@@ -349,7 +347,6 @@ async fn handle_event(
                         event_handler.category_delete(context, channel).await;
                     });
                 }
-                Channel::__Nonexhaustive => unreachable!(),
             }
         }
         DispatchEvent::Model(Event::ChannelPinsUpdate(event)) => {
@@ -749,7 +746,5 @@ async fn handle_event(
                     .await;
             });
         }
-        DispatchEvent::Model(Event::__Nonexhaustive) => unreachable!(),
-        DispatchEvent::__Nonexhaustive => unreachable!(),
     }
 }

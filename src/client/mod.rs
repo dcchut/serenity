@@ -443,7 +443,6 @@ impl Client {
             #[cfg(feature = "cache")]
             update_cache_timeout: timeout,
             http: Arc::new(http),
-            __nonexhaustive: (),
         });
 
         let (shard_manager, shard_manager_worker) = {

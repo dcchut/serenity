@@ -101,13 +101,13 @@ use std::time::Duration;
 
 #[cfg(feature = "client")]
 #[derive(Default)]
+#[non_exhaustive]
 pub struct CacheAndHttp {
     #[cfg(feature = "cache")]
     pub cache: CacheRwLock,
     #[cfg(feature = "cache")]
     pub update_cache_timeout: Option<Duration>,
     pub http: Arc<Http>,
-    __nonexhaustive: (),
 }
 
 // For the procedural macros defined in `command_attr`; do not remove!

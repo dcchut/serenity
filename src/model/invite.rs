@@ -23,6 +23,7 @@ use std::ops::Deref;
 ///
 /// Information can not be accessed for guilds the current user is banned from.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Invite {
     /// The approximate number of [`Member`]s in the related [`Guild`].
     ///
@@ -63,8 +64,6 @@ pub struct Invite {
     ///
     /// [`User`]: ../user/struct.User.html
     pub inviter: Option<InviteUser>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -212,6 +211,7 @@ impl Invite {
 
 /// A minimal amount of information about the inviter (person who created the invite).
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct InviteUser {
     pub id: UserId,
     #[serde(rename = "username")]
@@ -219,8 +219,6 @@ pub struct InviteUser {
     #[serde(deserialize_with = "deserialize_u16")]
     pub discriminator: u16,
     pub avatar: Option<String>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// InviteUser implements a Deref to UserId so it gains the convenience methods
@@ -237,17 +235,17 @@ impl Deref for InviteUser {
 
 /// A minimal amount of information about the channel an invite points to.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct InviteChannel {
     pub id: ChannelId,
     pub name: String,
     #[serde(rename = "type")]
     pub kind: ChannelType,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// A minimal amount of information about the guild an invite points to.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct InviteGuild {
     pub id: GuildId,
     pub icon: Option<String>,
@@ -255,8 +253,6 @@ pub struct InviteGuild {
     pub splash_hash: Option<String>,
     pub text_channel_count: Option<u64>,
     pub voice_channel_count: Option<u64>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -312,6 +308,7 @@ impl InviteGuild {
 /// [`Invite`]: struct.Invite.html
 /// [Manage Guild]: ../permissions/struct.Permissions.html#associatedconstant.MANAGE_GUILD
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct RichInvite {
     /// A representation of the minimal amount of information needed about the
     /// channel being invited to.
@@ -349,8 +346,6 @@ pub struct RichInvite {
     pub temporary: bool,
     /// The amount of times that an invite has been used.
     pub uses: u64,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]

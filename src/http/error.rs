@@ -42,6 +42,7 @@ impl ErrorResponse {
 }
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// When a non-successful status code was received for a request.
     UnsuccessfulRequest(ErrorResponse),
@@ -57,8 +58,6 @@ pub enum Error {
     InvalidHeader(InvalidHeaderValue),
     /// Reqwest's Error contain information on why sending a request failed.
     Request(ReqwestError),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl From<ReqwestError> for Error {
@@ -88,7 +87,6 @@ impl Display for Error {
             Error::Url(_) => f.write_str("Provided URL is incorrect."),
             Error::InvalidHeader(_) => f.write_str("Provided value is an invalid header value."),
             Error::Request(_) => f.write_str("Error while sending HTTP request."),
-            Error::__Nonexhaustive => unreachable!(),
         }
     }
 }

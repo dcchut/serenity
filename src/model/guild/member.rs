@@ -77,6 +77,7 @@ impl BanOptions for (u8, String) {
 
 /// Information about a member of a guild.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Member {
     /// Indicator of whether the member can hear in voice channels.
     pub deaf: bool,
@@ -98,9 +99,6 @@ pub struct Member {
         serialize_with = "serialize_sync_user"
     )]
     pub user: Arc<SyncRwLock<User>>,
-
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -615,6 +613,7 @@ impl std::fmt::Display for Member {
 /// [`Guild`]: struct.Guild.html
 /// [`Message`]: ../channel/struct.Message.html
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct PartialMember {
     /// Indicator of whether the member can hear in voice channels.
     pub deaf: bool,
@@ -624,6 +623,4 @@ pub struct PartialMember {
     pub mute: bool,
     /// Vector of Ids of [`Role`]s given to the member.
     pub roles: Vec<RoleId>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }

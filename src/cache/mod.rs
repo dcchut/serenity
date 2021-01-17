@@ -93,6 +93,7 @@ impl<F: FromStr> FromStrAndCache for F {
 /// [`Shard`]: ../gateway/struct.Shard.html
 /// [`http`]: ../http/index.html
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct Cache {
     /// A map of channels in [`Guild`]s that the current user has received data
     /// for.
@@ -194,7 +195,6 @@ pub struct Cache {
     pub(crate) message_queue: HashMap<ChannelId, VecDeque<MessageId>>,
     /// The settings for the cache.
     settings: Settings,
-    __nonexhaustive: (),
 }
 
 impl Cache {
@@ -866,7 +866,6 @@ impl Default for Cache {
             user: CurrentUser::default(),
             users: HashMap::default(),
             message_queue: HashMap::default(),
-            __nonexhaustive: (),
         }
     }
 }
@@ -907,7 +906,6 @@ mod test {
                         bot: false,
                         discriminator: 1,
                         name: "user 1".to_owned(),
-                        _nonexhaustive: (),
                     },
                     channel_id: ChannelId(2),
                     guild_id: Some(GuildId(1)),
@@ -930,9 +928,7 @@ mod test {
                     application: None,
                     message_reference: None,
                     flags: None,
-                    _nonexhaustive: (),
                 },
-                _nonexhaustive: (),
             };
             // Check that the channel cache doesn't exist.
             assert!(!cache.messages.contains_key(&event.message.channel_id));
@@ -981,14 +977,12 @@ mod test {
                 user_limit: None,
                 nsfw: false,
                 slow_mode_rate: Some(0),
-                _nonexhaustive: (),
             };
 
             // Add a channel delete event to the cache, the cached messages for that
             // channel should now be gone.
             let mut delete = ChannelDeleteEvent {
                 channel: Channel::Guild(Arc::new(AsyncRwLock::new(guild_channel.clone()))),
-                _nonexhaustive: (),
             };
             assert!(cache.update(&mut delete).await.is_none());
             assert!(!cache.messages.contains_key(&delete.channel.id().await));
@@ -1034,9 +1028,7 @@ mod test {
                         banner: None,
                         vanity_url_code: Some("bruhmoment".to_string()),
                         preferred_locale: "en-US".to_string(),
-                        _nonexhaustive: (),
                     },
-                    _nonexhaustive: (),
                 }
             };
             assert!(cache.update(&mut guild_create).await.is_none());
@@ -1065,9 +1057,7 @@ mod test {
                     premium_subscription_count: 12,
                     banner: None,
                     vanity_url_code: Some("bruhmoment".to_string()),
-                    _nonexhaustive: (),
                 },
-                _nonexhaustive: (),
             };
 
             // The guild existed in the cache, so the cache's guild is returned by the

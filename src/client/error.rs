@@ -14,6 +14,7 @@ use std::{
 /// [`GuildId::ban`]: ../model/id/struct.GuildId.html#method.ban
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum Error {
     /// When the token provided is invalid. This is returned when validating a
     /// token through the [`validate_token`] function.
@@ -26,8 +27,6 @@ pub enum Error {
     /// When all shards that the client is responsible for have shutdown with an
     /// error.
     Shutdown,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Display for Error {
@@ -36,7 +35,6 @@ impl Display for Error {
             Error::InvalidToken => f.write_str("The provided token was invalid"),
             Error::ShardBootFailure => f.write_str("Failed to (re-)boot a shard"),
             Error::Shutdown => f.write_str("The clients shards shutdown"),
-            Error::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -47,7 +45,6 @@ impl StdError for Error {
             Error::InvalidToken => "The provided token was invalid",
             Error::ShardBootFailure => "Failed to (re-)boot a shard",
             Error::Shutdown => "The clients shards shutdown",
-            Error::__Nonexhaustive => unreachable!(),
         }
     }
 }

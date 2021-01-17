@@ -9,6 +9,7 @@ use tungstenite::protocol::CloseFrame;
 /// Note that - from a user standpoint - there should be no situation in which
 /// you manually handle these.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// There was an error building a URL.
     BuildingUrl,
@@ -46,8 +47,6 @@ pub enum Error {
     OverloadedShard,
     /// Failed to reconnect after a number of attempts.
     ReconnectFailure,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Display for Error {
@@ -65,7 +64,6 @@ impl Display for Error {
             Error::NoSessionId => f.write_str("No Session Id present when required"),
             Error::OverloadedShard => f.write_str("Shard has too many guilds"),
             Error::ReconnectFailure => f.write_str("Failed to Reconnect"),
-            Error::__Nonexhaustive => unreachable!(),
         }
     }
 }

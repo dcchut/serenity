@@ -13,6 +13,7 @@ use crate::utils as serenity_utils;
 ///
 /// [`GuildChannel`]: struct.GuildChannel.html
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ChannelCategory {
     /// Id of this category.
     pub id: ChannelId,
@@ -39,8 +40,6 @@ pub struct ChannelCategory {
     ///
     /// [`GuildChannel`]: struct.GuildChannel.html
     pub permission_overwrites: Vec<PermissionOverwrite>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -134,7 +133,6 @@ impl ChannelCategory {
                     name,
                     position,
                     kind,
-                    _nonexhaustive: (),
                 };
             })
     }

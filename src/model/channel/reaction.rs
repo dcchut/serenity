@@ -18,6 +18,7 @@ use log::warn;
 
 /// An emoji reaction to a message.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Reaction {
     /// The [`Channel`] of the associated [`Message`].
     ///
@@ -38,8 +39,6 @@ pub struct Reaction {
     ///
     /// [`Guild`]: ../guild/struct.Guild.html
     pub guild_id: Option<GuildId>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -206,6 +205,7 @@ impl Reaction {
 ///
 /// [`Reaction`]: struct.Reaction.html
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[non_exhaustive]
 pub enum ReactionType {
     /// A reaction with a [`Guild`]s custom [`Emoji`], which is unique to the
     /// guild.
@@ -225,8 +225,6 @@ pub enum ReactionType {
     },
     /// A reaction with a twemoji.
     Unicode(String),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl<'de> Deserialize<'de> for ReactionType {
@@ -322,7 +320,6 @@ impl Serialize for ReactionType {
 
                 map.end()
             }
-            ReactionType::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -341,7 +338,6 @@ impl ReactionType {
                 format!("{}:{}", name.as_ref().map_or("", |s| s.as_str()), id)
             }
             ReactionType::Unicode(ref unicode) => unicode.clone(),
-            ReactionType::__Nonexhaustive => unreachable!(),
         }
     }
 }
@@ -482,7 +478,6 @@ impl Display for ReactionType {
                 f.write_char('>')
             }
             ReactionType::Unicode(ref unicode) => f.write_str(unicode),
-            ReactionType::__Nonexhaustive => unreachable!(),
         }
     }
 }

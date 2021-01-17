@@ -65,6 +65,7 @@ pub static JOIN_MESSAGES: &[&str] = &[
 
 /// Enum to map gateway opcodes.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum OpCode {
     /// Dispatches an event.
     Event = 0,
@@ -90,8 +91,6 @@ pub enum OpCode {
     Hello = 10,
     /// Sent immediately following a client heartbeat that was received.
     HeartbeatAck = 11,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 enum_number!(OpCode {
@@ -124,13 +123,13 @@ impl OpCode {
             OpCode::InvalidSession => 9,
             OpCode::Hello => 10,
             OpCode::HeartbeatAck => 11,
-            OpCode::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 /// Enum to map voice opcodes.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum VoiceOpCode {
     /// Used to begin a voice websocket connection.
     Identify = 0,
@@ -156,8 +155,6 @@ pub enum VoiceOpCode {
     ClientConnect = 12,
     /// Message indicating that another user has disconnected from the voice channel.
     ClientDisconnect = 13,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 enum_number!(VoiceOpCode {
@@ -190,7 +187,6 @@ impl VoiceOpCode {
             VoiceOpCode::Resumed => 9,
             VoiceOpCode::ClientConnect => 12,
             VoiceOpCode::ClientDisconnect => 13,
-            VoiceOpCode::__Nonexhaustive => unreachable!(),
         }
     }
 }

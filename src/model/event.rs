@@ -32,17 +32,16 @@ use std::mem;
 /// [`Guild`]: ../guild/struct.Guild.html
 /// [`PrivateChannel`]: ../channel/struct.PrivateChannel.html
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct ChannelCreateEvent {
     /// The channel that was created.
     pub channel: Channel,
-    pub(crate) _nonexhaustive: (),
 }
 
 impl<'de> Deserialize<'de> for ChannelCreateEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             channel: Channel::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -130,15 +129,14 @@ impl CacheUpdate for ChannelCreateEvent {
                 .categories
                 .insert(category.read().await.id, Arc::clone(category))
                 .map(Channel::Category),
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct ChannelDeleteEvent {
     pub channel: Channel,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -172,7 +170,7 @@ impl CacheUpdate for ChannelDeleteEvent {
             }
 
             // We ignore these because the delete event does not fire for these.
-            Channel::Group(_) | Channel::__Nonexhaustive => unreachable!(),
+            Channel::Group(_) => unreachable!(),
         };
 
         // Remove the cached messages for the channel.
@@ -186,7 +184,6 @@ impl<'de> Deserialize<'de> for ChannelDeleteEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             channel: Channel::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -201,12 +198,11 @@ impl Serialize for ChannelDeleteEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ChannelPinsUpdateEvent {
     pub guild_id: Option<GuildId>,
     pub channel_id: ChannelId,
     pub last_pin_timestamp: Option<DateTime<FixedOffset>>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -238,11 +234,10 @@ impl CacheUpdate for ChannelPinsUpdateEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ChannelRecipientAddEvent {
     pub channel_id: ChannelId,
     pub user: User,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -263,11 +258,10 @@ impl CacheUpdate for ChannelRecipientAddEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ChannelRecipientRemoveEvent {
     pub channel_id: ChannelId,
     pub user: User,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -289,9 +283,9 @@ impl CacheUpdate for ChannelRecipientRemoveEvent {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct ChannelUpdateEvent {
     pub channel: Channel,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -349,7 +343,6 @@ impl CacheUpdate for ChannelUpdateEvent {
                     c.clone_from(category)
                 }
             }
-            Channel::__Nonexhaustive => unreachable!(),
         }
 
         None
@@ -360,7 +353,6 @@ impl<'de> Deserialize<'de> for ChannelUpdateEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             channel: Channel::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -375,25 +367,23 @@ impl Serialize for ChannelUpdateEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildBanAddEvent {
     pub guild_id: GuildId,
     pub user: User,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildBanRemoveEvent {
     pub guild_id: GuildId,
     pub user: User,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct GuildCreateEvent {
     pub guild: Guild,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -426,7 +416,6 @@ impl<'de> Deserialize<'de> for GuildCreateEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             guild: Guild::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -441,9 +430,9 @@ impl Serialize for GuildCreateEvent {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct GuildDeleteEvent {
     pub guild: PartialGuild,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -474,7 +463,6 @@ impl<'de> Deserialize<'de> for GuildDeleteEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             guild: PartialGuild::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -489,6 +477,7 @@ impl Serialize for GuildDeleteEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildEmojisUpdateEvent {
     #[serde(
         serialize_with = "serialize_emojis",
@@ -496,8 +485,6 @@ pub struct GuildEmojisUpdateEvent {
     )]
     pub emojis: HashMap<EmojiId, Emoji>,
     pub guild_id: GuildId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -516,17 +503,16 @@ impl CacheUpdate for GuildEmojisUpdateEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildIntegrationsUpdateEvent {
     pub guild_id: GuildId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct GuildMemberAddEvent {
     pub guild_id: GuildId,
     pub member: Member,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -564,7 +550,6 @@ impl<'de> Deserialize<'de> for GuildMemberAddEvent {
         Ok(GuildMemberAddEvent {
             guild_id,
             member: Member::deserialize(Value::Object(map)).map_err(DeError::custom)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -587,11 +572,10 @@ impl Serialize for GuildMemberAddEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildMemberRemoveEvent {
     pub guild_id: GuildId,
     pub user: User,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -612,13 +596,12 @@ impl CacheUpdate for GuildMemberRemoveEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildMemberUpdateEvent {
     pub guild_id: GuildId,
     pub nick: Option<String>,
     pub roles: Vec<RoleId>,
     pub user: User,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -659,7 +642,6 @@ impl CacheUpdate for GuildMemberUpdateEvent {
                         nick: self.nick.clone(),
                         roles: self.roles.clone(),
                         user: Arc::new(SyncRwLock::new(self.user.clone())),
-                        _nonexhaustive: (),
                     },
                 );
             }
@@ -672,11 +654,10 @@ impl CacheUpdate for GuildMemberUpdateEvent {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[non_exhaustive]
 pub struct GuildMembersChunkEvent {
     pub guild_id: GuildId,
     pub members: HashMap<UserId, Member>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -737,17 +718,15 @@ impl<'de> Deserialize<'de> for GuildMembersChunkEvent {
         Ok(GuildMembersChunkEvent {
             guild_id,
             members,
-            _nonexhaustive: (),
         })
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildRoleCreateEvent {
     pub guild_id: GuildId,
     pub role: Role,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -772,11 +751,10 @@ impl CacheUpdate for GuildRoleCreateEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildRoleDeleteEvent {
     pub guild_id: GuildId,
     pub role_id: RoleId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -793,11 +771,10 @@ impl CacheUpdate for GuildRoleDeleteEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildRoleUpdateEvent {
     pub guild_id: GuildId,
     pub role: Role,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -820,11 +797,10 @@ impl CacheUpdate for GuildRoleUpdateEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct GuildUnavailableEvent {
     #[serde(rename = "id")]
     pub guild_id: GuildId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -841,9 +817,9 @@ impl CacheUpdate for GuildUnavailableEvent {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct GuildUpdateEvent {
     pub guild: PartialGuild,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -873,7 +849,6 @@ impl<'de> Deserialize<'de> for GuildUpdateEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             guild: PartialGuild::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -888,9 +863,9 @@ impl Serialize for GuildUpdateEvent {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct MessageCreateEvent {
     pub message: Message,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -934,7 +909,6 @@ impl<'de> Deserialize<'de> for MessageCreateEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             message: Message::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -949,25 +923,24 @@ impl Serialize for MessageCreateEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct MessageDeleteBulkEvent {
     pub guild_id: Option<GuildId>,
     pub channel_id: ChannelId,
     pub ids: Vec<MessageId>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct MessageDeleteEvent {
     pub guild_id: Option<GuildId>,
     pub channel_id: ChannelId,
     #[serde(rename = "id")]
     pub message_id: MessageId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct MessageUpdateEvent {
     pub id: MessageId,
     pub guild_id: Option<GuildId>,
@@ -985,8 +958,6 @@ pub struct MessageUpdateEvent {
     pub mention_roles: Option<Vec<RoleId>>,
     pub attachments: Option<Vec<Attachment>>,
     pub embeds: Option<Vec<Value>>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -1036,12 +1007,11 @@ impl CacheUpdate for MessageUpdateEvent {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[non_exhaustive]
 pub struct PresenceUpdateEvent {
     pub guild_id: Option<GuildId>,
     pub presence: Presence,
     pub roles: Option<Vec<RoleId>>,
-    #[serde(skip_serializing)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -1087,7 +1057,6 @@ impl CacheUpdate for PresenceUpdateEvent {
                                 nick: self.presence.nick.clone(),
                                 user: Arc::clone(user),
                                 roles,
-                                _nonexhaustive: (),
                             },
                         );
                     }
@@ -1123,15 +1092,14 @@ impl<'de> Deserialize<'de> for PresenceUpdateEvent {
             guild_id,
             presence,
             roles,
-            _nonexhaustive: (),
         })
     }
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct PresencesReplaceEvent {
     pub presences: Vec<Presence>,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -1160,7 +1128,6 @@ impl<'de> Deserialize<'de> for PresencesReplaceEvent {
 
         Ok(Self {
             presences,
-            _nonexhaustive: (),
         })
     }
 }
@@ -1181,16 +1148,15 @@ impl Serialize for PresencesReplaceEvent {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct ReactionAddEvent {
     pub reaction: Reaction,
-    pub(crate) _nonexhaustive: (),
 }
 
 impl<'de> Deserialize<'de> for ReactionAddEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             reaction: Reaction::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -1205,16 +1171,15 @@ impl Serialize for ReactionAddEvent {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct ReactionRemoveEvent {
     pub reaction: Reaction,
-    pub(crate) _nonexhaustive: (),
 }
 
 impl<'de> Deserialize<'de> for ReactionRemoveEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             reaction: Reaction::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -1229,19 +1194,18 @@ impl Serialize for ReactionRemoveEvent {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ReactionRemoveAllEvent {
     pub guild_id: Option<GuildId>,
     pub channel_id: ChannelId,
     pub message_id: MessageId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// The "Ready" event, containing initial ready cache
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct ReadyEvent {
     pub ready: Ready,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -1265,7 +1229,6 @@ impl CacheUpdate for ReadyEvent {
                         .insert(guild.id, Arc::new(AsyncRwLock::new(guild)));
                 }
                 GuildStatus::OnlinePartialGuild(_) => {}
-                GuildStatus::__Nonexhaustive => unreachable!(),
             }
         }
 
@@ -1291,7 +1254,6 @@ impl<'de> Deserialize<'de> for ReadyEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             ready: Ready::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -1306,35 +1268,32 @@ impl Serialize for ReadyEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct ResumedEvent {
     #[serde(rename = "_trace")]
     pub trace: Vec<Option<String>>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct TypingStartEvent {
     pub guild_id: Option<GuildId>,
     pub channel_id: ChannelId,
     pub timestamp: u64,
     pub user_id: UserId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct UnknownEvent {
     pub kind: String,
     pub value: Value,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct UserUpdateEvent {
     pub current_user: CurrentUser,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -1351,7 +1310,6 @@ impl<'de> Deserialize<'de> for UserUpdateEvent {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         Ok(Self {
             current_user: CurrentUser::deserialize(deserializer)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -1366,20 +1324,19 @@ impl Serialize for UserUpdateEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceServerUpdateEvent {
     pub channel_id: Option<ChannelId>,
     pub endpoint: Option<String>,
     pub guild_id: Option<GuildId>,
     pub token: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct VoiceStateUpdateEvent {
     pub guild_id: Option<GuildId>,
     pub voice_state: VoiceState,
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "cache")]
@@ -1421,7 +1378,6 @@ impl<'de> Deserialize<'de> for VoiceStateUpdateEvent {
         Ok(VoiceStateUpdateEvent {
             guild_id,
             voice_state: VoiceState::deserialize(Value::Object(map)).map_err(DeError::custom)?,
-            _nonexhaustive: (),
         })
     }
 }
@@ -1446,11 +1402,10 @@ impl Serialize for VoiceStateUpdateEvent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct WebhookUpdateEvent {
     pub channel_id: ChannelId,
     pub guild_id: GuildId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -1464,8 +1419,6 @@ pub enum GatewayEvent {
     InvalidateSession(bool),
     Hello(u64),
     HeartbeatAck,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl<'de> Deserialize<'de> for GatewayEvent {
@@ -1654,8 +1607,6 @@ pub enum Event {
     WebhookUpdate(WebhookUpdateEvent),
     /// An event type not covered by the above
     Unknown(UnknownEvent),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 /// Deserializes a `serde_json::Value` into an `Event`.
@@ -1751,9 +1702,7 @@ pub fn deserialize_event_with_type(kind: EventType, v: Value) -> Result<Event> {
         EventType::Other(kind) => Event::Unknown(UnknownEvent {
             kind: kind.to_owned(),
             value: v,
-            _nonexhaustive: (),
         }),
-        EventType::__Nonexhaustive => unreachable!(),
     })
 }
 
@@ -1767,6 +1716,7 @@ pub fn deserialize_event_with_type(kind: EventType, v: Value) -> Result<Event> {
 ///
 /// [`EventType::ChannelCreate`]: enum.EventType.html#variant.ChannelCreate
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum EventType {
     /// Indicator that a channel create payload was received.
     ///
@@ -1995,8 +1945,6 @@ pub enum EventType {
     /// This should be logged so that support for it can be added in the
     /// library.
     Other(String),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl<'de> Deserialize<'de> for EventType {
@@ -2064,86 +2012,76 @@ impl<'de> Deserialize<'de> for EventType {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceHeartbeat {
     pub nonce: u64,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
+#[non_exhaustive]
 pub struct VoiceHeartbeatAck {
     pub nonce: u64,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 impl<'de> Deserialize<'de> for VoiceHeartbeatAck {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> StdResult<Self, D::Error> {
         deserialize_u64(deserializer).map(|nonce| Self {
             nonce,
-            _nonexhaustive: (),
         })
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceReady {
     pub heartbeat_interval: u64,
     pub modes: Vec<String>,
     pub ip: String,
     pub port: u16,
     pub ssrc: u32,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceHello {
     pub heartbeat_interval: u64,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceSessionDescription {
     pub mode: String,
     pub secret_key: Vec<u8>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceSpeaking {
     pub speaking: bool,
     pub ssrc: u32,
     pub user_id: UserId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceResume {
     pub server_id: String,
     pub session_id: String,
     pub token: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceClientConnect {
     pub audio_ssrc: u32,
     pub user_id: UserId,
     pub video_ssrc: u32,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct VoiceClientDisconnect {
     pub user_id: UserId,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// A representation of data received for [`voice`] events.
@@ -2151,6 +2089,7 @@ pub struct VoiceClientDisconnect {
 /// [`voice`]: ../../voice/index.html
 #[derive(Clone, Debug, Serialize)]
 #[serde(untagged)]
+#[non_exhaustive]
 pub enum VoiceEvent {
     /// Server's response to the client's Identify operation.
     /// Contains session-specific information, e.g.
@@ -2179,8 +2118,6 @@ pub enum VoiceEvent {
     ClientDisconnect(VoiceClientDisconnect),
     /// An unknown voice event not registered.
     Unknown(VoiceOpCode, Value),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl<'de> Deserialize<'de> for VoiceEvent {

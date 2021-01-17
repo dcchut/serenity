@@ -41,6 +41,7 @@ use std::sync::Arc;
 /// A representation of a message over a guild's text channel, a group, or a
 /// private channel.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Message {
     /// The unique Id of the message. Can be used to calculate the creation date
     /// of the message.
@@ -106,8 +107,6 @@ pub struct Message {
     pub message_reference: Option<MessageReference>,
     /// Bit flags describing extra features of the message.
     pub flags: Option<MessageFlags>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 #[cfg(feature = "model")]
@@ -725,6 +724,7 @@ impl<'a> From<&'a Message> for MessageId {
 /// [`count`]: #structfield.count
 /// [reaction type]: enum.ReactionType.html
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct MessageReaction {
     /// The amount of the type of reaction that have been sent for the
     /// associated message.
@@ -734,12 +734,11 @@ pub struct MessageReaction {
     /// The type of reaction.
     #[serde(rename = "emoji")]
     pub reaction_type: ReactionType,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Differentiates between regular and different types of system messages.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum MessageType {
     /// A regular message.
     Regular = 0,
@@ -765,8 +764,6 @@ pub enum MessageType {
     NitroTier2 = 10,
     /// An indicator that the guild has reached nitro tier 3
     NitroTier3 = 11,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 enum_number!(MessageType {
@@ -801,20 +798,18 @@ impl MessageType {
             NitroTier1 => 9,
             NitroTier2 => 10,
             NitroTier3 => 11,
-            __Nonexhaustive => unreachable!(),
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum MessageActivityKind {
     JOIN = 1,
     SPECTATE = 2,
     LISTEN = 3,
     #[allow(non_camel_case_types)]
     JOIN_REQUEST = 5,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 enum_number!(MessageActivityKind {
@@ -833,13 +828,13 @@ impl MessageActivityKind {
             SPECTATE => 2,
             LISTEN => 3,
             JOIN_REQUEST => 5,
-            __Nonexhaustive => unreachable!(),
         }
     }
 }
 
 /// Rich Presence application information.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct MessageApplication {
     /// ID of the application.
     pub id: u64,
@@ -851,24 +846,22 @@ pub struct MessageApplication {
     pub icon: Option<String>,
     /// Name of the application.
     pub name: String,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Rich Presence activity information.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct MessageActivity {
     /// Kind of message activity.
     #[serde(rename = "type")]
     pub kind: MessageActivityKind,
     /// `party_id` from a Rich Presence event.
     pub party_id: Option<String>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Reference data sent with crossposted messages.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct MessageReference {
     /// ID of the originating message.
     pub message_id: Option<MessageId>,
@@ -876,8 +869,6 @@ pub struct MessageReference {
     pub channel_id: ChannelId,
     /// ID of the originating message's guild.
     pub guild_id: Option<GuildId>,
-    #[serde(skip)]
-    pub(crate) _nonexhaustive: (),
 }
 
 /// Channel Mention Object

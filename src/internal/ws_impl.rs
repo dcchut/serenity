@@ -2,7 +2,6 @@ use crate::gateway::WsClient;
 use crate::internal::prelude::*;
 use flate2::read::ZlibDecoder;
 use log::warn;
-use serde_json;
 use tungstenite::{util::NonBlockingResult, Message};
 
 #[cfg(not(feature = "native_tls_backend"))]
@@ -67,6 +66,7 @@ fn convert_ws_message(message: Option<Message>) -> Result<Option<Value>> {
 /// An error that occured while connecting over rustls
 #[derive(Debug)]
 #[cfg(not(feature = "native_tls_backend"))]
+#[non_exhaustive]
 pub enum RustlsError {
     /// WebPKI X.509 Certificate Validation Error.
     WebPKI,
@@ -74,8 +74,6 @@ pub enum RustlsError {
     HandshakeError,
     /// Standard IO error happening while creating the tcp stream
     Io(IoError),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 #[cfg(not(feature = "native_tls_backend"))]
@@ -94,7 +92,6 @@ impl Display for RustlsError {
                 f.write_str("TLS handshake failed when making the websocket connection")
             }
             RustlsError::Io(inner) => Display::fmt(&inner, f),
-            RustlsError::__Nonexhaustive => unreachable!(),
         }
     }
 }

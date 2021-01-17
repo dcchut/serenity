@@ -104,7 +104,6 @@ impl ChannelId {
             Channel::Guild(ch) => ch.read().await.id,
             Channel::Private(ch) => ch.read().await.id,
             Channel::Category(ch) => ch.read().await.id,
-            Channel::__Nonexhaustive => unreachable!(),
         }
     }
 }

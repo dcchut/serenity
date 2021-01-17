@@ -166,7 +166,7 @@ impl Parse for CommandFun {
     }
 }
 
-fn visit_reference_arguments(args: &Vec<Argument>) -> (Vec<Argument>, Vec<Lifetime>, Vec<TokenStream2>, Vec<TokenStream2>) {
+fn visit_reference_arguments(args: &[Argument]) -> (Vec<Argument>, Vec<Lifetime>, Vec<TokenStream2>, Vec<TokenStream2>) {
     let mut counter = 1;
     let mut modified_arguments = Vec::new();
     let mut lifetimes = Vec::new();
@@ -418,11 +418,7 @@ pub struct Options {
 impl Options {
     #[inline]
     pub fn new() -> Self {
-        let mut options = Self::default();
-
-        options.help_available = true;
-
-        options
+        Self { help_available: true, ..Default::default() }
     }
 }
 
@@ -590,10 +586,6 @@ pub struct GroupOptions {
 impl GroupOptions {
     #[inline]
     pub fn new() -> Self {
-        let mut options = Self::default();
-
-        options.help_available = true;
-
-        options
+        Self { help_available: true, ..Default::default() }
     }
 }
